@@ -1,0 +1,31 @@
+{
+  "_nota": "PLANTILLA. Completar los 16 ítems desde el Anexo 07 de la tesis (instrumento validado). El texto, la dimensión y el marcado de ítems inversos deben salir de la versión validada del OLBI, no reescribirse.",
+
+  "escala": { "min": 1, "max": 4 },
+
+  "_pendiente_umbrales": "Puntos de corte por confirmar con el asesor (docs/requisitos-y-arquitectura.md §8, pendiente 6). Los valores de abajo son marcadores de posición y NO deben usarse en la recolección real.",
+  "umbrales": {
+    "agotamiento": null,
+    "desvinculacion": null
+  },
+  "version_umbral": "sin-definir",
+
+  "items": [
+    { "clave": "olbi_01", "texto": "", "dimension": "agotamiento",    "invertido": false },
+    { "clave": "olbi_02", "texto": "", "dimension": "desvinculacion", "invertido": false },
+    { "clave": "olbi_03", "texto": "", "dimension": "agotamiento",    "invertido": false },
+    { "clave": "olbi_04", "texto": "", "dimension": "desvinculacion", "invertido": false },
+    { "clave": "olbi_05", "texto": "", "dimension": "agotamiento",    "invertido": false },
+    { "clave": "olbi_06", "texto": "", "dimension": "desvinculacion", "invertido": false },
+    { "clave": "olbi_07", "texto": "", "dimension": "agotamiento",    "invertido": false },
+    { "clave": "olbi_08", "texto": "", "dimension": "desvinculacion", "invertido": false },
+    { "clave": "olbi_09", "texto": "", "dimension": "agotamiento",    "invertido": false },
+    { "clave": "olbi_10", "texto": "", "dimension": "desvinculacion", "invertido": false },
+    { "clave": "olbi_11", "texto": "", "dimension": "agotamiento",    "invertido": false },
+    { "clave": "olbi_12", "texto": "", "dimension": "desvinculacion", "invertido": false },
+    { "clave": "olbi_13", "texto": "", "dimension": "agotamiento",    "invertido": false },
+    { "clave": "olbi_14", "texto": "", "dimension": "desvinculacion", "invertido": false },
+    { "clave": "olbi_15", "texto": "", "dimension": "agotamiento",    "invertido": false },
+    { "clave": "olbi_16", "texto": "", "dimension": "desvinculacion", "invertido": false }
+  ]
+}

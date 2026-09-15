@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Estudio Burnout",
+    "slug": "estudio-burnout",
+    "scheme": "estudioburnout",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "pe.edu.unitru.estudioburnout",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio",
+          "voip"
+        ]
+      }
+    },
+    "android": {
+      "package": "pe.edu.unitru.estudioburnout",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-notifications",
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "La videoconsulta con tu psicólogo necesita acceso a la cámara.",
+          "microphonePermission": "La videoconsulta con tu psicólogo necesita acceso al micrófono."
+        }
+      ],
+      "expo-font"
+    ]
+  }
+}

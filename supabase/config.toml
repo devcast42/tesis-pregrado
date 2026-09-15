@@ -1,0 +1,33 @@
+project_id = "tnllaabrtntlmobtnhfp"
+
+# Verificación de JWT por función.
+#
+# Por defecto Supabase exige un JWT válido. Solo se desactiva donde quien llama
+# es un tercero que no tiene uno: los webhooks de LiveKit y Deepgram. Esos dos
+# verifican su propia autenticidad por otra vía —firma HMAC en el caso de
+# LiveKit— así que no quedan realmente abiertos.
+
+[functions.evaluar-olbi]
+verify_jwt = true
+
+[functions.inscribir-participante]
+verify_jwt = true
+
+[functions.crear-sesion]
+verify_jwt = true
+
+[functions.token-livekit]
+verify_jwt = true
+
+[functions.redactar-informe]
+# Se llama servidor a servidor con la service_role, que es un JWT válido.
+verify_jwt = true
+
+[functions.egress-webhook]
+# Lo llama LiveKit, que no tiene JWT de Supabase. La función verifica la
+# firma del webhook antes de hacer nada (ESP-004 §6).
+verify_jwt = false
+
+[functions.transcripcion-lista]
+# Callback de Deepgram, tampoco tiene JWT.
+verify_jwt = false
