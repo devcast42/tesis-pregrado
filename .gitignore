@@ -1,0 +1,19 @@
+# Secretos y entorno local — .env.example es el que se versiona
+.env
+.env.*
+!.env.example
+
+# Caché del CLI de Supabase
+supabase/.temp/
+
+# Consultas de prueba sueltas
+supabase/_tmp_*.sql
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Editores
+.idea/
+.vscode/
+*.swp
