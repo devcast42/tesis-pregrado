@@ -1,0 +1,67 @@
+// Callback de Deepgram — implementa ESP-004 RF-004-05 y RF-004-06.
+//
+// Deepgram llama aquí cuando termina. Si la transcripción salió bien, se
+// dispara la redacción del informe; si no, la sesión queda como fallida y no
+// se genera informe (RN-004-05): uno redactado desde media conversación
+// puede omitir justo lo importante y parecer completo.
+
+import { json, servicio } from '../_compartido/supabase.ts'
+
+Deno.serve(async (req) => {
+  const url = new URL(req.url)
+  const sesionId = url.searchParams.get('sesion')
+  if (!sesionId) return json({ error: 'falta sesion' }, 400)
+
+  const db = servicio()
+  const cuerpo = await req.json().catch(() => null)
+
+  const texto = cuerpo?.results?.channels?.[0]?.alternatives?.[0]?.paragraphs?.transcript
+    ?? cuerpo?.results?.channels?.[0]?.alternatives?.[0]?.transcript
+    ?? null
+
+  if (!texto) {
+    await db.from('transcripciones').update({ estado: 'fallida' }).eq('sesion_id', sesionId)
+    return json({ error: 'sin texto en la respuesta' }, 422)
+  }
+
+  const { data: transcripcion, error } = await db
+    .from('transcripciones')
+    .update({
+      estado: 'lista',
+      texto,
+      proveedor: 'deepgram-nova-3',
+      generada_en: new Date().toISOString(),
+    })
+    .eq('sesion_id', sesionId)
+    .select('id, sesion_id')
+    .single()
+
+  if (error) return json({ error: error.message }, 500)
+
+  const { data: sesion } = await db
+    .from('sesiones_consulta')
+    .select('derivacion_id, derivaciones(participante_id)')
+    .eq('id', sesionId)
+    .single()
+
+  await db.from('eventos').insert({
+    participante_id: (sesion as any).derivaciones.participante_id,
+    tipo: 'transcripcion_lista',
+    metadata: { sesion_id: sesionId, transcripcion_id: transcripcion.id },
+  })
+
+  // Redacción en segundo plano: el callback de Deepgram no debe esperarla.
+  const respuesta = await fetch(
+    `${Deno.env.get('SUPABASE_URL')}/functions/v1/redactar-informe`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ sesion_id: sesionId }),
+    },
+  )
+
+  return json({ transcrita: true, informe_solicitado: respuesta.ok })
+})
