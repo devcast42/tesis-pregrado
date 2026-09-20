@@ -2,6 +2,9 @@
 
 import { supabase } from '../nucleo/supabase'
 import type { ClaveFormulario, Formulario, Valores } from '../nucleo/tipos'
+import type { Calendarios } from './agenda'
+import type { Evaluacion, Prediccion } from '../participante/resultado'
+import { ahora } from '../nucleo/reloj'
 
 /** RF-002-02 — versión vigente del formulario, leída de base de datos.
  *  El versionado no es opcional (RN-002-02): sin él, respuestas de distintos
@@ -47,7 +50,7 @@ export async function enviarRespuesta(params: {
   formulario: Formulario
   iniciadoEn: string
   valores: Valores
-}): Promise<string> {
+}): Promise<{ id: string; evaluacion: Evaluacion | null }> {
   const { participanteId, formulario, iniciadoEn, valores } = params
 
   const { data: respuesta, error: errorRespuesta } = await supabase
@@ -63,7 +66,9 @@ export async function enviarRespuesta(params: {
 
   if (errorRespuesta) throw errorRespuesta
 
-  const filas = formulario.definicion.items.map((item) => {
+  // Solo los ítems que se mostraron hoy (RF-002-09): un ítem de «solo lunes»
+  // no deja fila vacía el martes.
+  const filas = formulario.definicion.items.filter((item) => item.clave in valores).map((item) => {
     const valor = valores[item.clave]
     const esNumerico = typeof valor === 'number' || typeof valor === 'boolean'
     return {
@@ -88,14 +93,41 @@ export async function enviarRespuesta(params: {
   })
 
   // RN-002-05 — la puntuación corre en el servidor (ESP-003). El cliente
-  // nunca decide una detección ni conoce los umbrales.
+  // nunca decide una detección ni conoce los umbrales: solo recibe el
+  // resultado ya calculado para mostrárselo a la persona (RF-002-12).
+  let evaluacion: Evaluacion | null = null
   if (formulario.clave === 'olbi') {
-    await supabase.functions.invoke('evaluar-olbi', {
+    const { data } = await supabase.functions.invoke('evaluar-olbi', {
       body: { respuesta_id: respuesta.id },
     })
+    if (data && typeof data.detectado === 'boolean') evaluacion = data as Evaluacion
   }
 
-  return respuesta.id as string
+  return { id: respuesta.id as string, evaluacion }
+}
+
+/** RF-002-09 — calendario y título de la versión vigente de cada formulario.
+ *  Una sola consulta: la tabla tiene un puñado de filas. */
+export async function calendarios(): Promise<Calendarios> {
+  const { data, error } = await supabase
+    .from('formularios')
+    .select('clave, version, definicion')
+    .order('version', { ascending: false })
+  if (error) throw error
+
+  const resultado: Calendarios = {}
+  for (const fila of data ?? []) {
+    const clave = fila.clave as ClaveFormulario
+    if (resultado[clave]) continue // ya tenemos la versión mayor
+    const def = fila.definicion as Formulario['definicion']
+    resultado[clave] = {
+      titulo: def.titulo,
+      dias: def.dias,
+      gracia_dias: def.gracia_dias,
+      despues_de: def.despues_de,
+    }
+  }
+  return resultado
 }
 
 /** Fecha del último envío de cada formulario. Insumo de la agenda. */
@@ -114,4 +146,104 @@ export async function ultimosEnvios(
     if (!ultimo[clave]) ultimo[clave] = fila.enviado_en as string
   }
   return ultimo
+}
+
+/** Días de la semana en curso (lunes a domingo) con el formulario del día
+ *  enviado: el `diario` de lunes a jueves o el `olbi` del viernes.
+ *
+ *  Devuelve índices 0–6 con 0 = lunes. Solo días respondidos: la pantalla
+ *  principal no marca los que faltan, a propósito (RF-002-08 y la regla de
+ *  no reprochar del diseño). Semana en horario local del dispositivo, que es
+ *  el que la persona vive. */
+export async function diasConCheckinEstaSemana(
+  participanteId: string,
+  referencia = ahora(),
+): Promise<Set<number>> {
+  const lunes = inicioDeSemana(referencia)
+
+  const { data } = await supabase
+    .from('respuestas')
+    .select('enviado_en')
+    .eq('participante_id', participanteId)
+    .in('formulario_clave', ['diario', 'olbi'])
+    .gte('enviado_en', lunes.toISOString())
+
+  const dias = new Set<number>()
+  for (const fila of data ?? []) {
+    dias.add(indiceLunes(new Date(fila.enviado_en as string)))
+  }
+  return dias
+}
+
+/** Lunes 00:00 local de la semana que contiene la fecha. */
+export function inicioDeSemana(fecha: Date): Date {
+  const d = new Date(fecha)
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() - indiceLunes(d))
+  return d
+}
+
+/** 0 = lunes … 6 = domingo. `getDay()` empieza en domingo, que aquí no sirve. */
+export function indiceLunes(fecha: Date): number {
+  return (fecha.getDay() + 6) % 7
+}
+
+/** ESP-005 §8 — probabilidad (nowcast) de que el OLBI del viernes cruce el
+ *  umbral, con la versión activa del modelo, y su registro como evento. El
+ *  cálculo vive en Postgres; aquí solo se pide. `null` si no hay modelo
+ *  visible para el participante o no respondió ningún día esta semana. */
+export async function prediccionActual(
+  participanteId: string,
+  tarea: 'nowcast' | 'pronostico' = 'nowcast',
+): Promise<Prediccion | null> {
+  const { data, error } = await supabase.rpc('registrar_prediccion', { p_participante: participanteId, p_tarea: tarea })
+  if (error || !data) return null
+  const p = data as Prediccion
+  return p.probabilidad == null ? null : { ...p, tarea }
+}
+
+/** RF-002-14 — la última predicción nowcast de esta semana (la del jueves,
+ *  normalmente): lo que el modelo dijo antes de que el OLBI hablara. */
+export async function ultimaPrediccionSemana(
+  participanteId: string,
+): Promise<{ probabilidad: number; dia: string; n_dias: number } | null> {
+  const { data, error } = await supabase.rpc('ultima_prediccion_semana', { p_participante: participanteId })
+  if (error || !data) return null
+  const d = data as { probabilidad: number; dia: string; n_dias: number }
+  return typeof d.probabilidad === 'number' ? d : null
+}
+
+/** Última respuesta al formulario `estable`, como valores por clave, junto
+ *  con la definición para poder mostrar etiquetas en lugar de códigos.
+ *  Null si nunca se respondió. Se usa en Perfil (ESP-002 RF-002-16). */
+export async function datosIniciales(participanteId: string): Promise<{ valores: Valores; enviado_en: string } | null> {
+  const { data: r } = await supabase
+    .from('respuestas')
+    .select('id, enviado_en')
+    .eq('participante_id', participanteId)
+    .eq('formulario_clave', 'estable')
+    .order('enviado_en', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (!r) return null
+
+  const { data: items } = await supabase
+    .from('respuestas_items')
+    .select('item_clave, valor_num, valor_texto')
+    .eq('respuesta_id', r.id)
+
+  const valores: Valores = {}
+  for (const i of items ?? []) {
+    valores[i.item_clave] = i.valor_texto ?? Number(i.valor_num)
+  }
+  return { valores, enviado_en: r.enviado_en as string }
+}
+
+export type Racha = { actual: number; mejor: number; hoy_cumplido: boolean }
+
+/** RF-002-07 — racha de días hábiles consecutivos, calculada en el servidor. */
+export async function racha(participanteId: string): Promise<Racha> {
+  const { data, error } = await supabase.rpc('racha', { p_participante: participanteId })
+  if (error || !data) return { actual: 0, mejor: 0, hoy_cumplido: false }
+  return data as Racha
 }

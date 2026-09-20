@@ -8,11 +8,18 @@
 --
 -- ⚠️  SOLO PARA PRUEBAS. Nunca en el proyecto real con datos de participantes.
 --
--- CUÁNTOS DÍAS AVANZAR
--- --------------------
---   1  → habilita el check-in diario
---   7  → habilita diario + semanal
---  14  → habilita diario + semanal + OLBI (flujo completo con detección)
+-- CUÁNTOS DÍAS AVANZAR (calendario semanal, ESP-002 rev. 2)
+-- ----------------------------------------------------------
+--   1  → lo respondido hoy pasa a «ayer»: se puede volver a responder el
+--        formulario que toque HOY (diario lunes-jueves, OLBI viernes)
+--   7  → toda la semana pasa a la anterior: el ritmo semanal se vacía y el
+--        pronóstico/retrospectiva dejan de ver estos datos
+--
+-- El día de la semana lo decide la app con la fecha REAL del dispositivo.
+-- Para «estar» en lunes siendo viernes, en la app: Ajustes → «Solo
+-- desarrollo · fecha simulada» (existe solo en compilaciones de desarrollo).
+-- Combinación típica para probar un lunes completo: este script con 1 y el
+-- desfase de la app en +3 (viernes → lunes).
 --
 -- USO
 -- ---
@@ -54,10 +61,10 @@ begin
   raise notice '  Respuestas retrocedidas: %',         n_respuestas;
   raise notice '  Eventos    retrocedidos: %',         n_eventos;
   raise notice '';
-  raise notice 'Los participantes pueden volver a responder ahora:';
-  raise notice '  - diario   (cadencia: 1 d)  → siempre';
-  raise notice '  - semanal  (cadencia: 7 d)  → si avanzaste ≥ 7';
-  raise notice '  - olbi     (cadencia: 14 d) → si avanzaste ≥ 14';
+  raise notice 'Los participantes pueden volver a responder lo que toque hoy:';
+  raise notice '  - lunes a jueves → diario';
+  raise notice '  - viernes        → olbi + semanal (gracia sábado y domingo)';
+  raise notice 'El día de la semana lo pone la app (Ajustes → fecha simulada en desarrollo).';
   raise notice '──────────────────────────────────────────';
 end $$;
 

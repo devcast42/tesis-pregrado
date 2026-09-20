@@ -4,7 +4,7 @@
  *  (RN-004-03): esta pantalla termina al colgar. */
 
 import { useCallback, useEffect, useState } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { Alert, StyleSheet, View } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Llamada } from '../../modules/consulta/Llamada'
 import { obtenerCredenciales, obtenerSesion } from '../../modules/consulta/datos'
@@ -34,8 +34,12 @@ export default function ConsultaParticipante() {
   }
 
   async function entrar() {
-    setCredenciales(await obtenerCredenciales(id))
-    setEnLlamada(true)
+    try {
+      setCredenciales(await obtenerCredenciales(id))
+      setEnLlamada(true)
+    } catch (e) {
+      Alert.alert('No se pudo entrar', e instanceof Error ? e.message : 'Inténtalo de nuevo.')
+    }
   }
 
   const salir = useCallback(() => {
@@ -46,7 +50,7 @@ export default function ConsultaParticipante() {
   if (!sesion) return <Cargando />
 
   if (enLlamada && credenciales) {
-    return <Llamada url={credenciales.url} token={credenciales.token} onSalir={salir} />
+    return <Llamada url={credenciales.url} token={credenciales.token} onSalir={salir} onFallo={() => setEnLlamada(false)} />
   }
 
   return (

@@ -6,9 +6,12 @@
  *  El OLBI son 16 preguntas: una barra de avance fija arriba evita la
  *  sensación de scroll interminable, que es lo que hace abandonar. */
 
-import { useState } from 'react'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
-import type { DefinicionFormulario, ValorItem, Valores } from '../../nucleo/tipos'
+import { useMemo, useState } from 'react'
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native'
+import type { DefinicionFormulario, ItemDef, ValorItem, Valores } from '../../nucleo/tipos'
+import { diaIso } from '../agenda'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { ahora } from '../../nucleo/reloj'
 import { ancho, color, espacio, texto } from '../../nucleo/diseno'
 import { Boton, Parrafo } from '../../nucleo/ui'
 import { Campo } from './Campo'
@@ -19,9 +22,32 @@ type Props = {
   onEnviar: (valores: Valores) => void
 }
 
+/** RF-002-09 — solo los ítems que corresponden hoy (`dias` del ítem).
+ *  RF-002-10 — los marcados en `barajar` salen en orden aleatorio, decidido
+ *  una vez por apertura: barajar en cada render movería las preguntas bajo
+ *  el dedo del participante. Los no barajados conservan su posición relativa,
+ *  y el bloque barajado ocupa las posiciones que sus ítems tenían. */
+export function itemsDeHoy(definicion: DefinicionFormulario, referencia = ahora()): ItemDef[] {
+  const hoy = diaIso(referencia)
+  const visibles = definicion.items.filter((i) => !i.dias || i.dias.includes(hoy))
+  if (!definicion.barajar) return visibles
+
+  const seBaraja = (i: ItemDef) =>
+    definicion.barajar === true || (definicion.barajar as string[]).includes(i.clave)
+  const barajados = visibles.filter(seBaraja)
+  for (let k = barajados.length - 1; k > 0; k--) {
+    const j = Math.floor(Math.random() * (k + 1))
+    ;[barajados[k], barajados[j]] = [barajados[j], barajados[k]]
+  }
+  let cursor = 0
+  return visibles.map((i) => (seBaraja(i) ? barajados[cursor++] : i))
+}
+
 export function Formulario({ definicion, enviando, onEnviar }: Props) {
   const [valores, setValores] = useState<Valores>({})
   const [faltantes, setFaltantes] = useState<string[]>([])
+  const items = useMemo(() => itemsDeHoy(definicion), [definicion])
+  const insets = useSafeAreaInsets()
 
   function cambiar(clave: string, valor: ValorItem) {
     setValores((previos) => ({ ...previos, [clave]: valor }))
@@ -31,7 +57,7 @@ export function Formulario({ definicion, enviando, onEnviar }: Props) {
   // RF-002-05 — no se admite envío incompleto. Un ítem vacío en un instrumento
   // psicométrico invalida la dimensión completa, no solo esa pregunta.
   function intentarEnviar() {
-    const sinResponder = definicion.items
+    const sinResponder = items
       .filter((item) => {
         const valor = valores[item.clave]
         return valor === undefined || valor === ''
@@ -42,14 +68,14 @@ export function Formulario({ definicion, enviando, onEnviar }: Props) {
     onEnviar(valores)
   }
 
-  const total = definicion.items.length
-  const respondidos = definicion.items.filter(
+  const total = items.length
+  const respondidos = items.filter(
     (i) => valores[i.clave] !== undefined && valores[i.clave] !== '',
   ).length
   const avance = total === 0 ? 0 : respondidos / total
 
   return (
-    <View style={e.contenedor}>
+    <KeyboardAvoidingView style={e.contenedor} behavior="padding">
       <View style={e.barra}>
         <View style={e.pista}>
           <View style={[e.avance, { width: `${avance * 100}%` }]} />
@@ -66,7 +92,7 @@ export function Formulario({ definicion, enviando, onEnviar }: Props) {
           </View>
         )}
 
-        {definicion.items.map((item) => (
+        {items.map((item) => (
           <Campo
             key={item.clave}
             item={item}
@@ -77,7 +103,7 @@ export function Formulario({ definicion, enviando, onEnviar }: Props) {
         ))}
       </ScrollView>
 
-      <View style={e.pie}>
+      <View style={[e.pie, { paddingBottom: espacio.md + insets.bottom }]}>
         {faltantes.length > 0 && (
           <Text style={[texto.apoyo, e.faltan]}>
             {faltantes.length === 1
@@ -89,7 +115,7 @@ export function Formulario({ definicion, enviando, onEnviar }: Props) {
           Enviar
         </Boton>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   )
 }
 

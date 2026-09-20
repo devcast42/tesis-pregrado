@@ -6,6 +6,7 @@
 
 import { idUsuario, supabase } from '../nucleo/supabase'
 import type { Participante } from '../nucleo/tipos'
+import { olvidarDesbloqueo } from './bloqueo'
 
 /** RF-001-01 — acceso con correo y contraseña.
  *
@@ -27,6 +28,7 @@ export async function haySesion() {
 }
 
 export async function cerrarSesion() {
+  olvidarDesbloqueo()
   await supabase.auth.signOut()
 }
 

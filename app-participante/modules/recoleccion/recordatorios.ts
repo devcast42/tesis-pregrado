@@ -17,7 +17,29 @@
  *  acepte participar. Aquí se degrada —se avisa y se sigue— en lugar de
  *  romperse. */
 
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { Platform } from 'react-native'
+
 const ID_DIARIO = 'checkin-diario'
+const ID_PRUEBA = 'checkin-prueba'
+const CANAL = 'recordatorios'
+const CLAVE_HORA = 'recordatorio.hora'
+const CLAVE_MINUTO = 'recordatorio.minuto'
+
+const RECORDATORIOS = [
+  ...[2, 3, 4, 5].map((weekday) => ({
+    id: `checkin-${weekday}`,
+    weekday,
+    titulo: 'Check-in de hoy',
+    cuerpo: 'Son 25 segundos. Gracias por participar en el estudio.',
+  })),
+  {
+    id: 'checkin-6',
+    weekday: 6,
+    titulo: 'Cuestionario del viernes',
+    cuerpo: 'Cuatro minutos para cerrar tu semana. Gracias por participar en el estudio.',
+  },
+]
 
 export const HORA_POR_DEFECTO = 19
 export const MINUTO_POR_DEFECTO = 0
@@ -59,6 +81,71 @@ function notificaciones(): ModuloNotificaciones | null {
   return modulo
 }
 
+// ----------------------------------------------------------- Preferencia
+
+export type HoraRecordatorio = { hora: number; minuto: number }
+
+/** Hora elegida por el participante (por defecto 19:00). Vive en el
+ *  dispositivo: el servidor no necesita saber a qué hora suena el teléfono. */
+export async function horaRecordatorio(): Promise<HoraRecordatorio> {
+  try {
+    const [h, m] = await Promise.all([AsyncStorage.getItem(CLAVE_HORA), AsyncStorage.getItem(CLAVE_MINUTO)])
+    return {
+      hora: h !== null && Number.isFinite(Number(h)) ? Number(h) : HORA_POR_DEFECTO,
+      minuto: m !== null && Number.isFinite(Number(m)) ? Number(m) : MINUTO_POR_DEFECTO,
+    }
+  } catch {
+    return { hora: HORA_POR_DEFECTO, minuto: MINUTO_POR_DEFECTO }
+  }
+}
+
+export async function guardarHoraRecordatorio(hora: number, minuto: number): Promise<boolean> {
+  await AsyncStorage.multiSet([[CLAVE_HORA, String(hora)], [CLAVE_MINUTO, String(minuto)]]).catch(() => {})
+  return programarDiario(hora, minuto)
+}
+
+/** Reprograma con la hora guardada. Se llama al abrir la pantalla principal:
+ *  los recordatorios viven en el sistema operativo y se pierden al
+ *  reinstalar la app o borrar sus datos; así se recuperan solos. */
+export async function sincronizarRecordatorios(): Promise<boolean> {
+  const { hora, minuto } = await horaRecordatorio()
+  return programarDiario(hora, minuto)
+}
+
+/** Manda una notificación de prueba en `segundos`, para comprobar que el
+ *  teléfono las deja pasar (permiso, canal, ahorro de batería). */
+export async function probarRecordatorio(segundos = 10): Promise<boolean> {
+  const n = notificaciones()
+  if (!n) return false
+  if (!(await pedirPermiso())) return false
+  try {
+    await asegurarCanal(n)
+    await n.cancelScheduledNotificationAsync(ID_PRUEBA).catch(() => {})
+    await n.scheduleNotificationAsync({
+      identifier: ID_PRUEBA,
+      content: { title: 'Prueba de recordatorio', body: 'Así se verá tu aviso diario. Todo funciona.', ...(Platform.OS === 'android' ? { channelId: CANAL } : {}) },
+      trigger: { type: n.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: segundos, channelId: CANAL },
+    })
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Android 8+ exige un canal; sin él la notificación se descarta en
+ *  silencio. Importancia alta para que aparezca como aviso y no solo en la
+ *  bandeja. Idempotente. */
+async function asegurarCanal(n: ModuloNotificaciones) {
+  if (Platform.OS !== 'android') return
+  await n.setNotificationChannelAsync(CANAL, {
+    name: 'Recordatorio diario',
+    importance: n.AndroidImportance.HIGH,
+    // Sin `sound`: el canal usa el tono por defecto del sistema. Pasar
+    // 'default' hace que expo busque un archivo con ese nombre y avise.
+    vibrationPattern: [0, 200],
+  }).catch(() => {})
+}
+
 /** ¿Se pueden programar recordatorios en este dispositivo?
  *
  *  Falso en Expo Go (Android) y en navegador. Para probarlos de verdad hace
@@ -98,20 +185,29 @@ export async function programarDiario(
   if (!(await pedirPermiso())) return false
 
   try {
-    await n.cancelScheduledNotificationAsync(ID_DIARIO).catch(() => {})
+    await asegurarCanal(n)
+    // Un recordatorio semanal por día laborable (ESP-002 rev. 2): de lunes a
+    // jueves el check-in, el viernes el cuestionario. Sábado y domingo no hay
+    // nada que responder, y avisar sin motivo es la forma más rápida de que
+    // silencien la app. `weekday` de expo-notifications: 1 = domingo … 7 = sábado.
+    await Promise.all(
+      RECORDATORIOS.map((r) => n.cancelScheduledNotificationAsync(r.id).catch(() => {})),
+    )
+    await n.cancelScheduledNotificationAsync(ID_DIARIO).catch(() => {}) // versión anterior
 
-    await n.scheduleNotificationAsync({
-      identifier: ID_DIARIO,
-      content: {
-        title: 'Check-in de hoy',
-        body: 'Son 30 segundos. Gracias por participar en el estudio.',
-      },
-      trigger: {
-        type: n.SchedulableTriggerInputTypes.DAILY,
-        hour: hora,
-        minute: minuto,
-      },
-    })
+    for (const r of RECORDATORIOS) {
+      await n.scheduleNotificationAsync({
+        identifier: r.id,
+        content: { title: r.titulo, body: r.cuerpo },
+        trigger: {
+          type: n.SchedulableTriggerInputTypes.WEEKLY,
+          weekday: r.weekday,
+          hour: hora,
+          minute: minuto,
+          channelId: CANAL,
+        },
+      })
+    }
 
     return true
   } catch {

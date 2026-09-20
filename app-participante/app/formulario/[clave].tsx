@@ -7,13 +7,18 @@ import { useEffect, useState } from 'react'
 import { Alert } from 'react-native'
 import { router, useLocalSearchParams, useNavigation } from 'expo-router'
 import { obtenerParticipante } from '../../modules/acceso/datos'
-import { enviarRespuesta, obtenerFormulario, registrarInicio } from '../../modules/recoleccion/datos'
+import {
+  calendarios, enviarRespuesta, obtenerFormulario, prediccionActual, registrarInicio, ultimaPrediccionSemana,
+} from '../../modules/recoleccion/datos'
 import { Formulario as FormularioUI } from '../../modules/recoleccion/componentes/Formulario'
 import type { ClaveFormulario, Formulario, Valores } from '../../modules/nucleo/tipos'
 import { Cargando } from '../../modules/nucleo/ui'
+import {
+  consejoDelDia, dejarConsejo, guardarResultado, resultadoDesde,
+} from '../../modules/participante/resultado'
 
 export default function PantallaFormulario() {
-  const { clave } = useLocalSearchParams<{ clave: ClaveFormulario }>()
+  const { clave, cierre: mostrarCierre } = useLocalSearchParams<{ clave: ClaveFormulario; cierre?: string }>()
   const navegacion = useNavigation()
 
   const [formulario, setFormulario] = useState<Formulario | null>(null)
@@ -57,8 +62,35 @@ export default function PantallaFormulario() {
 
     setEnviando(true)
     try {
-      await enviarRespuesta({ participanteId, formulario, iniciadoEn, valores })
-      router.back()
+      const { evaluacion } = await enviarRespuesta({ participanteId, formulario, iniciadoEn, valores })
+
+      // RF-002-12 — retroalimentación. El OLBI del viernes deja su resultado
+      // guardado; el check-in diario deja un consejo según el día.
+      let cierre = mostrarCierre
+      if (evaluacion) {
+        // RF-002-14 — la retrospectiva se lee ANTES de pedir el pronóstico,
+        // para que la última predicción de la semana siga siendo la del
+        // nowcast y no la que se acaba de registrar.
+        const [retrospectiva, pronostico] = await Promise.all([
+          ultimaPrediccionSemana(participanteId),
+          prediccionActual(participanteId, 'pronostico'),
+        ])
+        await guardarResultado({ ...resultadoDesde(evaluacion), retrospectiva, pronostico })
+        cierre = 'resultado'
+      } else if (clave === 'diario') {
+        dejarConsejo(consejoDelDia(valores))
+        cierre = 'cierre'
+      }
+
+      // RF-002-11 — si otro formulario va «después de» este (el viernes, las
+      // tres preguntas de la semana tras el OLBI), se encadena sin volver a
+      // la pantalla principal: para la persona es una sola sesión. El cierre
+      // se muestra al final de la cadena.
+      const siguiente = await siguienteEncadenado(clave)
+      if (siguiente) router.replace({ pathname: `/formulario/${siguiente}`, params: { cierre } })
+      else if (cierre) router.replace({ pathname: '/hoy', params: { mostrar: cierre } })
+      else if (router.canGoBack()) router.back()
+      else router.replace('/')
     } catch {
       Alert.alert(
         'No se pudo enviar',
@@ -78,4 +110,16 @@ export default function PantallaFormulario() {
       onEnviar={enviar}
     />
   )
+}
+
+async function siguienteEncadenado(clave: ClaveFormulario): Promise<ClaveFormulario | null> {
+  try {
+    const todos = await calendarios()
+    const encontrado = (Object.keys(todos) as ClaveFormulario[]).find(
+      (k) => todos[k]?.despues_de === clave,
+    )
+    return encontrado ?? null
+  } catch {
+    return null
+  }
 }

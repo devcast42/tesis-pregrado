@@ -7,6 +7,7 @@ import { router } from 'expo-router'
 import { Cargando } from '../modules/nucleo/ui'
 import { color, espacio, texto } from '../modules/nucleo/diseno'
 import { haySesion, obtenerParticipante } from '../modules/acceso/datos'
+import { necesitaDesbloqueo } from '../modules/acceso/bloqueo'
 import { obtenerRol, RUTA_INICIAL } from '../modules/nucleo/rol'
 import { puedeRecolectar } from '../modules/consentimiento/datos'
 
@@ -18,6 +19,9 @@ export default function Index() {
 
     async function decidir() {
       if (!(await haySesion())) return router.replace('/acceso')
+
+      // RF-001-08 — con sesión guardada, la huella va antes que cualquier dato.
+      if (await necesitaDesbloqueo()) return router.replace('/bloqueo')
 
       // RF-006-13 — enrutamiento por rol, sin selector manual.
       const rol = await obtenerRol()
@@ -37,9 +41,14 @@ export default function Index() {
         )
       }
 
-      if (participante.estado !== 'activo') {
+      // Un participante detectado sigue entrando: ve su resultado, recibe la
+      // sesión de apoyo y la atiende desde aquí (ESP-002 RF-002-12, ESP-004).
+      // Solo quien se retiró o terminó el estudio ve el cierre.
+      if (participante.estado === 'retirado' || participante.estado === 'finalizado') {
         return setMensaje(
-          'Tu seguimiento ha finalizado. El equipo de investigación se pondrá en contacto contigo.',
+          participante.estado === 'retirado'
+            ? 'Te retiraste del estudio. Si fue un error, escríbele al equipo de investigación.'
+            : 'El estudio terminó. Gracias por acompañarnos estas semanas.',
         )
       }
 

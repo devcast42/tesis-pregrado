@@ -25,12 +25,28 @@ export type ItemDef = {
   /** Solo instrumentos psicométricos. El puntaje se calcula en el servidor (RN-002-05). */
   dimension?: string
   invertido?: boolean
+  /** Días ISO (1 = lunes … 7 = domingo) en que se muestra. Sin él, siempre. */
+  dias?: number[]
 }
 
-export type DefinicionFormulario = {
+/** Calendario de un formulario (ESP-002 rev. 2, RF-002-09). Vive en la
+ *  definición, no en la app: cambiar el calendario del estudio no debe
+ *  requerir que cien personas actualicen la app. */
+export type CalendarioFormulario = {
+  /** Días ISO en que corresponde. Sin él, cadencia fija (ver `agenda.ts`). */
+  dias?: number[]
+  /** Días después del que corresponde en que aún se acepta. */
+  gracia_dias?: number
+  /** Se presenta a continuación de ese formulario, como una sola sesión. */
+  despues_de?: ClaveFormulario
+}
+
+export type DefinicionFormulario = CalendarioFormulario & {
   titulo: string
   descripcion?: string
   items: ItemDef[]
+  /** Orden aleatorio en cada apertura: todos los ítems, o solo esas claves. */
+  barajar?: true | string[]
 }
 
 export type Formulario = {

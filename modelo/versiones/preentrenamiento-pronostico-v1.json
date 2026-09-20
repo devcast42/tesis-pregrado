@@ -1,0 +1,64 @@
+{
+  "version": "preentrenamiento-pronostico-v1",
+  "origen": "preentrenamiento",
+  "tarea": "pronostico",
+  "fuente": "Gruszczynska, Basinska & Schaufeli (2021), Mendeley Data doi:10.17632/vwp3xvp2x8.2, CC BY 4.0",
+  "rasgos": [
+    "T_media",
+    "T_ultimo",
+    "T_max",
+    "T_pendiente",
+    "E_media",
+    "D_media",
+    "n_dias"
+  ],
+  "medias": [
+    2.297074,
+    2.268085,
+    3.006383,
+    -0.005638,
+    2.42766,
+    2.166489,
+    4.0
+  ],
+  "desviaciones": [
+    0.612802,
+    0.848617,
+    0.796576,
+    0.325466,
+    0.724995,
+    0.628877,
+    1.0
+  ],
+  "pesos": [
+    0.744167,
+    0.084151,
+    0.391903,
+    0.006354,
+    0.613797,
+    0.742681,
+    0.0
+  ],
+  "intercepto": -1.51747,
+  "umbral_decision": 0.5,
+  "etiqueta": "media de la semana siguiente (8 ítems, 5 días) >= 3.0 en escala 1-5",
+  "metricas": {
+    "global": {
+      "precision": 0.323,
+      "recall": 0.741,
+      "f1": 0.449,
+      "pr_auc": 0.499,
+      "roc_auc": 0.879,
+      "brier": 0.135,
+      "n": 235,
+      "positivos": 0.115
+    },
+    "por_dias_respondidos": {
+      "4": {
+        "roc_auc": 0.879,
+        "precision": 0.323,
+        "recall": 0.741
+      }
+    }
+  }
+}

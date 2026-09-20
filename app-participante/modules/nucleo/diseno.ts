@@ -41,6 +41,21 @@ export const color = {
   primarioOscuro: '#115E59',
   primarioSuave: '#EFF9F7',
 
+  // Del rediseño de la app del participante (Figma). El primario profundo
+  // es el color de tinta sobre fondos claros; los claros son fondos de
+  // acento sobre el primario y del "hoy" en el ritmo semanal.
+  primarioProfundo: '#005C55',
+  primarioClaro: '#9CF2E8',
+  primarioTenue: '#A3FAEF',
+
+  // Arena: la insignia "Revisión quincenal". Cálido, sin competir con el verde.
+  arena: '#E5DED8',
+  // Tierra: la barra y el énfasis del nivel alto. Serio sin ser rojo.
+  tierra: '#9A5B2B',
+  tierraSuave: '#FBF3E6',
+  textoArena: '#66625D',
+  puntoFuturo: '#BDC9C6',
+
   exito: '#15803D',
   exitoSuave: '#F0FDF4',
   alerta: '#B45309',

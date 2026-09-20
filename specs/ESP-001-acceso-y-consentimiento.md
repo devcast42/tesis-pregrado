@@ -41,6 +41,7 @@ tiene que ocurrir el consentimiento informado.
 | RF-001-05 | El participante puede **aceptar o rechazar**; ambas decisiones se registran |
 | RF-001-06 | Si rechaza, no se le solicita ningún dato y se le informa cómo revertir la decisión |
 | RF-001-07 | El participante puede retirar su consentimiento en cualquier momento desde la app |
+| RF-001-08 | Con sesión guardada, la app pide la huella (o rostro, o PIN del teléfono) antes de mostrar cualquier dato: al abrir en frío y al volver del segundo plano tras 5 minutos. Se puede desactivar en Ajustes; si el dispositivo no tiene biometría configurada, no se pide |
 
 ## 5. Reglas de negocio
 
@@ -50,6 +51,7 @@ tiene que ocurrir el consentimiento informado.
 | RN-001-02 | `consentimientos` es append-only y versionada por texto | Si el texto cambia, hay que poder demostrar qué versión aceptó cada persona. Un comité de ética puede pedirlo |
 | RN-001-03 | Un rechazo se registra como fila con `aceptado = false`, no como ausencia de fila | Ausencia de fila es ambiguo: ¿rechazó o nunca abrió la app? La distinción importa para reportar la tasa de participación |
 | RN-001-04 | Sin consentimiento aceptado vigente, la app no permite acceder a ningún formulario | Recolectar sin consentimiento invalida el dato y expone el estudio |
+| RN-001-05 | La huella **no autentica** contra el servidor: solo desbloquea la sesión ya guardada en el dispositivo. La biometría nunca sale del teléfono y el sistema no la recibe | Es protección del dato en reposo en el aparato, no un segundo factor. Evita que un teléfono desbloqueado sobre el escritorio exponga el nivel OLBI o la sesión con el psicólogo |
 
 ## 6. Contratos de datos
 
@@ -80,6 +82,7 @@ Estado del participante: `activo` → `detectado` | `retirado` | `finalizado`.
 | RF-001-01, RF-001-02 | `modules/acceso/datos.ts`, `app/acceso.tsx` |
 | RF-001-03 | `app/index.tsx` |
 | RF-001-04 … RF-001-07 | `modules/consentimiento/`, `app/consentimiento.tsx` |
+| RF-001-08, RN-001-05 | `modules/acceso/bloqueo.ts`, `app/bloqueo.tsx`, `app/_layout.tsx` (segundo plano), `app/ajustes.tsx` (interruptor) |
 | RN-001-01 … RN-001-04 | `supabase/migrations/20260829090100_esquema_inicial.sql` |
 
 ## 9. Decisiones abiertas
@@ -88,3 +91,13 @@ Estado del participante: `activo` → `detectado` | `retirado` | `finalizado`.
 |---|---|---|
 | 1 | Texto definitivo del consentimiento informado, aprobado por el comité de ética | Asesor / comité |
 | 2 | ¿Correo institucional de la empresa o personal? Afecta la percepción de confidencialidad del participante | Autores |
+
+## Nota de implementación — identidad visual
+
+El logo de la app (insignia circular con la gota) vive en dos formatos que
+deben mantenerse iguales: `app-participante/assets/logo.svg`, de donde se
+generan `icon.png`, los tres del ícono adaptativo de Android, `splash-icon.png`
+y `favicon.png`; y `modules/nucleo/Logo.tsx`, que lo dibuja como componente en
+la pantalla de acceso. Reproducido del diseño en Figma
+(`VXFnbiXKzb0Hj92s2r2ulL`).
+| — | **Texto del consentimiento:** debe decir que el participante recibirá cada viernes su nivel en el cuestionario y recomendaciones, que no es un diagnóstico, y que su empresa no lo ve (ESP-002 RF-002-12). Nueva `version_texto` cuando se apruebe | Autores + asesor |
