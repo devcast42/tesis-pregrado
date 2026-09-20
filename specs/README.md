@@ -38,7 +38,7 @@ Los identificadores **no se reutilizan**. Si un requisito se elimina, su número
 | [ESP-001](ESP-001-acceso-y-consentimiento.md) | Acceso y consentimiento informado | Aprobada | `modules/acceso`, `modules/consentimiento` |
 | [ESP-002](ESP-002-recoleccion-de-datos.md) | Recolección longitudinal de datos | Implementada · rev. 2 (calendario semanal) aplicada | `modules/recoleccion` |
 | [ESP-003](ESP-003-evaluacion-olbi.md) | Evaluación por umbral OLBI | Implementada · rev. 2 (OLBI semanal) aplicada | `supabase/functions/evaluar-olbi` |
-| [ESP-004](ESP-004-videoconsulta-e-informe.md) | Videoconsulta, transcripción e informe | Videollamada implementada (LiveKit desplegado); grabación/transcripción/informe automático pendientes de llaves | `modules/consulta`, Edge Functions |
+| [ESP-004](ESP-004-videoconsulta-e-informe.md) | Videoconsulta, transcripción e informe | Videollamada operativa; grabación/transcripción/informe desplegados, pendientes de llaves (`docs/despliegue-grabacion.md`) | `modules/consulta`, Edge Functions |
 | [ESP-005](ESP-005-modelo-de-deteccion.md) | Modelo de detección | Rev. 2 parcialmente implementada (preentrenamiento y predicción en SQL); entrenamiento propio pendiente | `modelo/`, `supabase/migrations/20260918120000_modelo_versiones.sql` |
 | [ESP-006](ESP-006-roles-y-permisos.md) | Roles y permisos | Implementada · vista móvil del psicólogo rev. 2 | `supabase/migrations`, `app/psicologo`, panel web |
 | [ESP-007](ESP-007-monitoreo-de-adherencia.md) | Monitoreo de adherencia | Implementada · rev. 2 (días laborables) aplicada | `supabase/migrations/20260918110000_adherencia_dias_laborables.sql` |

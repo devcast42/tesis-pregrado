@@ -28,7 +28,6 @@ Deno.serve(async (req) => {
 
   if (evento.event !== 'egress_ended') return json({ ignorado: evento.event })
 
-  const rutaAudio = evento.egressInfo?.fileResults?.[0]?.filename
   const sala = evento.egressInfo?.roomName
   if (!sala) return json({ error: 'sin sala' }, 400)
 
@@ -42,8 +41,28 @@ Deno.serve(async (req) => {
 
   if (!sesion) return json({ error: 'sesion no encontrada' }, 404)
 
-  const urlAudio = `${Deno.env.get('S3_PUBLIC_BASE')}/${rutaAudio}`
-  const callback = `${Deno.env.get('SUPABASE_URL')}/functions/v1/transcripcion-lista?sesion=${sesion.id}`
+  // La ruta del audio la fijó token-livekit al arrancar la grabación.
+  const { data: transcripcion } = await db
+    .from('transcripciones')
+    .select('audio_ruta')
+    .eq('sesion_id', sesion.id)
+    .maybeSingle()
+  if (!transcripcion?.audio_ruta) return json({ error: 'sesion sin grabacion registrada' }, 404)
+
+  // El bucket es privado (audio clínico): a Deepgram se le da una URL firmada
+  // de corta vida, nunca una pública.
+  const { data: firmada, error: errorFirma } = await db.storage
+    .from(Deno.env.get('S3_BUCKET')!)
+    .createSignedUrl(transcripcion.audio_ruta, 60 * 60)
+  if (errorFirma || !firmada?.signedUrl) {
+    await db.from('transcripciones').update({ estado: 'fallida' }).eq('sesion_id', sesion.id)
+    return json({ error: 'no se pudo firmar la URL del audio' }, 500)
+  }
+  const urlAudio = firmada.signedUrl
+
+  // Deepgram no firma su callback: una clave compartida en la URL evita que
+  // cualquiera «entregue» una transcripción ajena.
+  const callback = `${Deno.env.get('SUPABASE_URL')}/functions/v1/transcripcion-lista?sesion=${sesion.id}&clave=${Deno.env.get('WEBHOOK_SECRET') ?? ''}`
 
   const respuesta = await fetch(
     'https://api.deepgram.com/v1/listen' +

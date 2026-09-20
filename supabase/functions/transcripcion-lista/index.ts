@@ -12,6 +12,9 @@ Deno.serve(async (req) => {
   const sesionId = url.searchParams.get('sesion')
   if (!sesionId) return json({ error: 'falta sesion' }, 400)
 
+  const clave = Deno.env.get('WEBHOOK_SECRET')
+  if (!clave || url.searchParams.get('clave') !== clave) return json({ error: 'clave invalida' }, 401)
+
   const db = servicio()
   const cuerpo = await req.json().catch(() => null)
 

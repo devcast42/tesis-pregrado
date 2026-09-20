@@ -114,12 +114,15 @@ async function iniciarGrabacion(
     {
       fileType: EncodedFileType.OGG,
       filepath: rutaAudio,
+      // Supabase Storage expone un endpoint S3 (bucket privado); exige rutas
+      // «path style» y la región del proyecto.
       s3: {
         accessKey: Deno.env.get('S3_ACCESS_KEY')!,
         secret: Deno.env.get('S3_SECRET')!,
         bucket: Deno.env.get('S3_BUCKET')!,
-        region: Deno.env.get('S3_REGION') ?? 'auto',
+        region: Deno.env.get('S3_REGION') ?? 'us-east-1',
         endpoint: Deno.env.get('S3_ENDPOINT'),
+        forcePathStyle: true,
       },
     },
     { audioOnly: true },
