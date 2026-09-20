@@ -43,6 +43,7 @@ Los identificadores **no se reutilizan**. Si un requisito se elimina, su número
 | [ESP-006](ESP-006-roles-y-permisos.md) | Roles y permisos | Implementada · vista móvil del psicólogo rev. 2 | `supabase/migrations`, `app/psicologo`, panel web |
 | [ESP-007](ESP-007-monitoreo-de-adherencia.md) | Monitoreo de adherencia | Implementada · rev. 2 (días laborables) aplicada | `supabase/migrations/20260918110000_adherencia_dias_laborables.sql` |
 | [ESP-008](ESP-008-maestros-y-administracion.md) | Maestros y administración de empresas · rev. 2 panel del empresario | Implementada | `modules/panel`, `supabase/migrations/20260904110000_admin_sin_estado.sql` |
+| [ESP-009](ESP-009-panel-del-investigador.md) | Panel del investigador: bandeja de hoy, cohorte, ficha unitaria, desempeño del modelo, exportación | Borrador · pendiente del asesor | — |
 
 ## Documentos relacionados
 
