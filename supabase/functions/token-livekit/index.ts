@@ -6,7 +6,7 @@
 // Si ambas partes autorizaron la grabación (RN-004-06), aquí se arranca el
 // egress de audio. Solo audio: nunca video (RF-004-04).
 
-import { AccessToken, EgressClient, EncodedFileType } from 'npm:livekit-server-sdk@2'
+import { AccessToken, EgressClient, EncodedFileOutput, EncodedFileType, S3Upload } from 'npm:livekit-server-sdk@2'
 import { comoUsuario, json, preflight, servicio } from '../_compartido/supabase.ts'
 
 const LIVEKIT_URL = Deno.env.get('LIVEKIT_URL')!
@@ -75,15 +75,19 @@ Deno.serve(async (req) => {
   // igual y se avisa con `grabacion: false`. Antes un fallo aquí devolvía 500
   // y nadie podía entrar a la sala.
   let grabacion = false
+  let grabacion_error: string | undefined
   if (sesion.consentimiento_participante && sesion.consentimiento_psicologo) {
     try {
       grabacion = await iniciarGrabacion(db, sesion.id, sesion.sala_livekit)
     } catch (e) {
-      console.error('grabacion no iniciada', sesion.id, e instanceof Error ? e.message : e)
+      // El motivo viaja en la respuesta (no es secreto) para poder diagnosticar
+      // desde el cliente sin acceso a los logs del servidor.
+      grabacion_error = e instanceof Error ? e.message : String(e)
+      console.error('grabacion no iniciada', sesion.id, grabacion_error)
     }
   }
 
-  return json({ url: LIVEKIT_URL, token: await token.toJwt(), sala: sesion.sala_livekit, grabacion })
+  return json({ url: LIVEKIT_URL, token: await token.toJwt(), sala: sesion.sala_livekit, grabacion, grabacion_error })
 })
 
 async function iniciarGrabacion(
@@ -101,32 +105,32 @@ async function iniciarGrabacion(
 
   // Sin bucket configurado no hay dónde dejar el audio: se omite, no se rompe.
   if (!Deno.env.get('S3_ACCESS_KEY') || !Deno.env.get('S3_SECRET') || !Deno.env.get('S3_BUCKET')) {
-    console.warn('grabacion omitida: faltan S3_ACCESS_KEY / S3_SECRET / S3_BUCKET')
-    return false
+    throw new Error('grabacion omitida: faltan S3_ACCESS_KEY / S3_SECRET / S3_BUCKET')
   }
 
   const dias = Number(Deno.env.get('RETENCION_DIAS') ?? '30')
   const rutaAudio = `sesiones/${sesionId}.ogg`
 
   const egress = new EgressClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
-  await egress.startRoomCompositeEgress(
-    sala,
-    {
-      fileType: EncodedFileType.OGG,
-      filepath: rutaAudio,
-      // Supabase Storage expone un endpoint S3 (bucket privado); exige rutas
-      // «path style» y la región del proyecto.
-      s3: {
+  // El SDK v2 (protobuf) exige las clases: un objeto plano llega como
+  // «missing or invalid field: output». Supabase Storage expone un endpoint
+  // S3 (bucket privado) que exige rutas «path style» y la región del proyecto.
+  const salida = new EncodedFileOutput({
+    fileType: EncodedFileType.OGG,
+    filepath: rutaAudio,
+    output: {
+      case: 's3',
+      value: new S3Upload({
         accessKey: Deno.env.get('S3_ACCESS_KEY')!,
         secret: Deno.env.get('S3_SECRET')!,
         bucket: Deno.env.get('S3_BUCKET')!,
         region: Deno.env.get('S3_REGION') ?? 'us-east-1',
-        endpoint: Deno.env.get('S3_ENDPOINT'),
+        endpoint: Deno.env.get('S3_ENDPOINT') ?? '',
         forcePathStyle: true,
-      },
+      }),
     },
-    { audioOnly: true },
-  )
+  })
+  await egress.startRoomCompositeEgress(sala, salida, { audioOnly: true })
 
   // RN-004-09 — el plazo de borrado se fija al crear la fila, no después.
   await db.from('transcripciones').insert({

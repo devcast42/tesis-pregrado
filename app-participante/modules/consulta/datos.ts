@@ -19,13 +19,17 @@ export async function obtenerCredenciales(sesionId: string): Promise<Credenciale
   return data as Credenciales
 }
 
+/** Termina la sesión y cierra la sala en LiveKit (así el audio se sube de
+ *  inmediato, no cinco minutos después). Si la función no responde, al menos
+ *  se marca el fin en la base. */
 export async function finalizarSesion(sesionId: string) {
-  const { error } = await supabase
+  const { error } = await supabase.functions.invoke('finalizar-sesion', { body: { sesion_id: sesionId } })
+  if (!error) return
+  const { error: errorDb } = await supabase
     .from('sesiones_consulta')
     .update({ finalizada_en: new Date().toISOString() })
     .eq('id', sesionId)
-
-  if (error) throw error
+  if (errorDb) throw errorDb
 }
 
 export async function obtenerSesion(sesionId: string) {

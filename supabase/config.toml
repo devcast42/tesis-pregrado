@@ -19,6 +19,9 @@ verify_jwt = true
 [functions.token-livekit]
 verify_jwt = true
 
+[functions.finalizar-sesion]
+verify_jwt = true
+
 [functions.redactar-informe]
 # Se llama servidor a servidor con la service_role, que es un JWT válido.
 verify_jwt = true

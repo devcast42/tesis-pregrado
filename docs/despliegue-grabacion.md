@@ -80,6 +80,15 @@ npx supabase secrets set \
 
 `RETENCION_DIAS` es provisional hasta que el comité fije el plazo (B7).
 
+## Diagnóstico
+
+Dos funciones solo para el investigador (llamarlas con su sesión):
+
+- `s3-diagnostico` — prueba las credenciales S3 del egress y lista el bucket.
+  Un `NoSuchBucket` significa que `S3_BUCKET` no es `audio-sesiones`.
+- `egress-estado` `{ "sala": "consulta-…" }` — lo que LiveKit sabe de la
+  grabación de esa sala: estado, error y archivo subido.
+
 ## Paso 6 · Prueba de punta a punta (PB-24 / PB-25)
 
 1. Psicólogo (web) y participante (teléfono) autorizan la grabación y entran a
