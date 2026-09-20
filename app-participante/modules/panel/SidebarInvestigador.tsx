@@ -103,7 +103,8 @@ function Armazon({ children, sinBarraSuperior }: { children: ReactNode; sinBarra
 
   const filtros = (
     <View style={e.filtros}>
-      <View>
+      {/* Cada selector lleva su zIndex: en web el menú desplegado debe quedar sobre lo que sigue. */}
+      <View style={{ zIndex: menuEmpresa ? 30 : 1 }}>
         <Pressable onPress={() => { setMenuEmpresa((v) => !v); setMenuSemanas(false) }} style={e.selector} accessibilityRole="button">
           <Text style={[texto.apoyo, { color: color.texto, flex: 1 }]} numberOfLines={1}>{empresaActual}</Text>
           <IconoChevronAbajo tamano={16} color={color.textoMedio} />
@@ -121,7 +122,7 @@ function Armazon({ children, sinBarraSuperior }: { children: ReactNode; sinBarra
           </View>
         )}
       </View>
-      <View>
+      <View style={{ zIndex: menuSemanas ? 30 : 1 }}>
         <Pressable onPress={() => { setMenuSemanas((v) => !v); setMenuEmpresa(false) }} style={e.selector} accessibilityRole="button">
           <Text style={[texto.apoyo, { color: color.texto, flex: 1 }]}>Semanas {filtro.semanaDesde} → {filtro.semanaHasta}</Text>
           <IconoCalendario tamano={14} color={color.textoMedio} />
@@ -300,7 +301,7 @@ const e = StyleSheet.create({
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm },
   marcaBloque: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, paddingHorizontal: 4 },
   pastillaPortal: { alignSelf: 'flex-start', backgroundColor: '#F1EFEB', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
-  filtros: { gap: 8, paddingBottom: espacio.sm, borderBottomWidth: 1, borderBottomColor: color.borde },
+  filtros: { gap: 8, paddingBottom: espacio.sm, borderBottomWidth: 1, borderBottomColor: color.borde, zIndex: 10 },
   selector: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: color.borde, borderRadius: radio.sm, paddingHorizontal: 10, height: 36, backgroundColor: color.superficie },
   menu: { position: 'absolute', top: 40, left: 0, right: 0, backgroundColor: color.superficie, borderRadius: radio.sm, borderWidth: 1, borderColor: color.borde, paddingVertical: 4, zIndex: 20, elevation: 6 },
   menuItem: { paddingHorizontal: 12, paddingVertical: 9 },
