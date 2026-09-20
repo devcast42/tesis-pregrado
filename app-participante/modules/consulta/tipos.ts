@@ -21,4 +21,6 @@ export type Credenciales = {
   url: string
   token: string
   sala: string
+  /** Si el servidor logró iniciar la grabación de audio (doble consentimiento + almacenamiento configurado). */
+  grabacion?: boolean
 }

@@ -70,25 +70,40 @@ Deno.serve(async (req) => {
   token.addGrant({ roomJoin: true, room: sesion.sala_livekit, canPublish: true, canSubscribe: true })
 
   // RF-004-02 y RF-004-04 — grabación solo con doble consentimiento, y solo audio.
+  // La grabación es un extra sobre la sesión, no una condición: si el
+  // almacenamiento no está configurado o el egress falla, la persona entra
+  // igual y se avisa con `grabacion: false`. Antes un fallo aquí devolvía 500
+  // y nadie podía entrar a la sala.
+  let grabacion = false
   if (sesion.consentimiento_participante && sesion.consentimiento_psicologo) {
-    await iniciarGrabacion(db, sesion.id, sesion.sala_livekit)
+    try {
+      grabacion = await iniciarGrabacion(db, sesion.id, sesion.sala_livekit)
+    } catch (e) {
+      console.error('grabacion no iniciada', sesion.id, e instanceof Error ? e.message : e)
+    }
   }
 
-  return json({ url: LIVEKIT_URL, token: await token.toJwt(), sala: sesion.sala_livekit })
+  return json({ url: LIVEKIT_URL, token: await token.toJwt(), sala: sesion.sala_livekit, grabacion })
 })
 
 async function iniciarGrabacion(
   db: ReturnType<typeof servicio>,
   sesionId: string,
   sala: string,
-) {
+): Promise<boolean> {
   const { data: existente } = await db
     .from('transcripciones')
     .select('id')
     .eq('sesion_id', sesionId)
     .maybeSingle()
 
-  if (existente) return
+  if (existente) return true
+
+  // Sin bucket configurado no hay dónde dejar el audio: se omite, no se rompe.
+  if (!Deno.env.get('S3_ACCESS_KEY') || !Deno.env.get('S3_SECRET') || !Deno.env.get('S3_BUCKET')) {
+    console.warn('grabacion omitida: faltan S3_ACCESS_KEY / S3_SECRET / S3_BUCKET')
+    return false
+  }
 
   const dias = Number(Deno.env.get('RETENCION_DIAS') ?? '30')
   const rutaAudio = `sesiones/${sesionId}.ogg`
@@ -117,4 +132,5 @@ async function iniciarGrabacion(
     audio_ruta: rutaAudio,
     borrar_despues_de: new Date(Date.now() + dias * 86_400_000).toISOString(),
   })
+  return true
 }

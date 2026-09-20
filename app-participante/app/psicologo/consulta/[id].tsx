@@ -69,7 +69,7 @@ export default function Consulta() {
         onSalir={salir}
         onFallo={() => setEnLlamada(false)}
         etiqueta={[codigo, caso?.empresa].filter(Boolean).join(' · ')}
-        grabando={ambos}
+        grabando={ambos && credenciales.grabacion !== false}
       />
     )
   }
