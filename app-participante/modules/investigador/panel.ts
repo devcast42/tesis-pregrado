@@ -190,8 +190,8 @@ export async function cerrarSeguimiento(id: string, motivo: 'fin_de_estudio' | '
   if (error) throw error
 }
 
-export async function reasignarDerivacion(derivacionId: string, psicologoId: string) {
-  const { error } = await supabase.rpc('reasignar_derivacion', { p_derivacion: derivacionId, p_psicologo: psicologoId })
+export async function reasignarDerivacion(derivacionId: string, psicologoId: string, motivo?: string) {
+  const { error } = await supabase.rpc('reasignar_derivacion', { p_derivacion: derivacionId, p_psicologo: psicologoId, p_motivo: motivo ?? null })
   if (error) throw error
 }
 

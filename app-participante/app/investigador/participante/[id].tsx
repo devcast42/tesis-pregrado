@@ -8,7 +8,7 @@
  *  la identidad se abre con evento de auditoría. */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { Panel } from '../../../modules/panel/Sidebar'
 import { conFiltro, useFiltro } from '../../../modules/investigador/filtro'
@@ -18,7 +18,7 @@ import {
   type DefinicionItem, type DiaSerie, type Envio, type Ficha, type Hito, type OlbiSemana, type Prediccion, type RespuestaConItems,
 } from '../../../modules/investigador/panel'
 import { aCsv, descargarTexto } from '../../../modules/investigador/exportar'
-import { cargaDePsicologos, listarPsicologos, type Psicologo } from '../../../modules/panel/datos'
+import { DialogoReasignar, type PedidoReasignacion } from '../../../modules/investigador/DialogoReasignar'
 import { BotonChico, Caja, Codigo, Mono, Pastilla, PastillaEstado, Rotulo, TONO } from '../../../modules/investigador/piezas'
 import { GraficaLinea } from '../../../modules/panel/Grafica'
 import { Cargando, Pantalla } from '../../../modules/nucleo/ui'
@@ -53,18 +53,16 @@ export default function FichaParticipante() {
   const [hitos, setHitos] = useState<Hito[]>([])
   const [vecinos, setVecinos] = useState<{ anterior?: string; siguiente?: string; posicion: number; total: number }>({ posicion: 0, total: 0 })
   const [identidad, setIdentidad] = useState<{ nombre: string; correo_contacto: string } | null>(null)
-  const [psicologos, setPsicologos] = useState<Psicologo[]>([])
-  const [menuPsi, setMenuPsi] = useState(false)
-  const [carga, setCarga] = useState<Record<string, number>>({})
+  const [reasignacion, setReasignacion] = useState<PedidoReasignacion | null>(null)
   const [activa, setActiva] = useState('calendario')
 
   const cargar = useCallback(async () => {
     if (!id) return
-    const [fi, ca, se, ol, pr, re, de, li, lista, ps] = await Promise.all([
+    const [fi, ca, se, ol, pr, re, de, li, lista] = await Promise.all([
       cargarFicha(id), calendario(id), serieDiaria(id), olbiSemanal(id), predicciones(id), respuestasConItems(id), definiciones(), lineaTiempo(id),
-      listar(filtro).catch(() => []), listarPsicologos().catch(() => []),
+      listar(filtro).catch(() => []),
     ])
-    setF(fi); setEnvios(ca); setSerie(se); setOlbi(ol); setPreds(pr); setRespuestas(re); setDefs(de); setHitos(li); setPsicologos(ps.filter((x) => x.activo))
+    setF(fi); setEnvios(ca); setSerie(se); setOlbi(ol); setPreds(pr); setRespuestas(re); setDefs(de); setHitos(li)
     const i = lista.findIndex((x) => x.id === id)
     setVecinos({ anterior: lista[i - 1]?.id, siguiente: lista[i + 1]?.id, posicion: i + 1, total: lista.length })
   }, [id, filtro.organizacion_id])
@@ -100,10 +98,6 @@ export default function FichaParticipante() {
     confirmar('Cerrar seguimiento', `${f!.codigo_anonimo} pasará a «finalizado». Sus respuestas se conservan y una derivación abierta sigue su curso. Motivo: fin de estudio.`, async () => {
       try { await cerrarSeguimiento(f!.participante_id, 'fin_de_estudio'); cargar() } catch (e) { aviso('No se pudo cerrar', e instanceof Error ? e.message : '') }
     })
-  }
-  async function reasignar(psId: string) {
-    if (!f?.derivacion) return
-    try { await reasignarDerivacion(f.derivacion.id, psId); setMenuPsi(false); cargar() } catch (e) { aviso('No se pudo reasignar', e instanceof Error ? e.message : '') }
   }
 
   const insignias = (
@@ -153,7 +147,7 @@ export default function FichaParticipante() {
             </View>
             <View style={[e.fila, { gap: 6, flexShrink: 1 }]}>
               <BotonChico onPress={exportarFicha} icono={<IconoArchivo tamano={13} color={color.texto} />}>Exportar ficha (JSON/CSV)</BotonChico>
-              <BotonChico onPress={async () => { if (!f.derivacion) return aviso('Sin derivación', 'Este participante no tiene una derivación abierta que reasignar.'); setCarga(await cargaDePsicologos().catch(() => ({}))); setMenuPsi(true) }} icono={<IconoEquipo tamano={13} color={color.texto} />}>Reasignar psicólogo</BotonChico>
+              <BotonChico onPress={() => f.derivacion ? setReasignacion({ derivaciones: [f.derivacion.id], titulo: f.codigo_anonimo, actualId: f.derivacion.psicologo_id, actualNombre: f.derivacion.psicologo }) : aviso('Sin derivación', 'Este participante no tiene una derivación abierta que reasignar.')} icono={<IconoEquipo tamano={13} color={color.texto} />}>Reasignar psicólogo</BotonChico>
               <BotonChico onPress={cerrar} icono={<IconoCheckCirculo tamano={13} color={color.texto} />}>Cerrar seguimiento</BotonChico>
               <BotonChico onPress={abrirIdentidad} tono="suave" icono={<IconoCandado tamano={12} color={color.texto} />}>Ver identidad · Auditado</BotonChico>
             </View>
@@ -202,23 +196,7 @@ export default function FichaParticipante() {
           </View>
         </View>
       </ScrollView>
-      {/* Reasignar: en un Modal para que no quede debajo del contenido. */}
-      <Modal transparent visible={menuPsi} animationType="fade" onRequestClose={() => setMenuPsi(false)}>
-        <View style={e.velo}>
-          <Caja estilo={{ width: 380, maxWidth: '94%', gap: 8 }}>
-            <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Reasignar psicólogo · {f.codigo_anonimo}</Text>
-            <Text style={[texto.dato, { color: color.textoMedio }]}>Actualmente: {f.derivacion?.psicologo ?? 'sin asignar'}. Las citas vigentes pasan con la derivación y queda registrado.</Text>
-            {psicologos.filter((p) => p.id !== f.derivacion?.psicologo_id).map((p) => (
-              <Pressable key={p.id} onPress={() => reasignar(p.id)} style={e.opcion}>
-                <Text style={[texto.datoFuerte, { color: color.texto, flex: 1 }]}>{p.nombre}</Text>
-                <Pastilla tono={(carga[p.id] ?? 0) > 4 ? TONO.tierraSuave : TONO.verdeSuave}>{`${carga[p.id] ?? 0} abiertos`}</Pastilla>
-              </Pressable>
-            ))}
-            {psicologos.filter((p) => p.id !== f.derivacion?.psicologo_id).length === 0 && <Text style={[texto.dato, { color: '#8C4A2B' }]}>No hay otro psicólogo activo.</Text>}
-            <BotonChico onPress={() => setMenuPsi(false)} tono="suave">Cancelar</BotonChico>
-          </Caja>
-        </View>
-      </Modal>
+      <DialogoReasignar pedido={reasignacion} onCerrar={() => setReasignacion(null)} onHecho={() => { setReasignacion(null); cargar() }} />
     </Panel>
   )
 }
@@ -629,8 +607,6 @@ const e = StyleSheet.create({
   identidad: { backgroundColor: '#FBEDE6', borderRadius: radio.md, padding: espacio.md, gap: 2, alignSelf: 'flex-start' },
   acciones: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap', backgroundColor: '#F5F4F1', borderRadius: radio.md, padding: 10 },
   menu: { position: 'absolute', top: 38, left: 0, minWidth: 220, backgroundColor: color.superficie, borderRadius: 8, borderWidth: 1, borderColor: color.borde, paddingVertical: 4, zIndex: 20, elevation: 6 },
-  velo: { flex: 1, backgroundColor: 'rgba(28,25,23,0.35)', alignItems: 'center', justifyContent: 'center' },
-  opcion: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#F5F4F1' },
   cuerpo: { flexDirection: 'row', alignItems: 'flex-start', gap: espacio.lg },
   rail: { width: 220, gap: espacio.md },
   railItem: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 8, borderRadius: 6 },

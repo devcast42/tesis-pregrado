@@ -6,14 +6,15 @@
  *  a lo que detecta; nunca muestra contenido clínico (RN-009-03). */
 
 import { useCallback, useMemo, useState } from 'react'
-import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
 import { conFiltro, useFiltro } from '../../modules/investigador/filtro'
 import {
-  circuito as cargarCircuito, citasEstudio, mediana, reasignarDerivacion, type CircuitoApoyo, type CitaEstudio,
+  circuito as cargarCircuito, citasEstudio, mediana, type CircuitoApoyo, type CitaEstudio,
 } from '../../modules/investigador/panel'
 import { listarEmpresas, listarPsicologos, type Empresa, type Psicologo } from '../../modules/panel/datos'
+import { DialogoReasignar, type PedidoReasignacion } from '../../modules/investigador/DialogoReasignar'
 import { BotonChico, Caja, Codigo, Encabezado, Mono, Pastilla, Rotulo, TONO } from '../../modules/investigador/piezas'
 import { Cargando } from '../../modules/nucleo/ui'
 import { color, espacio, radio, texto } from '../../modules/nucleo/diseno'
@@ -41,7 +42,7 @@ export default function Derivaciones() {
   const [vista, setVista] = useState<'caso' | 'psicologo'>('caso')
   const [busqueda, setBusqueda] = useState('')
   const [pagina, setPagina] = useState(0)
-  const [menu, setMenu] = useState<{ derivaciones: string[]; titulo: string } | null>(null)
+  const [menu, setMenu] = useState<PedidoReasignacion | null>(null)
 
   const cargar = useCallback(async () => {
     const [c, ci, ps, em] = await Promise.all([cargarCircuito(filtro), citasEstudio(filtro), listarPsicologos().catch(() => [] as Psicologo[]), listarEmpresas().catch(() => [] as Empresa[])])
@@ -49,10 +50,6 @@ export default function Derivaciones() {
   }, [filtro.organizacion_id])
   useFocusEffect(useCallback(() => { cargar() }, [cargar]))
 
-  const aviso = (t: string, m: string) => Platform.OS === 'web' ? window.alert(`${t}\n\n${m}`) : Alert.alert(t, m)
-  async function reasignarVarias(ids: string[], psId: string) {
-    try { for (const id of ids) await reasignarDerivacion(id, psId); setMenu(null); cargar() } catch (e) { aviso('No se pudo reasignar', e instanceof Error ? e.message : '') }
-  }
 
   const nombreEmpresa = (id: string) => empresas.find((e) => e.id === id)?.nombre ?? '—'
   const sinPsicologo = useMemo(() => (casos ?? []).filter((c) => !c.psicologo_id && !c.cerrada_en), [casos])
@@ -84,7 +81,7 @@ export default function Derivaciones() {
                 {sinPsicologo.length === 1 ? 'Derivación' : 'Derivaciones'} <Mono tono="#8C4A2B">{sinPsicologo.map((c) => c.codigo_anonimo).join(', ')}</Mono> sin psicólogo asignado: no había ningún profesional activo al detectar. Requiere asignación manual.
               </Text>
             </View>
-            <Pressable onPress={() => setMenu({ derivaciones: sinPsicologo.map((c) => c.derivacion_id), titulo: 'Asignar profesional' })} style={e.botonTierra}>
+            <Pressable onPress={() => setMenu({ derivaciones: sinPsicologo.map((c) => c.derivacion_id), titulo: sinPsicologo.map((c) => c.codigo_anonimo).join(', ') })} style={e.botonTierra}>
               <IconoPersona tamano={13} color="#FFFFFF" /><Text style={[texto.datoFuerte, { color: '#FFFFFF' }]}>Asignar profesional ahora</Text>
             </Pressable>
           </View>
@@ -151,7 +148,7 @@ export default function Derivaciones() {
                     <Text style={[texto.dato, { color: color.texto, flex: 1.2 }]}>{nombreEmpresa(c.organizacion_id)}</Text>
                     <View style={{ flex: 1.4 }}>
                       {c.psicologo ? <Text style={[texto.dato, { color: color.texto }]}>{c.psicologo}</Text>
-                        : <Pressable onPress={() => setMenu({ derivaciones: [c.derivacion_id], titulo: `Asignar ${c.codigo_anonimo}` })}><Text style={[texto.datoFuerte, { color: '#8C4A2B' }]}>Sin asignar · Asignar</Text></Pressable>}
+                        : <Pressable onPress={() => setMenu({ derivaciones: [c.derivacion_id], titulo: c.codigo_anonimo })}><Text style={[texto.datoFuerte, { color: '#8C4A2B' }]}>Sin asignar · Asignar</Text></Pressable>}
                     </View>
                     <View style={{ flex: 1 }}><Pastilla tono={c.origen === 'solicitud' ? TONO.verdeSuave : TONO.gris}>{c.origen === 'solicitud' ? 'VOLUNTARIA' : 'ALGORITMO'}</Pastilla></View>
                     <Chip dias={c.dias_a_derivacion} limite={1} pendienteDesde={c.origen === 'solicitud' ? undefined : c.detectado_en} hito={c.derivado_en} cerrada={!!c.cerrada_en} />
@@ -187,7 +184,7 @@ export default function Derivaciones() {
                           <View style={e.avatar}><Text style={[texto.datoFuerte, { color: color.primarioProfundo }]}>{iniciales(p.nombre)}</Text></View>
                           <View><Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{p.nombre}</Text><Mono>{/^cpsp/i.test(p.colegiatura) ? p.colegiatura : `CPsP ${p.colegiatura}`}</Mono></View>
                         </View>
-                        {abiertos.length > 0 && <BotonChico onPress={() => setMenu({ derivaciones: abiertos.map((c) => c.derivacion_id), titulo: `Reasignar los ${abiertos.length} casos de ${p.nombre}` })} icono={<IconoEquipo tamano={13} color={color.texto} />}>Reasignar todos sus casos</BotonChico>}
+                        {abiertos.length > 0 && <BotonChico onPress={() => setMenu({ derivaciones: abiertos.map((c) => c.derivacion_id), titulo: `${abiertos.length} casos`, actualId: p.id, actualNombre: p.nombre })} icono={<IconoEquipo tamano={13} color={color.texto} />}>Reasignar todos sus casos</BotonChico>}
                       </View>
                       <View style={[e.fila, { gap: espacio.base }]}>
                         <Dato rotulo="Casos abiertos" valor={String(abiertos.length)} nota={abiertos.length > 4 ? 'capacidad elevada (> 4)' : 'carga óptima (≤ 4)'} tinta={abiertos.length > 4 ? '#8C4A2B' : color.primarioProfundo} />
@@ -260,27 +257,7 @@ export default function Derivaciones() {
         </View>
 
       </ScrollView>
-      <Modal transparent visible={!!menu} animationType="fade" onRequestClose={() => setMenu(null)}>
-        {menu && (
-          <View style={e.velo}>
-            <Caja estilo={{ width: 360, gap: 8 }}>
-              <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{menu.titulo}</Text>
-              <Text style={[texto.dato, { color: color.textoMedio }]}>Elige al psicólogo que recibirá {menu.derivaciones.length === 1 ? 'la derivación' : `las ${menu.derivaciones.length} derivaciones`}. Las citas vigentes pasan con ella y queda registrado.</Text>
-              {psicologos.filter((p) => p.activo).map((p) => {
-                const carga = casos.filter((c) => c.psicologo_id === p.id && !c.cerrada_en).length
-                return (
-                  <Pressable key={p.id} onPress={() => reasignarVarias(menu.derivaciones, p.id)} style={e.opcion}>
-                    <Text style={[texto.datoFuerte, { color: color.texto, flex: 1 }]}>{p.nombre}</Text>
-                    <Pastilla tono={carga > 4 ? TONO.tierraSuave : TONO.verdeSuave}>{`${carga} abiertos`}</Pastilla>
-                  </Pressable>
-                )
-              })}
-              {psicologos.filter((p) => p.activo).length === 0 && <Text style={[texto.dato, { color: '#8C4A2B' }]}>No hay psicólogos activos. Crea o reactiva uno en Maestros → Psicólogos.</Text>}
-              <BotonChico onPress={() => setMenu(null)} tono="suave">Cancelar</BotonChico>
-            </Caja>
-          </View>
-        )}
-      </Modal>
+      <DialogoReasignar pedido={menu} onCerrar={() => setMenu(null)} onHecho={() => { setMenu(null); cargar() }} />
     </Panel>
   )
 }
@@ -338,6 +315,4 @@ const e = StyleSheet.create({
   cuadroChico: { minWidth: 28, height: 24, borderRadius: 6, backgroundColor: color.superficie, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   pista: { height: 6, borderRadius: 3, backgroundColor: '#EDEBE7', overflow: 'hidden' },
   lleno: { height: 6, borderRadius: 3, backgroundColor: color.primarioProfundo },
-  velo: { flex: 1, backgroundColor: 'rgba(28,25,23,0.35)', alignItems: 'center', justifyContent: 'center' },
-  opcion: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#F5F4F1' },
 })
