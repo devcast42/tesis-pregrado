@@ -7,7 +7,7 @@
  *  pendientes en «Hoy». Barra superior con el estado de sincronización, la
  *  muestra activa y las acciones globales. */
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native'
 import { router, usePathname } from 'expo-router'
 import { supabase } from '../nucleo/supabase'
@@ -42,6 +42,10 @@ async function salir() {
   router.replace('/acceso')
 }
 
+/** Cada pantalla monta su propio Panel: el desplazamiento de la navegación
+ *  se guarda fuera del componente para que al cambiar de sección no vuelva arriba. */
+let desplazamientoNav = 0
+
 export function PanelInvestigador({ children, sinBarraSuperior = false }: { children: ReactNode; sinBarraSuperior?: boolean }) {
   return (
     <ProveedorFiltro>
@@ -58,6 +62,7 @@ function Armazon({ children, sinBarraSuperior }: { children: ReactNode; sinBarra
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [pendientes, setPendientes] = useState(0)
   const [correo, setCorreo] = useState('')
+  const nav = useRef<ScrollView>(null)
   const [menuEmpresa, setMenuEmpresa] = useState(false)
   const [menuSemanas, setMenuSemanas] = useState(false)
   const [buscador, setBuscador] = useState(false)
@@ -175,7 +180,10 @@ function Armazon({ children, sinBarraSuperior }: { children: ReactNode; sinBarra
         {marca}
         <View style={e.pastillaPortal}><Text style={[texto.etiqueta, { color: color.textoMedio, fontSize: 10 }]}>PORTAL INVESTIGADOR PRINCIPAL</Text></View>
         {filtros}
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: espacio.md }}>
+        <ScrollView
+          ref={nav} style={{ flex: 1 }} contentContainerStyle={{ gap: espacio.md }} scrollEventThrottle={100}
+          onScroll={(ev) => { desplazamientoNav = ev.nativeEvent.contentOffset.y }}
+          onLayout={() => { if (desplazamientoNav > 0) nav.current?.scrollTo({ y: desplazamientoNav, animated: false }) }}>
           {GRUPOS.map((g) => (
             <View key={g} style={e.grupo}>
               <Text style={[texto.etiqueta, e.encabezadoGrupo]}>{g}</Text>
