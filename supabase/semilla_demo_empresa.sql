@@ -123,6 +123,44 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- Predicciones retrospectivas para el panel del investigador (ESP-009 RF-009-12).
+--
+-- Reproduce lo que la app habría registrado cada semana: el nowcast del
+-- jueves y el pronóstico del viernes, con las versiones ACTIVAS del modelo y
+-- los rasgos reales de esa semana (rasgos_semana con fecha de referencia).
+-- No inventa probabilidades: aplica el mismo cálculo de probabilidad_semana.
+-- Idempotente (no duplica por participante, tarea y día).
+do $$
+declare
+  p record; v modelo_versiones%rowtype; x jsonb; z numeric; i int; nombre text; prob numeric;
+  t text; sem date; ref date;
+begin
+  for p in select id from participantes where codigo_anonimo like 'DEMO-%' loop
+    foreach t in array array['nowcast', 'pronostico'] loop
+      select * into v from modelo_versiones m where m.tarea = t and m.activa;
+      if not found then continue; end if;
+      for sem in select generate_series(date '2026-08-03', date '2026-09-14', interval '7 days')::date loop
+        ref := sem + case when t = 'nowcast' then 3 else 4 end;   -- jueves / viernes
+        if exists (select 1 from eventos e where e.participante_id = p.id and e.tipo = 'prediccion_modelo'
+                     and e.metadata ->> 'tarea' = t and (e.metadata ->> 'dia')::date = ref) then continue; end if;
+        x := rasgos_semana(p.id, ref);
+        if x is null then continue; end if;
+        z := v.intercepto;
+        for i in 0 .. jsonb_array_length(v.rasgos) - 1 loop
+          nombre := v.rasgos ->> i;
+          z := z + (v.pesos ->> i)::numeric * ((x ->> nombre)::numeric - (v.medias ->> i)::numeric) / (v.desviaciones ->> i)::numeric;
+        end loop;
+        prob := round(1 / (1 + exp(-z)), 3);
+        insert into eventos (participante_id, tipo, ocurrido_en, metadata)
+        values (p.id, 'prediccion_modelo', (ref::timestamp + time '18:30') at time zone tz_estudio(),
+                jsonb_build_object('version', v.version, 'tarea', t, 'dia', ref, 'n_dias', (x ->> 'n_dias')::int,
+                                   'probabilidad', prob, 'senalado', prob >= v.umbral_decision, 'demo', true));
+      end loop;
+    end loop;
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Deshacer (descomentar y ejecutar):
 -- delete from respuestas_items where respuesta_id in (select id from respuestas where participante_id in (select id from participantes where codigo_anonimo like 'DEMO-%'));
 -- delete from respuestas where participante_id in (select id from participantes where codigo_anonimo like 'DEMO-%');

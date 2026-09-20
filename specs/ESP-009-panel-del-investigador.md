@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Estado** | Vistas y funciones aplicadas · pantallas pendientes del diseño · umbrales pendientes del asesor (§9) |
+| **Estado** | Implementado (vistas, funciones y pantallas según Figma `NsWTiSKab9HJt9b2EBz7XA`) · RF-009-14/15 pendientes · umbrales pendientes del asesor (§9) |
 | **Módulo** | `modules/panel`, `modules/investigador`, `app/investigador/` |
 | **Depende de** | ESP-002 (recolección), ESP-003 (OLBI), ESP-005 (modelo), ESP-006 (roles), ESP-007 (adherencia), ESP-008 (maestros) |
 
@@ -143,13 +143,24 @@ investigador lectura sobre todo el esquema de investigación, ESP-006).
 |---|---|
 | §6 (vistas y funciones) | `supabase/migrations/20260919120000_panel_investigador.sql`: `serie_diaria_v2`, `calendario_respuestas`, `olbi_semanal_etiquetado`, `predicciones_participante`, `predicciones_evaluables`, `desempeno_modelo`, `calibracion_modelo`, `roc_auc_modelo()`, `cohorte_semanal`, `cohorte_segmento`, `circuito_apoyo`, `bandeja_investigador`, `linea_tiempo_participante`, `ficha_participante()`, `cerrar_seguimiento()`, `reasignar_derivacion()`, `registrar_exportacion()` |
 | RN-009-09 | `serie_diaria_v2` reemplaza a `historial_checkin` (que queda sin uso) |
-| RF-009-01 … RF-009-15 (pantallas) | *pendiente del diseño* — `modules/investigador/{datos,exportar}.ts`, `app/investigador/{hoy,cohorte,modelo,exportar}.tsx`, `app/investigador/participante/[id].tsx`, `modules/panel/Sidebar.tsx` |
+| §6 (complemento) | `20260919130000_panel_participantes_v2.sql` (`panel_participantes_v2`, `exportaciones_registradas`), `20260919140000_investigador_identidad_y_modelo.sql` (`obtener_identidad` para investigador, RLS de `modelo_versiones`, trigger `solo_activa_y_visibilidad`) |
+| RF-009-01 … 03 (Hoy) | `app/investigador/hoy.tsx`; badge y grupos en `modules/panel/SidebarInvestigador.tsx`; datos en `modules/investigador/panel.ts` (`bandeja`) |
+| RF-009-05 (Cohorte) | `app/investigador/cohorte.tsx` sobre `cohorte_semanal` |
+| RF-009-06 (filtro global, ⌘K) | `modules/investigador/filtro.tsx` (`useFiltro`, `conFiltro`: la URL es la fuente de verdad), buscador en `SidebarInvestigador.tsx` |
+| RF-009-07 (tabla) | `app/investigador/participantes.tsx` sobre `panel_participantes_v2` |
+| RF-009-08 (ficha) | `app/investigador/participante/[id].tsx`: calendario, serie diaria, trayectoria OLBI, predicciones confrontadas, ítem a ítem, línea de tiempo |
+| RF-009-09 (acciones de la ficha) | mismo archivo: exportar ficha (JSON + CSV), `verIdentidad` (RF-006-12, evento `acceso_identidad` con `por='investigador'`), `reasignarDerivacion`, `cerrarSeguimiento` |
+| RF-009-11 (versiones) | `app/investigador/versiones.tsx`; `activarVersion` en `panel.ts` |
+| RF-009-12 (desempeño) | `app/investigador/desempeno.tsx`: matriz 2×2, precisión/recall/especificidad con IC de Wilson, ROC-AUC (`roc_auc_modelo`), curva por semana, calibración por deciles con n (CA-009-09), Brier sobre `predicciones_evaluables`, comparativa de versiones |
+| RF-009-13, RN-009-06 (exportación) | `app/investigador/exportacion.tsx` + `modules/investigador/exportar.ts`: ZIP con CSV o JSON por tabla, `diccionario.md`, `manifest.json` (SHA-256), registro previo con `registrar_exportacion`, comprobante por evento. Parquet no disponible en el navegador (§9.3) |
+| RF-009-14, RF-009-15 | *pendiente*: Auditoría y Maestros siguen con las pantallas de ESP-006/ESP-008 |
+| Datos de demostración | `supabase/semilla_demo_empresa.sql` añade predicciones retrospectivas (nowcast del jueves y pronóstico del viernes) calculadas con las versiones activas sobre los rasgos reales de cada semana, para que Desempeño y la sección Modelo de la ficha tengan con qué verse |
 
 ## 9. Decisiones abiertas
 
 1. **Umbrales de la bandeja** (4 días inactivo, 7 días sin sesión, 2 días cita sin confirmar): propuestos por sentido común; el asesor debería fijarlos según el protocolo de contacto (ESP-007 §9).
 2. **Entrenar desde el panel.** Requiere un runner (Edge Function con Python no es viable; sería una acción de GitHub o un servicio aparte). Mientras tanto, el panel muestra el comando y el investigador lo corre localmente.
-3. **Parquet en el navegador.** CSV es seguro; Parquet exige una librería WASM. Se decide al implementar la exportación.
+3. **Parquet en el navegador.** Decidido por ahora: CSV y JSON; Parquet aparece deshabilitado en la pantalla. Si la tesis lo necesita, se añade una librería WASM.
 4. **¿El investigador ve el motivo escrito por el participante al pedir cita?** Propuesta: **no** (es para el psicólogo, RF-004-13); solo el hecho y el estado de la cita.
 5. **Calibración con pocos datos.** Con < 100 predicciones los deciles son ruido; se muestran igual con su n (CA-009-09), pero conviene acordar desde qué n se reporta en la tesis.
 6. **Ficha imprimible** para anexos de casos ilustrativos (anonimizados): ¿se incluye ahora o después de la defensa?

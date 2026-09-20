@@ -18,6 +18,7 @@ import {
   IconoAjustes, IconoArchivo, IconoCuadricula, IconoEquipo, IconoEscudoCheck, IconoGrafica, IconoHoja, IconoPersona, IconoSalir,
 } from '../nucleo/iconos'
 import type { Rol } from '../nucleo/rol'
+import { PanelInvestigador } from './SidebarInvestigador'
 
 async function salir() {
   await supabase.auth.signOut()
@@ -108,6 +109,12 @@ export function Panel({
   rol: Extract<Rol, 'investigador' | 'admin'>
   children: ReactNode
 }) {
+  if (rol === 'investigador') return <PanelInvestigador>{children}</PanelInvestigador>
+  return <PanelAdmin>{children}</PanelAdmin>
+}
+
+function PanelAdmin({ children }: { children: ReactNode }) {
+  const rol = 'admin' as const
   const { width } = useWindowDimensions()
   const horizontal = width < ANCHO_ESCRITORIO
   const secciones = SECCIONES[rol]

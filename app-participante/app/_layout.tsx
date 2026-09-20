@@ -79,6 +79,11 @@ export default function Layout() {
         <Stack.Screen name="investigador/empresa/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="investigador/psicologos" options={{ headerShown: false }} />
         <Stack.Screen name="investigador/auditoria" options={{ headerShown: false }} />
+        <Stack.Screen name="investigador/hoy" options={{ headerShown: false }} />
+        <Stack.Screen name="investigador/cohorte" options={{ headerShown: false }} />
+        <Stack.Screen name="investigador/versiones" options={{ headerShown: false }} />
+        <Stack.Screen name="investigador/desempeno" options={{ headerShown: false }} />
+        <Stack.Screen name="investigador/exportacion" options={{ headerShown: false }} />
 
         {/* Administrador de empresa */}
         <Stack.Screen name="admin/index" options={{ headerShown: false }} />
