@@ -263,6 +263,7 @@ export type CircuitoApoyo = {
   detectado_en: string | null; derivado_en: string; primera_sesion_en: string | null; informe_aprobado_en: string | null; cerrada_en: string | null
   sesiones: number; informes_pendientes: number
   dias_a_derivacion: number | null; dias_a_sesion: number | null; dias_a_informe: number | null; estado: string
+  cita_confirmada_en: string | null; dias_a_cita: number | null; dias_cita_a_sesion: number | null
 }
 export async function circuito(filtro?: FiltroGlobal): Promise<CircuitoApoyo[]> {
   let q = supabase.from('circuito_apoyo').select('*').order('derivado_en', { ascending: false })
@@ -279,6 +280,72 @@ export type ExportacionRegistrada = {
 export async function exportaciones(): Promise<ExportacionRegistrada[]> {
   const { data } = await supabase.from('exportaciones_registradas').select('*').order('ocurrido_en', { ascending: false })
   return (data ?? []) as ExportacionRegistrada[]
+}
+
+// ------------------------------------------------------------ Citas del estudio
+
+export type CitaEstudio = {
+  id: string; participante_id: string; codigo_anonimo: string; organizacion_id: string; derivacion_id: string; psicologo_id: string
+  propuesta_para: string; estado: 'solicitada' | 'confirmada' | 'cancelada' | 'realizada'; cancelada_por: string | null; creada_en: string; actualizada_en: string
+}
+/** Citas sin el motivo escrito (§9.4): el hecho y su estado. */
+export async function citasEstudio(filtro?: FiltroGlobal): Promise<CitaEstudio[]> {
+  let q = supabase.from('citas_estudio').select('*').order('propuesta_para', { ascending: false })
+  if (filtro?.organizacion_id) q = q.eq('organizacion_id', filtro.organizacion_id)
+  const { data } = await q
+  return (data ?? []) as CitaEstudio[]
+}
+
+// ------------------------------------------------------------------ Maestros
+
+export type UmbralEmpresa = { dimension: 'agotamiento' | 'desvinculacion'; a_vigilar: number; alto: number; fuente: string; actualizado_en: string }
+export async function umbralesEmpresa(): Promise<UmbralEmpresa[]> {
+  const { data } = await supabase.from('umbrales_empresa').select('*').order('dimension')
+  return (data ?? []) as UmbralEmpresa[]
+}
+export async function actualizarUmbral(u: { dimension: string; a_vigilar: number; alto: number; fuente: string }) {
+  const { error } = await supabase.rpc('actualizar_umbrales_empresa', { p_dimension: u.dimension, p_a_vigilar: u.a_vigilar, p_alto: u.alto, p_fuente: u.fuente })
+  if (error) throw error
+}
+
+/** Último OLBI medio por empresa (cohorte_semanal, semana más reciente con dato). */
+export type PulsoEmpresa = { organizacion_id: string; semana: string; activos: number; agotamiento: number | null; desvinculacion: number | null }
+export async function pulsoPorEmpresa(): Promise<PulsoEmpresa[]> {
+  const { data } = await supabase.from('cohorte_semanal').select('organizacion_id, semana, activos, olbi_agotamiento_media, olbi_desvinculacion_media')
+    .not('organizacion_id', 'is', null).not('olbi_agotamiento_media', 'is', null).order('semana', { ascending: false })
+  const out = new Map<string, PulsoEmpresa>()
+  for (const r of (data ?? []) as any[]) {
+    if (!out.has(r.organizacion_id)) out.set(r.organizacion_id, { organizacion_id: r.organizacion_id, semana: r.semana, activos: r.activos, agotamiento: r.olbi_agotamiento_media == null ? null : Number(r.olbi_agotamiento_media), desvinculacion: r.olbi_desvinculacion_media == null ? null : Number(r.olbi_desvinculacion_media) })
+  }
+  return [...out.values()]
+}
+
+/** Salida ordenada: reasigna sus casos abiertos a `destino` y lo desactiva. Devuelve cuántos reasignó. */
+export async function desactivarPsicologo(id: string, destino: string | null): Promise<number> {
+  const { data, error } = await supabase.rpc('desactivar_psicologo', { p_psicologo: id, p_destino: destino })
+  if (error) throw error
+  return Number(data ?? 0)
+}
+export async function reactivarPsicologo(id: string) {
+  const { error } = await supabase.rpc('reactivar_psicologo', { p_psicologo: id })
+  if (error) throw error
+}
+
+/** Suma de adherencia del estudio: Σ días cumplidos / Σ días esperados. */
+export async function adherenciaGlobal(filtro?: FiltroGlobal): Promise<{ cumplidos: number; esperados: number; n: number }> {
+  let q = supabase.from('adherencia').select('dias_cumplidos, dias_esperados, organizacion_id')
+  if (filtro?.organizacion_id) q = q.eq('organizacion_id', filtro.organizacion_id)
+  const { data } = await q
+  const filas = (data ?? []) as { dias_cumplidos: number; dias_esperados: number }[]
+  return { cumplidos: filas.reduce((s, f) => s + Number(f.dias_cumplidos ?? 0), 0), esperados: filas.reduce((s, f) => s + Number(f.dias_esperados ?? 0), 0), n: filas.length }
+}
+
+/** Mediana simple (para tramos del circuito). */
+export function mediana(v: (number | null | undefined)[]): number | null {
+  const x = v.filter((n): n is number => n != null && !Number.isNaN(Number(n))).map(Number).sort((a, b) => a - b)
+  if (!x.length) return null
+  const m = Math.floor(x.length / 2)
+  return x.length % 2 ? x[m] : (x[m - 1] + x[m]) / 2
 }
 
 // -------------------------------------------------------------- Utilidades

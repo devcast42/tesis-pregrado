@@ -39,7 +39,8 @@ export default function Cohorte() {
   const n = (x: number | null | undefined) => (x == null ? null : Number(x))
   const f1 = (x: number | null | undefined) => (x == null ? '—' : Number(x).toFixed(1))
   const f2 = (x: number | null | undefined) => (x == null ? '—' : Number(x).toFixed(2))
-  const pct = (x: number | null | undefined) => (x == null ? '—' : `${Math.round(Number(x) * (Number(x) <= 1 ? 100 : 1))}%`)
+  // pct_alto y guardia_pct vienen en 0–100.
+  const pct = (x: number | null | undefined) => (x == null ? '—' : `${Math.round(Number(x))}%`)
   const etiquetaSemana = (iso: string) => `S${filas.findIndex((f) => f.semana === iso) + 1}`
 
   return (
@@ -76,7 +77,7 @@ export default function Cohorte() {
             {filas.length === 0 ? <Text style={[texto.apoyo, { color: color.textoMedio }]}>Sin datos.</Text> : (
               <GraficaLinea
                 series={[
-                  { etiqueta: '% alto', color: '#8C4A2B', puntos: filas.map((f) => ({ x: f.semana, y: f.pct_alto == null ? null : Number(f.pct_alto) * (Number(f.pct_alto) <= 1 ? 100 : 1) })) },
+                  { etiqueta: '% alto', color: '#8C4A2B', puntos: filas.map((f) => ({ x: f.semana, y: f.pct_alto == null ? null : Number(f.pct_alto) })) },
                   { etiqueta: '% respondieron', color: color.primarioProfundo, puntos: filas.map((f) => ({ x: f.semana, y: f.activos ? Math.round((f.respondieron_viernes / f.activos) * 100) : null })) },
                 ]}
                 yMin={0} yMax={100} alto={220} todasLasEtiquetasX etiquetaX={etiquetaSemana}
