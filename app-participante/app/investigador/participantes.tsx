@@ -231,7 +231,7 @@ function PanelLateral({ p, onCerrar }: { p: FilaParticipanteV2; onCerrar: () => 
       </View>
       {p.detectado_en && <View style={{ flexDirection: 'row' }}><Pastilla tono={TONO.tierraSuave} punto>{`Detectado S${p.olbi_semana ? semanaDe(p.inscrito_en, p.detectado_en) : '—'}`}</Pastilla></View>}
       <Pressable onPress={() => router.push(conFiltro(`/investigador/participante/${p.id}`, filtro) as never)} style={e.botonFicha}>
-        <Text style={[texto.datoFuerte, { color: '#FFFFFF' }]}>Abrir ficha completa a pantalla completa</Text>
+        <Text style={[texto.datoFuerte, { color: '#FFFFFF' }]}>Abrir ficha completa</Text>
         <IconoAbrir tamano={13} color="#FFFFFF" />
       </Pressable>
 
