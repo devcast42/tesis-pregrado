@@ -13,7 +13,7 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.68.0'
 import { json, servicio } from '../_compartido/supabase.ts'
 
-const MODELO = 'claude-opus-5'
+const MODELO = 'claude-haiku-4-5-20251001' // ~USD 0.02 por informe; Opus solo si el borrador queda pobre
 
 const ESQUEMA = {
   type: 'object',

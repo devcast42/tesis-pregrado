@@ -51,7 +51,7 @@ El bucket `audio-sesiones` ya existe y es privado (migración
 
 1. Cuenta en <https://console.anthropic.com>, con crédito.
 2. **API Keys → Create Key**. Guarda la clave.
-3. Modelo usado: `claude-opus-5` (`supabase/functions/redactar-informe/index.ts`).
+3. Modelo usado: `claude-haiku-4-5-20251001` (~USD 0.02 por informe; con USD 5 de crédito alcanza para toda la tesis) (`supabase/functions/redactar-informe/index.ts`).
 
 ## Paso 4 · Webhook de LiveKit (aviso de fin de grabación)
 
