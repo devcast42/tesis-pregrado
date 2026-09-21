@@ -24,7 +24,6 @@ import {
 } from '@livekit/react-native'
 import { Track } from 'livekit-client'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Path, Rect } from 'react-native-svg'
 import { color, fuente } from '../nucleo/diseno'
 import { IconoCandado, IconoColgar, IconoMicrofono, IconoMicrofonoTachado, IconoVideo, IconoVideoTachado } from '../nucleo/iconos'
 import type { PropsLlamada } from './tipos'
@@ -143,7 +142,6 @@ function Escena({ onSalir, etiqueta, grabando }: Pick<PropsLlamada, 'onSalir' | 
           ) : (
             <View style={[e.videoPropio, e.centro, { backgroundColor: '#2A2E33' }]}><IconoVideoTachado tamano={20} color="rgba(255,255,255,0.6)" /></View>
           )}
-          {Platform.OS === 'android' && <MascaraRedondeada ancho={MINI_ANCHO} alto={MINI_ALTO} radio={MINI_RADIO} />}
           <Text style={e.propioEtiqueta}>{grandeEsPropia ? (etiqueta ?? 'Psicólogo') : 'Tú'}</Text>
         </Pressable>
       </View>
@@ -185,23 +183,6 @@ function Escena({ onSalir, etiqueta, grabando }: Pick<PropsLlamada, 'onSalir' | 
   )
 }
 
-const MINI_ANCHO = 96, MINI_ALTO = 128, MINI_RADIO = 16
-
-/** En Android el video es una superficie nativa que ignora el recorte
- *  redondeado del contenedor. Las vistas normales sí se pintan encima, así que
- *  se tapa lo que sobra: un SVG del tamaño de la miniatura relleno del color
- *  de fondo con un agujero redondeado (regla evenodd) y el borde encima. */
-function MascaraRedondeada({ ancho, alto, radio }: { ancho: number; alto: number; radio: number }) {
-  const r = radio
-  const interior = `M${r} 0 H${ancho - r} A${r} ${r} 0 0 1 ${ancho} ${r} V${alto - r} A${r} ${r} 0 0 1 ${ancho - r} ${alto} H${r} A${r} ${r} 0 0 1 0 ${alto - r} V${r} A${r} ${r} 0 0 1 ${r} 0 Z`
-  return (
-    <Svg width={ancho} height={alto} style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Path d={`M0 0 H${ancho} V${alto} H0 Z ${interior}`} fill="#14171A" fillRule="evenodd" />
-      <Rect x={0.5} y={0.5} width={ancho - 1} height={alto - 1} rx={r} ry={r} stroke="rgba(255,255,255,0.28)" strokeWidth={1} fill="none" />
-    </Svg>
-  )
-}
-
 function Control({ activo, onPress, etiqueta, children }: { activo: boolean; onPress: () => void; etiqueta: string; children: React.ReactNode }) {
   return (
     <Pressable onPress={onPress} style={[e.control, !activo && e.controlApagado]} accessibilityRole="button" accessibilityLabel={etiqueta}>
@@ -221,7 +202,10 @@ const e = StyleSheet.create({
   codigo: { color: '#FFFFFF', fontFamily: fuente.fuerte, fontSize: 20 },
   estado: { color: color.primarioClaro, fontFamily: fuente.media, fontSize: 12, letterSpacing: 1 },
   punto: { width: 8, height: 8, borderRadius: 4 },
-  propio: { width: 96, height: 128, borderRadius: 16, overflow: 'hidden', backgroundColor: '#2A2E33', borderWidth: Platform.OS === 'android' ? 0 : 1, borderColor: 'rgba(255,255,255,0.25)' },
+  // En Android la superficie de video no se recorta con borderRadius y una
+  // máscara encima pinta las esquinas de un color que no es el del video de
+  // fondo: la miniatura va rectangular, con borde fino. En iOS sí se redondea.
+  propio: { width: 96, height: 128, borderRadius: Platform.OS === 'android' ? 0 : 16, overflow: 'hidden', backgroundColor: '#2A2E33', borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)' },
   videoPropio: { width: '100%', height: '100%' },
   propioEtiqueta: {
     position: 'absolute', bottom: 8, left: 8, color: '#FFFFFF', fontFamily: fuente.media, fontSize: 11,

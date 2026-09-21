@@ -18,6 +18,7 @@ export default function ConsultaParticipante() {
   const [sesion, setSesion] = useState<any>(null)
   const [credenciales, setCredenciales] = useState<Credenciales | null>(null)
   const [enLlamada, setEnLlamada] = useState(false)
+  const [ocupado, setOcupado] = useState<'autorizar' | 'entrar' | null>(null)
 
   const cargar = useCallback(async () => {
     setSesion(await obtenerSesion(id))
@@ -26,20 +27,28 @@ export default function ConsultaParticipante() {
   useEffect(() => { cargar() }, [cargar])
 
   async function autorizar() {
-    await supabase
-      .from('sesiones_consulta')
-      .update({ consentimiento_participante: true })
-      .eq('id', id)
-    await cargar()
+    if (ocupado) return
+    setOcupado('autorizar')
+    try {
+      await supabase
+        .from('sesiones_consulta')
+        .update({ consentimiento_participante: true })
+        .eq('id', id)
+      await cargar()
+    } finally { setOcupado(null) }
   }
 
+  // Pedir el token tarda unos segundos (y arranca la grabación): el botón se
+  // bloquea mientras tanto para que no se pida dos veces.
   async function entrar() {
+    if (ocupado) return
+    setOcupado('entrar')
     try {
       setCredenciales(await obtenerCredenciales(id))
       setEnLlamada(true)
     } catch (e) {
       Alert.alert('No se pudo entrar', e instanceof Error ? e.message : 'Inténtalo de nuevo.')
-    }
+    } finally { setOcupado(null) }
   }
 
   const salir = useCallback(() => {
@@ -72,12 +81,12 @@ export default function ConsultaParticipante() {
         {sesion.consentimiento_participante ? (
           <Apoyo>Autorizaste la grabación de esta sesión.</Apoyo>
         ) : (
-          <Boton variante="secundario" onPress={autorizar}>
+          <Boton variante="secundario" onPress={autorizar} cargando={ocupado === 'autorizar'} inhabilitado={ocupado === 'entrar'}>
             Autorizo que se grabe el audio
           </Boton>
         )}
 
-        <Boton onPress={entrar}>Entrar a la sesión</Boton>
+        <Boton onPress={entrar} cargando={ocupado === 'entrar'} inhabilitado={ocupado === 'autorizar'}>Entrar a la sesión</Boton>
       </View>
     </Pantalla>
   )
