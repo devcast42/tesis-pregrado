@@ -6,7 +6,7 @@
  *  a lo que detecta; nunca muestra contenido clínico (RN-009-03). */
 
 import { useCallback, useMemo, useState } from 'react'
-import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
 import { conFiltro, useFiltro } from '../../modules/investigador/filtro'
@@ -257,7 +257,7 @@ export default function Derivaciones() {
         </View>
 
       </ScrollView>
-      <DialogoReasignar pedido={menu} onCerrar={() => setMenu(null)} onHecho={() => { setMenu(null); cargar() }} />
+      <DialogoReasignar pedido={menu} onCerrar={() => setMenu(null)} onHecho={(nuevo) => { const n = menu?.derivaciones.length ?? 0; setMenu(null); cargar(); const m = `${n === 1 ? 'El caso pasó' : `${n} casos pasaron`} a ${nuevo.nombre}.`; Platform.OS === 'web' ? window.alert(m) : Alert.alert('Reasignación hecha', m) }} />
     </Panel>
   )
 }

@@ -4,8 +4,8 @@
  *  derivaciones de este psicólogo: lo impone RLS, no esta pantalla. Los
  *  cerrados van aparte, plegados. */
 
-import { useCallback, useState } from 'react'
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useEffect, useState } from 'react'
+import { AppState, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { cerrarSesion } from '../../modules/acceso/datos'
@@ -30,6 +30,15 @@ export default function Casos() {
   }, [])
 
   useFocusEffect(useCallback(() => { cargar() }, [cargar]))
+
+  // La lista cambia desde fuera (una reasignación del investigador, una cita
+  // nueva): se vuelve a pedir al volver la app al frente y cada minuto, sin
+  // que haga falta salir y entrar.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (estado) => { if (estado === 'active') cargar().catch(() => {}) })
+    const t = setInterval(() => { cargar().catch(() => {}) }, 60_000)
+    return () => { sub.remove(); clearInterval(t) }
+  }, [cargar])
 
   async function refrescar() {
     setRefrescando(true)

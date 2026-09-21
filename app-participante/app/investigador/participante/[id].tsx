@@ -196,7 +196,7 @@ export default function FichaParticipante() {
           </View>
         </View>
       </ScrollView>
-      <DialogoReasignar pedido={reasignacion} onCerrar={() => setReasignacion(null)} onHecho={() => { setReasignacion(null); cargar() }} />
+      <DialogoReasignar pedido={reasignacion} onCerrar={() => setReasignacion(null)} onHecho={(nuevo) => { setReasignacion(null); cargar(); aviso('Reasignación hecha', `${f?.codigo_anonimo ?? 'El caso'} ahora está a cargo de ${nuevo.nombre}. Lo verá en su lista al instante o al refrescarla.`) }} />
     </Panel>
   )
 }

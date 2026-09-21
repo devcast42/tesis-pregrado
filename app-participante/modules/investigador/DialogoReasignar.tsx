@@ -35,7 +35,7 @@ export type PedidoReasignacion = {
   actualNombre?: string | null
 }
 
-export function DialogoReasignar({ pedido, onCerrar, onHecho }: { pedido: PedidoReasignacion | null; onCerrar: () => void; onHecho: () => void }) {
+export function DialogoReasignar({ pedido, onCerrar, onHecho }: { pedido: PedidoReasignacion | null; onCerrar: () => void; onHecho: (nuevo: Psicologo) => void }) {
   const [psicologos, setPsicologos] = useState<Psicologo[]>([])
   const [carga, setCarga] = useState<Record<string, number>>({})
   const [elegido, setElegido] = useState<string | null>(null)
@@ -60,7 +60,7 @@ export function DialogoReasignar({ pedido, onCerrar, onHecho }: { pedido: Pedido
     try {
       const texto = MOTIVOS.find((m) => m[0] === motivo)?.[1] ?? motivo
       for (const id of pedido!.derivaciones) await reasignarDerivacion(id, elegido, texto)
-      onHecho()
+      onHecho(psicologos.find((p) => p.id === elegido)!)
     } catch (ex) { setError(ex instanceof Error ? ex.message : 'No se pudo reasignar.') } finally { setOcupado(false) }
   }
 
