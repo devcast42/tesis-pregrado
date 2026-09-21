@@ -16,13 +16,14 @@ import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { obtenerParticipante } from '../../modules/acceso/datos'
 import { sesionDisponible, type SesionDisponible } from '../../modules/consulta/datos'
+import { abrirPdf, misResumenes, type Resumen } from '../../modules/consulta/resumen'
 import {
   cancelarCita, citaVigente, diasOfrecidos, fechaHora, horasDisponibles, misCitas, solicitarCita, type Cita,
 } from '../../modules/consulta/citas'
 import { BarraSuperior } from '../../modules/participante/piezas'
 import { Boton, Cargando } from '../../modules/nucleo/ui'
 import {
-  IconoApoyo, IconoCalendario, IconoCandado, IconoCheck, IconoChevronAbajo, IconoEntrar, IconoHistorial,
+  IconoApoyo, IconoArchivo, IconoCalendario, IconoCandado, IconoCheck, IconoChevronAbajo, IconoEntrar, IconoHistorial,
   IconoReloj, IconoVideo,
 } from '../../modules/nucleo/iconos'
 import { color, espacio, radio, texto } from '../../modules/nucleo/diseno'
@@ -37,15 +38,17 @@ const ESTADO: Record<Cita['estado'], { texto: string; tono: string; fondo: strin
 export default function Apoyo() {
   const [citas, setCitas] = useState<Cita[] | null>(null)
   const [sesion, setSesion] = useState<SesionDisponible | null>(null)
+  const [resumenes, setResumenes] = useState<Resumen[]>([])
   const [refrescando, setRefrescando] = useState(false)
   const insets = useSafeAreaInsets()
 
   const cargar = useCallback(async () => {
     const p = await obtenerParticipante()
     if (!p) return router.replace('/')
-    const [c, s] = await Promise.all([misCitas(), sesionDisponible()])
+    const [c, s, r] = await Promise.all([misCitas(), sesionDisponible(), misResumenes().catch(() => [])])
     setCitas(c)
     setSesion(s)
+    setResumenes(r)
   }, [])
 
   useFocusEffect(useCallback(() => { cargar().catch(() => setCitas([])) }, [cargar]))
@@ -121,6 +124,8 @@ export default function Apoyo() {
         ) : (
           <FormularioCita onSolicitada={cargar} />
         )}
+
+        {resumenes.length > 0 && <MisResumenes resumenes={resumenes} />}
 
         {anteriores.length > 0 && <SesionesAnteriores citas={anteriores} />}
 
@@ -277,6 +282,52 @@ function FormularioCita({ onSolicitada }: { onSolicitada: () => Promise<void> })
   )
 }
 
+/** RF-004-17 — los resúmenes personales de cada sesión: descargar el PDF o,
+ *  si aún se está preparando, volver a la pantalla de progreso. */
+function MisResumenes({ resumenes }: { resumenes: Resumen[] }) {
+  const [abriendo, setAbriendo] = useState<string | null>(null)
+  async function descargar(r: Resumen) {
+    if (!r.pdf_ruta) return
+    setAbriendo(r.id)
+    try { await abrirPdf(r.pdf_ruta) } catch (err) {
+      Alert.alert('No se pudo abrir', err instanceof Error ? err.message : 'Inténtalo de nuevo.')
+    } finally { setAbriendo(null) }
+  }
+  return (
+    <View style={e.tarjeta}>
+      <View style={e.fila}>
+        <View style={e.cuadroIconoChico}><IconoArchivo tamano={16} color={color.textoMedio} /></View>
+        <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Tus resúmenes de sesión</Text>
+      </View>
+      <Text style={[texto.apoyo, { color: color.textoMedio }]}>
+        Un documento solo para ti con lo que acordaste y recomendaciones para los días siguientes. No es el informe del psicólogo.
+      </Text>
+      {resumenes.slice(0, 5).map((r) => (
+        <View key={r.id} style={e.filaAnterior}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>
+              {new Date(r.creado_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })}
+            </Text>
+            <Text style={[texto.apoyo, { color: color.textoMedio }]}>
+              {r.etapa === 'listo' ? (r.origen === 'general' ? 'Recomendaciones generales' : 'Resumen de la sesión')
+                : r.etapa === 'fallido' ? 'No se pudo generar' : 'Preparándose…'}
+            </Text>
+          </View>
+          {r.etapa === 'listo' ? (
+            <Pressable onPress={() => descargar(r)} disabled={abriendo === r.id} style={e.botonChico} accessibilityRole="button">
+              <Text style={[texto.apoyoFuerte, { color: color.primarioProfundo }]}>{abriendo === r.id ? 'Abriendo…' : 'Descargar PDF'}</Text>
+            </Pressable>
+          ) : (
+            <Pressable onPress={() => router.push(`/consulta/resumen/${r.sesion_id}`)} style={e.botonChico} accessibilityRole="button">
+              <Text style={[texto.apoyoFuerte, { color: color.primarioProfundo }]}>{r.etapa === 'fallido' ? 'Reintentar' : 'Ver progreso'}</Text>
+            </Pressable>
+          )}
+        </View>
+      ))}
+    </View>
+  )
+}
+
 function SesionesAnteriores({ citas }: { citas: Cita[] }) {
   const [abierto, setAbierto] = useState(true)
   return (
@@ -319,6 +370,7 @@ const e = StyleSheet.create({
   motivo: { backgroundColor: color.superficieSuave, borderRadius: radio.md, padding: espacio.md, gap: 4 },
   pastilla: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, flexShrink: 0 },
   puntoPastilla: { width: 6, height: 6, borderRadius: 3 },
+  botonChico: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: color.primarioSuave, flexShrink: 0 },
   enlace: { alignItems: 'center', paddingVertical: espacio.xs },
   enlaceTexto: { color: color.textoMedio, textDecorationLine: 'underline' },
   chipDia: { width: 60, paddingVertical: 10, borderRadius: radio.md, backgroundColor: color.superficieSuave, alignItems: 'center', gap: 1 },

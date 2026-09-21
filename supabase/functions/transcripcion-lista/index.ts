@@ -55,22 +55,22 @@ Deno.serve(async (req) => {
     metadata: { sesion_id: sesionId, transcripcion_id: transcripcion.id },
   })
 
-  // Redacción en segundo plano: el callback de Deepgram no debe esperarla.
-  const respuesta = await fetch(
-    `${Deno.env.get('SUPABASE_URL')}/functions/v1/redactar-informe`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ sesion_id: sesionId }),
-    },
-  )
+  // Dos redacciones sobre la misma transcripción, en paralelo: el borrador
+  // del psicólogo y el resumen del participante (RF-004-17). Deepgram ya no
+  // vuelve a correr.
+  const llamar = (fn: string) => fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/${fn}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sesion_id: sesionId }),
+  })
+  const [respuesta, resumen] = await Promise.all([
+    llamar('redactar-informe'),
+    llamar('resumen-participante').catch((e) => { console.error('resumen-participante', e); return null }),
+  ])
 
   if (!respuesta.ok) {
     const detalle = `No se pudo generar el borrador (${respuesta.status}): ${(await respuesta.text()).slice(0, 200)}`
     await db.from('transcripciones').update({ etapa: 'fallida', detalle }).eq('sesion_id', sesionId)
   }
-  return json({ transcrita: true, informe_solicitado: respuesta.ok })
+  return json({ transcrita: true, informe_solicitado: respuesta.ok, resumen_solicitado: !!resumen?.ok })
 })

@@ -151,6 +151,13 @@ Deno.serve(async (req) => {
     .select('id')
     .single()
 
+  // Deepgram puede llamar dos veces al callback: si otra ejecución ya insertó
+  // el informe entre nuestra comprobación y este insert, no es un fallo.
+  if (error?.code === '23505') {
+    await db.from('transcripciones').update({ etapa: 'informe_listo', detalle: null }).eq('sesion_id', sesion_id)
+    const { data: otro } = await db.from('informes').select('id').eq('sesion_id', sesion_id).maybeSingle()
+    return json({ ya_existe: true, informe_id: otro?.id })
+  }
   if (error) return json({ error: error.message }, 500)
 
   const { data: sesion } = await db

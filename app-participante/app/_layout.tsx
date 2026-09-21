@@ -63,6 +63,7 @@ export default function Layout() {
         <Stack.Screen name="(participante)" options={{ headerShown: false }} />
         <Stack.Screen name="formulario/[clave]" options={{ title: '' }} />
         <Stack.Screen name="consulta/[id]" options={{ title: 'Sesión de apoyo' }} />
+        <Stack.Screen name="consulta/resumen/[id]" options={{ headerShown: false, presentation: 'transparentModal', animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="registros" options={{ headerShown: false }} />
 
         {/* Psicólogo */}

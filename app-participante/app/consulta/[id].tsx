@@ -1,7 +1,7 @@
 /** Videoconsulta, lado del participante — implementa ESP-004 RF-004-02.
  *
  *  El participante consiente su propia grabación aquí. Nunca ve el informe
- *  (RN-004-03): esta pantalla termina al colgar. */
+ *  clínico (RN-004-03): al colgar pasa a su propio resumen (RF-004-17). */
 
 import { useCallback, useEffect, useState } from 'react'
 import { Alert, StyleSheet, View } from 'react-native'
@@ -56,10 +56,12 @@ export default function ConsultaParticipante() {
     } finally { setOcupado(null) }
   }
 
+  // Al salir se abre el resumen personal (RF-004-17): muestra el circuito
+  // paso a paso y, cuando está listo, el PDF con recomendaciones.
   const salir = useCallback(() => {
     setEnLlamada(false)
-    router.replace('/hoy')
-  }, [])
+    router.replace(`/consulta/resumen/${id}`)
+  }, [id])
 
   if (!sesion) return <Cargando />
 

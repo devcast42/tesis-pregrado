@@ -25,6 +25,10 @@ verify_jwt = true
 [functions.iniciar-grabacion]
 verify_jwt = true
 
+[functions.resumen-participante]
+# Lo llama el participante desde la app y transcripcion-lista con la service_role.
+verify_jwt = true
+
 [functions.redactar-informe]
 # Se llama servidor a servidor con la service_role, que es un JWT válido.
 verify_jwt = true
