@@ -56,10 +56,16 @@ export type SesionDisponible = {
  *  finalizar. Null significa que no hay nada que ofrecer, y la pantalla
  *  principal simplemente no muestra la tarjeta —sin explicar por qué. */
 export async function sesionDisponible(): Promise<SesionDisponible | null> {
+  // Solo una sala viva de verdad: de las últimas tres horas. Una sala que
+  // nadie cerró ayer no es una invitación a entrar (la base la marca como
+  // finalizada de todos modos, ver `cerrar_sesiones_huerfanas`). No se filtra
+  // por derivación abierta porque el participante no lee `derivaciones`.
+  const hace3h = new Date(Date.now() - 3 * 3_600_000).toISOString()
   const { data } = await supabase
     .from('sesiones_consulta')
     .select('id, iniciada_en, consentimiento_participante')
     .is('finalizada_en', null)
+    .gte('iniciada_en', hace3h)
     .order('iniciada_en', { ascending: false })
     .limit(1)
     .maybeSingle()

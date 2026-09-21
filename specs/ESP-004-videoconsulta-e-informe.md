@@ -180,7 +180,8 @@ Si el comité de ética exige que las transcripciones **no se retengan** en el p
 | RF-004-17 | `20260921130000_resumen_participante.sql` (tabla `resumenes_participante`, bucket `resumenes-participante`, evento `resumen_entregado`), `supabase/functions/resumen-participante` + `_compartido/pdf.ts` (Haiku 4.5 + pdf-lib), `transcripcion-lista` (lanza ambas redacciones en paralelo), `modules/consulta/resumen.ts`, `app/consulta/resumen/[id].tsx`, `app/(participante)/apoyo.tsx` («Tus resúmenes de sesión») |
 | Pantallas rev. 2 (Figma «Antes de la Videollamada», «En la Videollamada», «Informe Clínico») | `app/psicologo/consulta/[id].tsx`, `modules/consulta/SalaLiveKit.tsx` (nativo), `app/psicologo/informe/[id].tsx` |
 | RN-004-06 | `20260829090400_consulta.sql` — `sesiones_consulta`, doble consentimiento |
-| RN-004-09 | `20260829090400_consulta.sql` — `borrar_datos_vencidos()` |
+| RN-004-09 | `20260829090400_consulta.sql` — `borrar_datos_vencidos()`; programada a diario con pg_cron en `20260921150000_tareas_programadas.sql` |
+| RF-004-05 (sesiones huérfanas) | `20260921140000_sesiones_huerfanas.sql` — `cerrar_sesiones_huerfanas()` (cada hora, pg_cron) y trigger `sesiones_una_sala_viva`; `modules/consulta/datos.ts` (`sesionDisponible` solo ofrece salas de las últimas 3 h) |
 | RF-004-10 | `20260921120000_informe_en_revision.sql` (`contenido_en_revision`, `revisado_en`, `proteger_borrador` ampliado), `modules/psicologo/datos.ts` (`guardarRevision`), `app/psicologo/informe/[id].tsx` (guardado automático 1,5 s tras la última tecla, al pulsar «Listo» y al salir) |
 | RF-004-01, RF-004-04, RF-004-08 | `supabase/functions/token-livekit`, `_compartido/grabacion.ts`, `_compartido/deepgram.ts`, `redactar-informe`, `modules/consulta` |
 
