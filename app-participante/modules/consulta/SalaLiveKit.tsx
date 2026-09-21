@@ -12,7 +12,7 @@
  *  para que no quede duda. «Finalizar» es claro pero no rojo. */
 
 import { useEffect, useState } from 'react'
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import {
   AudioSession,
   LiveKitRoom,
@@ -111,7 +111,7 @@ function Escena({ onSalir, etiqueta, grabando }: Pick<PropsLlamada, 'onSalir' | 
   return (
     <View style={e.sala}>
       {grande ? (
-        <VideoTrack trackRef={grande} style={e.videoRemoto} objectFit="cover" mirror={grandeEsPropia} />
+        <VideoTrack trackRef={grande} style={e.videoRemoto} objectFit="cover" mirror={grandeEsPropia} zOrder={0} />
       ) : (
         <View style={[e.videoRemoto, e.centro]}>
           {grandeEsPropia ? (
@@ -136,7 +136,9 @@ function Escena({ onSalir, etiqueta, grabando }: Pick<PropsLlamada, 'onSalir' | 
         </View>
         <Pressable onPress={() => setIntercambiado((v) => !v)} style={e.propio} accessibilityRole="button" accessibilityLabel="Intercambiar videos">
           {chica ? (
-            <VideoTrack trackRef={chica} style={e.videoPropio} objectFit="cover" mirror={!grandeEsPropia} />
+            // zOrder=1: en Android cada video es una superficie propia; sin esto la
+            // miniatura queda debajo del video grande y se ve vacía.
+            <VideoTrack trackRef={chica} style={e.videoPropio} objectFit="cover" mirror={!grandeEsPropia} zOrder={1} />
           ) : (
             <View style={[e.videoPropio, e.centro, { backgroundColor: '#2A2E33' }]}><IconoVideoTachado tamano={20} color="rgba(255,255,255,0.6)" /></View>
           )}
@@ -200,8 +202,11 @@ const e = StyleSheet.create({
   codigo: { color: '#FFFFFF', fontFamily: fuente.fuerte, fontSize: 20 },
   estado: { color: color.primarioClaro, fontFamily: fuente.media, fontSize: 12, letterSpacing: 1 },
   punto: { width: 8, height: 8, borderRadius: 4 },
-  propio: { width: 96, height: 128, borderRadius: 16, overflow: 'hidden', backgroundColor: '#2A2E33', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  videoPropio: { width: '100%', height: '100%' },
+  // En Android la superficie de video no se recorta con borderRadius: la
+  // miniatura lleva un marco oscuro con esquinas redondeadas y el video
+  // rectangular dentro, en vez de esquinas que asoman por fuera del borde.
+  propio: { width: 96, height: 128, borderRadius: 14, overflow: 'hidden', backgroundColor: '#14171A', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', padding: Platform.OS === 'android' ? 3 : 0 },
+  videoPropio: { flex: 1, borderRadius: Platform.OS === 'android' ? 0 : 12, overflow: 'hidden' },
   propioEtiqueta: {
     position: 'absolute', bottom: 8, left: 8, color: '#FFFFFF', fontFamily: fuente.media, fontSize: 11,
     backgroundColor: 'rgba(0,0,0,0.45)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999,
