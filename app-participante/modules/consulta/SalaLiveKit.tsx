@@ -7,8 +7,9 @@
  *  caer la pantalla al cargarse en lugar de mostrar un aviso.
  *
  *  Pantalla oscura: la persona al otro lado ocupa todo; el propio video va
- *  pequeño en una esquina. Los controles al alcance del pulgar. «Finalizar»
- *  es claro pero no rojo: el rojo en esta app es de los errores. */
+ *  pequeño en una esquina y al tocarlo se intercambian. Los controles al
+ *  alcance del pulgar; micrófono y cámara apagados se ven en rojo y tachados
+ *  para que no quede duda. «Finalizar» es claro pero no rojo. */
 
 import { useEffect, useState } from 'react'
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native'
@@ -24,7 +25,7 @@ import {
 import { Track } from 'livekit-client'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { color, fuente } from '../nucleo/diseno'
-import { IconoCandado, IconoColgar, IconoMicrofono, IconoVideo } from '../nucleo/iconos'
+import { IconoCandado, IconoColgar, IconoMicrofono, IconoMicrofonoTachado, IconoVideo, IconoVideoTachado } from '../nucleo/iconos'
 import type { PropsLlamada } from './tipos'
 
 // Instala los polyfills de WebRTC. Debe correr antes de conectar.
@@ -101,15 +102,26 @@ function Escena({ onSalir, etiqueta, grabando }: Pick<PropsLlamada, 'onSalir' | 
   const remota = pistas.find((p) => !p.participant.isLocal)
   const propia = pistas.find((p) => p.participant.isLocal)
   const enCurso = remotos.length > 0
+  // Tocar la miniatura intercambia cuál se ve en grande.
+  const [intercambiado, setIntercambiado] = useState(false)
+  const grande = intercambiado ? propia : remota
+  const chica = intercambiado ? remota : propia
+  const grandeEsPropia = intercambiado
 
   return (
     <View style={e.sala}>
-      {remota ? (
-        <VideoTrack trackRef={remota} style={e.videoRemoto} objectFit="cover" />
+      {grande ? (
+        <VideoTrack trackRef={grande} style={e.videoRemoto} objectFit="cover" mirror={grandeEsPropia} />
       ) : (
         <View style={[e.videoRemoto, e.centro]}>
-          <Text style={e.espera}>Esperando a la otra persona…</Text>
-          {etiqueta && <Text style={e.esperaSub}>{etiqueta}</Text>}
+          {grandeEsPropia ? (
+            <><IconoVideoTachado tamano={28} color="rgba(255,255,255,0.7)" /><Text style={e.espera}>Tu cámara está apagada</Text></>
+          ) : enCurso ? (
+            // La otra persona está conectada pero no envía video: cámara apagada o sin permiso.
+            <><IconoVideoTachado tamano={28} color="rgba(255,255,255,0.7)" /><Text style={e.espera}>La otra persona tiene la cámara apagada</Text><Text style={e.esperaSub}>El audio sigue funcionando</Text></>
+          ) : (
+            <><ActivityIndicator color="rgba(255,255,255,0.7)" /><Text style={e.espera}>Esperando a la otra persona…</Text>{etiqueta && <Text style={e.esperaSub}>{etiqueta}</Text>}</>
+          )}
         </View>
       )}
 
@@ -122,12 +134,14 @@ function Escena({ onSalir, etiqueta, grabando }: Pick<PropsLlamada, 'onSalir' | 
             <Text style={e.estado}>{enCurso ? 'EN CURSO' : 'ESPERANDO'} · {transcurrido}</Text>
           </View>
         </View>
-        {propia && (
-          <View style={e.propio}>
-            <VideoTrack trackRef={propia} style={e.videoPropio} objectFit="cover" mirror />
-            <Text style={e.propioEtiqueta}>Tú</Text>
-          </View>
-        )}
+        <Pressable onPress={() => setIntercambiado((v) => !v)} style={e.propio} accessibilityRole="button" accessibilityLabel="Intercambiar videos">
+          {chica ? (
+            <VideoTrack trackRef={chica} style={e.videoPropio} objectFit="cover" mirror={!grandeEsPropia} />
+          ) : (
+            <View style={[e.videoPropio, e.centro, { backgroundColor: '#2A2E33' }]}><IconoVideoTachado tamano={20} color="rgba(255,255,255,0.6)" /></View>
+          )}
+          <Text style={e.propioEtiqueta}>{grandeEsPropia ? (etiqueta ?? 'Psicólogo') : 'Tú'}</Text>
+        </Pressable>
       </View>
 
       {grabando && (
@@ -145,14 +159,14 @@ function Escena({ onSalir, etiqueta, grabando }: Pick<PropsLlamada, 'onSalir' | 
           onPress={() => localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled)}
           etiqueta={isMicrophoneEnabled ? 'Silenciar' : 'Activar micrófono'}
         >
-          <IconoMicrofono tamano={22} color="#FFFFFF" />
+          {isMicrophoneEnabled ? <IconoMicrofono tamano={22} color="#FFFFFF" /> : <IconoMicrofonoTachado tamano={22} color="#FFFFFF" />}
         </Control>
         <Control
           activo={isCameraEnabled}
           onPress={() => localParticipant.setCameraEnabled(!isCameraEnabled)}
           etiqueta={isCameraEnabled ? 'Apagar cámara' : 'Encender cámara'}
         >
-          <IconoVideo tamano={22} color="#FFFFFF" />
+          {isCameraEnabled ? <IconoVideo tamano={22} color="#FFFFFF" /> : <IconoVideoTachado tamano={22} color="#FFFFFF" />}
         </Control>
         <Pressable onPress={onSalir} style={e.finalizar} accessibilityRole="button" accessibilityLabel="Finalizar sesión">
           <IconoColgar tamano={20} color="#FFFFFF" />
@@ -199,7 +213,8 @@ const e = StyleSheet.create({
   grabandoTexto: { color: '#FFFFFF', fontFamily: fuente.media, fontSize: 13 },
   controles: { position: 'absolute', bottom: 64, left: 20, right: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14 },
   control: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
-  controlApagado: { backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
+  // Apagado = rojo lleno con el icono tachado: es el único rojo de la app además de los errores, y aquí significa lo mismo: «algo no está funcionando».
+  controlApagado: { backgroundColor: '#B91C1C' },
   finalizar: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 60, paddingHorizontal: 26, borderRadius: 30, backgroundColor: '#A8663D' },
   finalizarTexto: { color: '#FFFFFF', fontFamily: fuente.fuerte, fontSize: 17 },
   pie: { position: 'absolute', bottom: 24, left: 0, right: 0, justifyContent: 'center' },
