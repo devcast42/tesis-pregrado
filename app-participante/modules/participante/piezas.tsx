@@ -83,11 +83,13 @@ const INICIALES = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
  *  volver de un formulario, los círculos de la racha «prenden» uno a uno y
  *  la llama de la cabecera late una vez. Después la escena se queda quieta:
  *  la animación es un premio, no un adorno permanente. */
-export function RitmoSemanal({ dias, racha = 0, celebrar = false }: {
+export function RitmoSemanal({ dias, racha = 0, celebrar = false, onPress }: {
   dias: EstadoDia[]
   /** Días hábiles consecutivos, contando hoy si ya se respondió. */
   racha?: number
   celebrar?: boolean
+  /** Abre el detalle de todos los registros. */
+  onPress?: () => void
 }) {
   const hoy = dias.findIndex((d) => d.startsWith('hoy'))
   const hoyHecho = dias[hoy] === 'hoy_respondido'
@@ -119,9 +121,9 @@ export function RitmoSemanal({ dias, racha = 0, celebrar = false }: {
   }, [celebrar])
 
   return (
-    <View style={e.ritmo}>
+    <Pressable onPress={onPress} disabled={!onPress} style={({ pressed }) => [e.ritmo, pressed && { opacity: 0.85 }]} accessibilityRole={onPress ? 'button' : undefined} accessibilityLabel="Ver todos mis registros">
       <View style={e.ritmoCabecera}>
-        <Text style={[texto.etiqueta, { color: color.textoMedio }]}>RITMO SEMANAL</Text>
+        <Text style={[texto.etiqueta, { color: color.textoMedio }]}>RITMO SEMANAL{onPress ? '  ›' : ''}</Text>
         {racha > 0 && hoyHecho ? (
           <Animated.View style={[e.ritmoRacha, { transform: [{ scale: llama }] }]}>
             <IconoLlama tamano={13} color={color.tierra} />
@@ -158,7 +160,7 @@ export function RitmoSemanal({ dias, racha = 0, celebrar = false }: {
           )
         })}
       </View>
-    </View>
+    </Pressable>
   )
 }
 

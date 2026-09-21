@@ -176,6 +176,18 @@ export async function diasConCheckinEstaSemana(
 }
 
 /** Lunes 00:00 local de la semana que contiene la fecha. */
+/** Todos los envíos de diario y OLBI del participante, para el detalle de
+ *  registros (RF-002-07). Solo fecha y formulario: nada de respuestas. */
+export async function enviosDelEstudio(participanteId: string): Promise<{ clave: 'diario' | 'olbi'; enviado_en: string }[]> {
+  const { data } = await supabase
+    .from('respuestas')
+    .select('formulario_clave, enviado_en')
+    .eq('participante_id', participanteId)
+    .in('formulario_clave', ['diario', 'olbi'])
+    .order('enviado_en')
+  return (data ?? []).map((f) => ({ clave: f.formulario_clave as 'diario' | 'olbi', enviado_en: f.enviado_en as string }))
+}
+
 export function inicioDeSemana(fecha: Date): Date {
   const d = new Date(fecha)
   d.setHours(0, 0, 0, 0)

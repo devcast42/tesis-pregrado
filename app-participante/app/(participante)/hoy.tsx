@@ -227,7 +227,7 @@ export default function Hoy() {
           />
         )}
 
-        {enSeguimiento && <RitmoSemanal dias={dias} racha={rachaActual?.actual ?? 0} celebrar={celebrar} />}
+        {enSeguimiento && <RitmoSemanal dias={dias} racha={rachaActual?.actual ?? 0} celebrar={celebrar} onPress={() => router.push('/registros')} />}
 
         {principal && (
           <TarjetaHero
