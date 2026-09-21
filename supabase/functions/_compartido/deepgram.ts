@@ -13,13 +13,15 @@ export async function solicitarTranscripcion(db: ReturnType<typeof servicio>, se
     .eq('sesion_id', sesionId)
     .maybeSingle()
   if (!transcripcion?.audio_ruta) return { ok: false, detalle: 'sesion sin grabacion registrada' }
+  await db.from('transcripciones').update({ etapa: 'audio_subido', detalle: null }).eq('sesion_id', sesionId)
 
   const { data: firmada, error: errorFirma } = await db.storage
     .from(Deno.env.get('S3_BUCKET')!)
     .createSignedUrl(transcripcion.audio_ruta, 60 * 60)
   if (errorFirma || !firmada?.signedUrl) {
-    await db.from('transcripciones').update({ estado: 'fallida' }).eq('sesion_id', sesionId)
-    return { ok: false, detalle: `no se pudo firmar la URL del audio: ${errorFirma?.message ?? ''}` }
+    const detalle = `no se pudo firmar la URL del audio: ${errorFirma?.message ?? ''}`
+    await db.from('transcripciones').update({ estado: 'fallida', etapa: 'fallida', detalle }).eq('sesion_id', sesionId)
+    return { ok: false, detalle }
   }
 
   const callback = `${Deno.env.get('SUPABASE_URL')}/functions/v1/transcripcion-lista?sesion=${sesionId}&clave=${Deno.env.get('WEBHOOK_SECRET') ?? ''}`
@@ -35,9 +37,10 @@ export async function solicitarTranscripcion(db: ReturnType<typeof servicio>, se
   )
   const texto = await respuesta.text()
   if (!respuesta.ok) {
-    await db.from('transcripciones').update({ estado: 'fallida' }).eq('sesion_id', sesionId)
-    return { ok: false, detalle: `deepgram ${respuesta.status}: ${texto.slice(0, 300)}` }
+    const detalle = `Deepgram rechazó la transcripción (${respuesta.status}): ${texto.slice(0, 200)}`
+    await db.from('transcripciones').update({ estado: 'fallida', etapa: 'fallida', detalle }).eq('sesion_id', sesionId)
+    return { ok: false, detalle }
   }
-  await db.from('transcripciones').update({ estado: 'procesando' }).eq('sesion_id', sesionId)
+  await db.from('transcripciones').update({ estado: 'procesando', etapa: 'transcribiendo', detalle: null }).eq('sesion_id', sesionId)
   return { ok: true, detalle: texto.slice(0, 200) }
 }

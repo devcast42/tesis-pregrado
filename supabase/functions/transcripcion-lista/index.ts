@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     ?? null
 
   if (!texto) {
-    await db.from('transcripciones').update({ estado: 'fallida' }).eq('sesion_id', sesionId)
+    await db.from('transcripciones').update({ estado: 'fallida', etapa: 'fallida', detalle: 'Deepgram no devolvió texto (¿audio en silencio?)' }).eq('sesion_id', sesionId)
     return json({ error: 'sin texto en la respuesta' }, 422)
   }
 
@@ -31,6 +31,8 @@ Deno.serve(async (req) => {
     .from('transcripciones')
     .update({
       estado: 'lista',
+      etapa: 'redactando',
+      detalle: null,
       texto,
       proveedor: 'deepgram-nova-3',
       generada_en: new Date().toISOString(),
@@ -66,5 +68,9 @@ Deno.serve(async (req) => {
     },
   )
 
+  if (!respuesta.ok) {
+    const detalle = `No se pudo generar el borrador (${respuesta.status}): ${(await respuesta.text()).slice(0, 200)}`
+    await db.from('transcripciones').update({ etapa: 'fallida', detalle }).eq('sesion_id', sesionId)
+  }
   return json({ transcrita: true, informe_solicitado: respuesta.ok })
 })

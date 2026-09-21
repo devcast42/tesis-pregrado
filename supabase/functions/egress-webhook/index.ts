@@ -42,6 +42,16 @@ Deno.serve(async (req) => {
 
   if (!sesion) return json({ error: 'sesion no encontrada' }, 404)
 
+  // Un egress que terminó sin archivo (abortado, sin audio, fallo de subida)
+  // no se transcribe: se anota el motivo y se para aquí.
+  const info = evento.egressInfo
+  const subio = (info?.fileResults?.length ?? 0) > 0 && !info?.error
+  if (!subio) {
+    const detalle = `La grabación terminó sin audio: ${info?.error || 'sin archivo'}`
+    await db.from('transcripciones').update({ estado: 'fallida', etapa: 'fallida', detalle }).eq('sesion_id', sesion.id)
+    return json({ error: detalle }, 200)
+  }
+
   const r = await solicitarTranscripcion(db, sesion.id)
   if (!r.ok) return json({ error: r.detalle }, 502)
   return json({ encolada: true })

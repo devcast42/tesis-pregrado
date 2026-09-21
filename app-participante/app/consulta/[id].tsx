@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Alert, StyleSheet, View } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Llamada } from '../../modules/consulta/Llamada'
-import { obtenerCredenciales, obtenerSesion } from '../../modules/consulta/datos'
+import { iniciarGrabacion, obtenerCredenciales, obtenerSesion } from '../../modules/consulta/datos'
 import { supabase } from '../../modules/nucleo/supabase'
 import type { Credenciales } from '../../modules/consulta/tipos'
 import { Apoyo, Boton, Cargando, Pantalla, Parrafo, Titulo } from '../../modules/nucleo/ui'
@@ -35,6 +35,9 @@ export default function ConsultaParticipante() {
         .update({ consentimiento_participante: true })
         .eq('id', id)
       await cargar()
+      // Si la otra parte ya autorizó y ya hay alguien en la sala, la
+      // grabación arranca ahora; si no, lo hará el siguiente que entre.
+      iniciarGrabacion(id).catch(() => {})
     } finally { setOcupado(null) }
   }
 
@@ -46,6 +49,8 @@ export default function ConsultaParticipante() {
     try {
       setCredenciales(await obtenerCredenciales(id))
       setEnLlamada(true)
+      // Ya dentro (la sala existe): un intento más por si el token salió antes de que existiera.
+      setTimeout(() => { iniciarGrabacion(id).catch(() => {}) }, 4000)
     } catch (e) {
       Alert.alert('No se pudo entrar', e instanceof Error ? e.message : 'Inténtalo de nuevo.')
     } finally { setOcupado(null) }

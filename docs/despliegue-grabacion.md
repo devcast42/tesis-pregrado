@@ -80,6 +80,19 @@ npx supabase secrets set \
 
 `RETENCION_DIAS` es provisional hasta que el comité fije el plazo (B7).
 
+## Etapas y fallos visibles
+
+`transcripciones.etapa` recorre `grabando → audio_subido → transcribiendo →
+lista → redactando → informe_listo`; si algo se cae queda `fallida` con el
+motivo en `detalle`, y si la grabación nunca arrancó, `sin_grabacion` con el
+porqué (sin sala, sin almacenamiento, LiveKit rechazó). La pantalla del
+informe del psicólogo muestra el paso en curso, cuánto lleva, el motivo del
+fallo y un botón «Reintentar» (a los 5 minutos sin avance, o ante un fallo).
+
+La grabación se intenta en cada momento en que podría ser posible —al
+emitir cada token y al registrar cada consentimiento (`iniciar-grabacion`)—
+porque los consentimientos y la entrada a la sala llegan en cualquier orden.
+
 ## Diagnóstico
 
 Dos funciones solo para el investigador (llamarlas con su sesión):

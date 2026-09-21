@@ -125,6 +125,7 @@ Deno.serve(async (req) => {
   // Una negativa del modelo deja `content` vacío: leer content[0] sin
   // comprobar stop_reason rompería aquí.
   if (respuesta.stop_reason === 'refusal') {
+    await db.from('transcripciones').update({ etapa: 'fallida', detalle: 'El modelo declinó redactar el borrador' }).eq('sesion_id', sesion_id)
     return json({ error: 'el modelo declino generar el informe' }, 422)
   }
 
@@ -163,6 +164,8 @@ Deno.serve(async (req) => {
     tipo: 'informe_generado',
     metadata: { sesion_id, informe_id: informe.id, modelo: MODELO },
   })
+
+  await db.from('transcripciones').update({ etapa: 'informe_listo', detalle: null }).eq('sesion_id', sesion_id)
 
   return json({ informe_id: informe.id })
 })

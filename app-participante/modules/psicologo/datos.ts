@@ -134,13 +134,14 @@ export async function consentirGrabacion(sesionId: string, quien: 'psicologo' | 
 }
 
 /** Transcripción de la sesión (solo el psicólogo de la derivación, RN-004-08). */
-export async function obtenerTranscripcion(sesionId: string): Promise<{ estado: string; texto: string | null; proveedor: string | null } | null> {
+export type Transcripcion = { estado: string; etapa: string; detalle: string | null; texto: string | null; proveedor: string | null; creada_en: string; actualizada_en: string }
+export async function obtenerTranscripcion(sesionId: string): Promise<Transcripcion | null> {
   const { data } = await supabase
     .from('transcripciones')
-    .select('estado, texto, proveedor')
+    .select('estado, etapa, detalle, texto, proveedor, creada_en, actualizada_en')
     .eq('sesion_id', sesionId)
     .maybeSingle()
-  return (data as { estado: string; texto: string | null; proveedor: string | null } | null) ?? null
+  return (data as Transcripcion | null) ?? null
 }
 
 export async function obtenerInforme(sesionId: string): Promise<Informe | null> {

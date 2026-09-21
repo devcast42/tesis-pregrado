@@ -15,7 +15,22 @@ Deno.serve(async (req) => {
   if (!auth?.user) return json({ error: 'no autenticado' }, 401)
   const db = servicio()
   const { data: rol } = await db.from('usuarios_rol').select('rol').eq('auth_user_id', auth.user.id).maybeSingle()
-  if (rol?.rol !== 'investigador') return json({ error: 'solo el investigador' }, 403)
+  // El investigador siempre; el psicólogo, solo sobre sus propias sesiones.
+  if (rol?.rol !== 'investigador') {
+    const { data: ps } = await db.from('psicologos').select('id').eq('auth_user_id', auth.user.id).maybeSingle()
+    const { data: ses } = await db.from('sesiones_consulta').select('derivaciones(psicologo_id)').eq('id', sesion_id).maybeSingle()
+    if (!ps || (ses as any)?.derivaciones?.psicologo_id !== ps.id) return json({ error: 'sin acceso a esta sesion' }, 403)
+  }
+  // Si la transcripción ya está pero falló la redacción, se reintenta solo la redacción.
+  const { data: t } = await db.from('transcripciones').select('estado, texto').eq('sesion_id', sesion_id).maybeSingle()
+  if (t?.estado === 'lista' && t.texto) {
+    const { data: inf } = await db.from('informes').select('id').eq('sesion_id', sesion_id).maybeSingle()
+    if (inf) return json({ ok: true, detalle: 'el informe ya existe' })
+    const resp = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/redactar-informe`, {
+      method: 'POST', headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ sesion_id }),
+    })
+    return json({ ok: resp.ok, detalle: resp.ok ? 'borrador generado' : `redacción falló (${resp.status})` }, resp.ok ? 200 : 502)
+  }
   const r = await solicitarTranscripcion(db, sesion_id)
   return json(r, r.ok ? 200 : 502)
 })

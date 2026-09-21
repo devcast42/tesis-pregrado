@@ -66,3 +66,17 @@ export async function sesionDisponible(): Promise<SesionDisponible | null> {
 
   return (data as SesionDisponible | null) ?? null
 }
+
+/** Pide al servidor arrancar la grabación si ya hay doble consentimiento y
+ *  alguien en la sala. Idempotente; se llama al autorizar y al entrar. */
+export async function iniciarGrabacion(sesionId: string): Promise<{ grabando: boolean; etapa: string; detalle?: string } | null> {
+  const { data, error } = await supabase.functions.invoke('iniciar-grabacion', { body: { sesion_id: sesionId } })
+  return error ? null : (data as { grabando: boolean; etapa: string; detalle?: string })
+}
+
+/** Reintenta el paso que falló (transcripción o redacción). */
+export async function reintentarCircuito(sesionId: string): Promise<{ ok: boolean; detalle: string }> {
+  const { data, error } = await supabase.functions.invoke('retranscribir', { body: { sesion_id: sesionId } })
+  if (error) return { ok: false, detalle: 'No se pudo reintentar. Revisa tu conexión.' }
+  return data as { ok: boolean; detalle: string }
+}

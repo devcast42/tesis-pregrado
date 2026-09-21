@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Llamada } from '../../../modules/consulta/Llamada'
-import { finalizarSesion, obtenerCredenciales, obtenerSesion } from '../../../modules/consulta/datos'
+import { finalizarSesion, iniciarGrabacion, obtenerCredenciales, obtenerSesion } from '../../../modules/consulta/datos'
 import { consentirGrabacion, obtenerCaso, type Caso } from '../../../modules/psicologo/datos'
 import type { Credenciales } from '../../../modules/consulta/tipos'
 import { Boton, Cargando } from '../../../modules/nucleo/ui'
@@ -36,6 +36,8 @@ export default function Consulta() {
   async function autorizar() {
     await consentirGrabacion(id, 'psicologo')
     await cargar()
+    // Si el participante ya autorizó y hay alguien en la sala, arranca ya.
+    iniciarGrabacion(id).catch(() => {})
   }
 
   async function entrar() {
@@ -43,6 +45,7 @@ export default function Consulta() {
     try {
       setCredenciales(await obtenerCredenciales(id))
       setEnLlamada(true)
+      setTimeout(() => { iniciarGrabacion(id).catch(() => {}) }, 4000)
     } catch (e) {
       Alert.alert('No se pudo entrar', e instanceof Error ? e.message : 'Inténtalo de nuevo.')
     } finally {

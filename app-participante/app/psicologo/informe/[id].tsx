@@ -8,14 +8,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
-import { obtenerSesion } from '../../../modules/consulta/datos'
+import { obtenerSesion, reintentarCircuito } from '../../../modules/consulta/datos'
 import {
-  abrirInformeManual, aprobarInforme, obtenerCaso, obtenerInforme, obtenerTranscripcion, psicologoActual, type Caso, type Informe,
+  abrirInformeManual, aprobarInforme, obtenerCaso, obtenerInforme, obtenerTranscripcion, psicologoActual, type Caso, type Informe, type Transcripcion,
 } from '../../../modules/psicologo/datos'
 import { BarraUmbral, Pastilla, Tarjeta } from '../../../modules/psicologo/piezas'
 import { Boton, Cargando } from '../../../modules/nucleo/ui'
 import { color, espacio, fuente, radio, texto } from '../../../modules/nucleo/diseno'
-import { IconoCalendario, IconoEscudo, IconoGrafica, IconoNota, IconoReloj, IconoVideo } from '../../../modules/nucleo/iconos'
+import { IconoCalendario, IconoCheck, IconoEscudo, IconoGrafica, IconoNota, IconoReloj, IconoVideo } from '../../../modules/nucleo/iconos'
 
 /** Secciones que se muestran, en este orden. Las del generador (ESP-004
  *  `redactar-informe`) y las del informe manual conviven: cada informe trae
@@ -36,7 +36,9 @@ export default function RevisionInforme() {
   const [informe, setInforme] = useState<Informe | null>(null)
   const [caso, setCaso] = useState<Caso | null>(null)
   const [sesion, setSesion] = useState<any>(null)
-  const [transcripcion, setTranscripcion] = useState<{ estado: string; texto: string | null } | null>(null)
+  const [transcripcion, setTranscripcion] = useState<Transcripcion | null>(null)
+  const [reintentando, setReintentando] = useState(false)
+  const [ahoraTick, setAhoraTick] = useState(Date.now())
   const [verTranscripcion, setVerTranscripcion] = useState(false)
   const [nota, setNota] = useState<string>('')
   const [secciones, setSecciones] = useState<Record<string, string>>({})
@@ -69,9 +71,18 @@ export default function RevisionInforme() {
   // el psicólogo no tenga que salir y volver a entrar.
   useEffect(() => {
     if (informe || cargando) return
-    const t = setInterval(() => { cargar() }, 10_000)
+    const t = setInterval(() => { cargar(); setAhoraTick(Date.now()) }, 10_000)
     return () => clearInterval(t)
   }, [informe, cargando, cargar])
+
+  async function reintentar() {
+    setReintentando(true)
+    try {
+      const r = await reintentarCircuito(id)
+      if (!r.ok) Alert.alert('No se pudo reintentar', r.detalle)
+      await cargar()
+    } finally { setReintentando(false) }
+  }
 
   async function empezarManual() {
     setOcupado(true)
@@ -202,18 +213,15 @@ export default function RevisionInforme() {
       )}
 
       {!informe ? (
-        <Tarjeta>
-          <View style={[e.fila, { gap: 8 }]}>
-            <IconoNota tamano={16} color={color.textoMedio} />
-            <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Todavía no hay informe para esta sesión</Text>
-          </View>
-          <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
-            {sesion?.consentimiento_participante && sesion?.consentimiento_psicologo
-              ? 'La sesión se grabó: el borrador aparece aquí solo, normalmente en menos de un minuto tras colgar. Esta pantalla se actualiza sola.'
-              : 'No hubo grabación (faltó una autorización): puedes redactar la nota a mano con la misma estructura.'}
-          </Text>
-          <Boton variante="secundario" onPress={empezarManual} cargando={ocupado}>Redactar nota manual</Boton>
-        </Tarjeta>
+        <EstadoCircuito
+          sesion={sesion}
+          transcripcion={transcripcion}
+          ahora={ahoraTick}
+          reintentando={reintentando}
+          onReintentar={reintentar}
+          onManual={empezarManual}
+          ocupado={ocupado}
+        />
       ) : (
         Object.entries(secciones).map(([clave, t], i) => (
           <Tarjeta key={clave}>
@@ -269,6 +277,94 @@ function fechaHora(iso: string): string {
   return `${d.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })}, ${d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`
 }
 
+/** Dónde está el circuito grabación → audio → transcripción → borrador, cuánto
+ *  lleva ahí y, si falló, por qué. Con más de 5 minutos en un paso se ofrece
+ *  reintentar; la nota manual siempre está a mano. */
+function EstadoCircuito({ sesion, transcripcion, ahora, reintentando, onReintentar, onManual, ocupado }: {
+  sesion: any; transcripcion: Transcripcion | null; ahora: number; reintentando: boolean; onReintentar: () => void; onManual: () => void; ocupado: boolean
+}) {
+  const ambos = !!(sesion?.consentimiento_participante && sesion?.consentimiento_psicologo)
+  const terminada = !!sesion?.finalizada_en
+  const etapa = transcripcion?.etapa ?? (ambos ? 'sin_grabacion' : 'sin_consentimiento')
+  const desde = transcripcion ? new Date(transcripcion.actualizada_en).getTime() : (sesion?.finalizada_en ? new Date(sesion.finalizada_en).getTime() : ahora)
+  const minutos = Math.max(0, Math.floor((ahora - desde) / 60_000))
+  const ATASCO = 5
+
+  const PASOS = [
+    { clave: 'grabando', titulo: 'Grabación de audio', en: 'Grabando mientras dura la sesión' },
+    { clave: 'audio_subido', titulo: 'Audio guardado', en: 'Subiendo el audio al almacenamiento cifrado' },
+    { clave: 'transcribiendo', titulo: 'Transcripción', en: 'Deepgram está transcribiendo (1–3 min)' },
+    { clave: 'redactando', titulo: 'Borrador del informe', en: 'Redactando el borrador (menos de 1 min)' },
+  ]
+  const ORDEN = ['grabando', 'audio_subido', 'transcribiendo', 'lista', 'redactando', 'informe_listo']
+  const indice = ORDEN.indexOf(etapa === 'lista' ? 'redactando' : etapa)
+  const fallo = etapa === 'fallida'
+  const sinGrabacion = etapa === 'sin_grabacion' || etapa === 'sin_consentimiento'
+  const atascado = !fallo && !sinGrabacion && indice >= 0 && minutos >= ATASCO && (terminada || etapa !== 'grabando')
+
+  return (
+    <Tarjeta>
+      <View style={[e.fila, { gap: 8 }]}>
+        <IconoNota tamano={16} color={fallo ? color.tierra : color.textoMedio} />
+        <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>
+          {fallo ? 'El borrador automático falló' : sinGrabacion ? 'Esta sesión no se grabó' : 'Preparando el borrador'}
+        </Text>
+        {!fallo && !sinGrabacion && <Text style={[texto.apoyo, { color: atascado ? color.tierra : color.textoMedio }]}>{minutos < 1 ? 'hace un momento' : `${minutos} min en este paso`}</Text>}
+      </View>
+
+      {sinGrabacion ? (
+        <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
+          {etapa === 'sin_consentimiento'
+            ? 'Faltó una de las dos autorizaciones de grabación, así que no hay audio ni borrador automático.'
+            : `Ambos autorizaron, pero la grabación no llegó a iniciarse${transcripcion?.detalle ? ` (${transcripcion.detalle})` : ''}.`}
+          {' '}Puedes redactar la nota a mano con la misma estructura.
+        </Text>
+      ) : (
+        <View style={{ gap: 8 }}>
+          {PASOS.map((p, i) => {
+            const hecho = indice > ORDEN.indexOf(p.clave) || etapa === 'informe_listo'
+            const activo = !hecho && ORDEN.indexOf(p.clave) === indice
+            const roto = fallo && i === PASOS.findIndex((x) => ORDEN.indexOf(x.clave) >= indiceFallo(transcripcion))
+            return (
+              <View key={p.clave} style={[e.fila, { gap: 10, alignItems: 'flex-start' }]}>
+                <View style={[e.paso, hecho && e.pasoHecho, activo && e.pasoActivo, roto && e.pasoRoto]}>
+                  {hecho ? <IconoCheck tamano={9} color="#FFFFFF" /> : <Text style={[texto.dato, { color: roto ? '#FFFFFF' : activo ? color.primarioProfundo : color.textoSuave, fontSize: 10 }]}>{i + 1}</Text>}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[texto.cuerpo, { color: hecho || activo || roto ? color.texto : color.textoSuave }]}>{p.titulo}</Text>
+                  {activo && !fallo && <Text style={[texto.apoyo, { color: color.textoMedio }]}>{p.en}</Text>}
+                  {roto && !!transcripcion?.detalle && <Text style={[texto.apoyo, { color: color.tierra }]}>{transcripcion.detalle}</Text>}
+                </View>
+              </View>
+            )
+          })}
+        </View>
+      )}
+
+      {(fallo || atascado) && (
+        <Text style={[texto.apoyo, { color: color.textoMedio }]}>
+          {fallo ? 'Puedes reintentar el paso que falló o escribir la nota a mano.' : `Lleva más de ${ATASCO} minutos en este paso: algo puede haberse perdido por el camino. Reintentar no duplica nada.`}
+        </Text>
+      )}
+      <View style={{ gap: 8 }}>
+        {(fallo || atascado) && <Boton onPress={onReintentar} cargando={reintentando}>Reintentar</Boton>}
+        <Boton variante="secundario" onPress={onManual} cargando={ocupado}>Redactar nota manual</Boton>
+      </View>
+      {!fallo && !sinGrabacion && !atascado && <Text style={[texto.apoyo, { color: color.textoSuave }]}>Esta pantalla se actualiza sola cada 10 segundos.</Text>}
+    </Tarjeta>
+  )
+}
+
+/** Para pintar en rojo el paso donde se cayó: el último que llegó a empezar. */
+function indiceFallo(t: Transcripcion | null): number {
+  const ORDEN = ['grabando', 'audio_subido', 'transcribiendo', 'lista', 'redactando']
+  const d = (t?.detalle ?? '').toLowerCase()
+  if (d.includes('borrador') || d.includes('modelo')) return ORDEN.indexOf('redactando')
+  if (d.includes('deepgram') || d.includes('texto')) return ORDEN.indexOf('transcribiendo')
+  if (d.includes('audio') || d.includes('firmar')) return ORDEN.indexOf('audio_subido')
+  return 0
+}
+
 /** Cada línea del texto es un punto. Las citas van como bloque con la
  *  frase literal y, debajo, el contexto en gris («texto — contexto»). */
 function Puntos({ texto: t, citas }: { texto: string; citas: boolean }) {
@@ -315,6 +411,10 @@ const e = StyleSheet.create({
   confidencial: { flexDirection: 'row', gap: espacio.sm, alignItems: 'flex-start', backgroundColor: color.arena, borderRadius: radio.xl, padding: espacio.md },
   numero: { width: 26, height: 26, borderRadius: 13, backgroundColor: color.superficieSuave, alignItems: 'center', justifyContent: 'center' },
   vineta: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.primario, marginTop: 9 },
+  paso: { width: 22, height: 22, borderRadius: 11, backgroundColor: color.superficieSuave, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  pasoHecho: { backgroundColor: color.primario },
+  pasoActivo: { backgroundColor: color.primarioSuave, borderWidth: 1.5, borderColor: color.primario },
+  pasoRoto: { backgroundColor: color.tierra },
   cita: { borderLeftWidth: 3, borderLeftColor: color.primarioClaro, paddingLeft: 12, paddingVertical: 2 },
   editar: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radio.md, backgroundColor: color.superficieSuave },
   entrada: {
