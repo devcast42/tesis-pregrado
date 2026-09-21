@@ -47,7 +47,7 @@ Conectar por videollamada a un participante detectado con un psicólogo, y entre
 |---|---|
 | RF-004-08 | Se genera un **borrador** de informe a partir de la transcripción |
 | RF-004-09 | El borrador se presenta al psicólogo en estado `sin_revisar` |
-| RF-004-10 | El psicólogo puede editar cualquier sección antes de aprobarlo |
+| RF-004-10 | El psicólogo puede editar cualquier sección antes de aprobarlo. Lo que edita se **guarda mientras escribe** en una copia de trabajo (`contenido_en_revision`), separada del borrador y de la versión aprobada: puede salir y retomar la nota más tarde. Un informe aprobado ya no se modifica |
 | RF-004-11 | Solo un informe aprobado por el psicólogo pasa a estado `aprobado` |
 | RF-004-12 | Si la sesión no se grabó, el psicólogo puede abrir un **informe manual** con la misma estructura (motivo, lo que se conversó, observaciones clínicas, acuerdos y seguimiento): borrador vacío, `modelo = 'manual'`, lo escrito va a `contenido_aprobado` al aprobar |
 | RF-004-12 | Se conserva tanto el borrador original como la versión aprobada |
@@ -179,7 +179,8 @@ Si el comité de ética exige que las transcripciones **no se retengan** en el p
 | Pantallas rev. 2 (Figma «Antes de la Videollamada», «En la Videollamada», «Informe Clínico») | `app/psicologo/consulta/[id].tsx`, `modules/consulta/SalaLiveKit.tsx` (nativo), `app/psicologo/informe/[id].tsx` |
 | RN-004-06 | `20260829090400_consulta.sql` — `sesiones_consulta`, doble consentimiento |
 | RN-004-09 | `20260829090400_consulta.sql` — `borrar_datos_vencidos()` |
-| RF-004-01, RF-004-04, RF-004-08, RF-004-10 | *pendiente* — Edge Functions y `modules/consulta` |
+| RF-004-10 | `20260921120000_informe_en_revision.sql` (`contenido_en_revision`, `revisado_en`, `proteger_borrador` ampliado), `modules/psicologo/datos.ts` (`guardarRevision`), `app/psicologo/informe/[id].tsx` (guardado automático 1,5 s tras la última tecla, al pulsar «Listo» y al salir) |
+| RF-004-01, RF-004-04, RF-004-08 | `supabase/functions/token-livekit`, `_compartido/grabacion.ts`, `_compartido/deepgram.ts`, `redactar-informe`, `modules/consulta` |
 
 Verificación de invariantes: `supabase/tests/consulta_invariantes.sql`.
 

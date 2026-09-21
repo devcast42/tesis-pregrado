@@ -26,6 +26,9 @@ export type Informe = {
   sesion_id: string
   contenido_borrador: Record<string, unknown>
   contenido_aprobado: Record<string, unknown> | null
+  /** Copia de trabajo: lo que el psicólogo va editando antes de aprobar. */
+  contenido_en_revision: Record<string, unknown> | null
+  revisado_en: string | null
   estado: 'sin_revisar' | 'aprobado' | 'descartado'
   modelo: string
   generado_en: string
@@ -152,6 +155,18 @@ export async function obtenerInforme(sesionId: string): Promise<Informe | null> 
     .maybeSingle()
 
   return (data as Informe | null) ?? null
+}
+
+/** RF-004-10 — las correcciones se guardan mientras se escriben, en una
+ *  copia de trabajo aparte. Ni el borrador (inmutable) ni la versión aprobada
+ *  (que nace al aprobar) se tocan. */
+export async function guardarRevision(informeId: string, contenido: Record<string, unknown>) {
+  const { error } = await supabase
+    .from('informes')
+    .update({ contenido_en_revision: contenido, revisado_en: new Date().toISOString() })
+    .eq('id', informeId)
+    .eq('estado', 'sin_revisar')
+  if (error) throw error
 }
 
 /** RF-004-11 y RN-004-02 — solo el psicólogo aprueba, y al aprobar queda

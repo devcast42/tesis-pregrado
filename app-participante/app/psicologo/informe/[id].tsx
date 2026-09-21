@@ -5,14 +5,14 @@
  *  toca (RN-004-04). Si no hubo grabación, la misma estructura vacía para
  *  redacción manual (RF-004-12). El participante nunca lo ve (RN-004-03). */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { obtenerSesion, reintentarCircuito } from '../../../modules/consulta/datos'
 import {
-  abrirInformeManual, aprobarInforme, obtenerCaso, obtenerInforme, obtenerTranscripcion, psicologoActual, type Caso, type Informe, type Transcripcion,
+  abrirInformeManual, aprobarInforme, guardarRevision, obtenerCaso, obtenerInforme, obtenerTranscripcion, psicologoActual, type Caso, type Informe, type Transcripcion,
 } from '../../../modules/psicologo/datos'
-import { BarraUmbral, Pastilla, Tarjeta } from '../../../modules/psicologo/piezas'
+import { BarraUmbral, Pastilla, Tarjeta, haceCuanto } from '../../../modules/psicologo/piezas'
 import { Boton, Cargando } from '../../../modules/nucleo/ui'
 import { color, espacio, fuente, radio, texto } from '../../../modules/nucleo/diseno'
 import { IconoCalendario, IconoCheck, IconoEscudo, IconoGrafica, IconoNota, IconoReloj, IconoVideo } from '../../../modules/nucleo/iconos'
@@ -45,6 +45,11 @@ export default function RevisionInforme() {
   const [editando, setEditando] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [cargando, setCargando] = useState(true)
+  // Guardado de la copia de trabajo: cada edición se anota en la base ~1,5 s
+  // después de la última tecla, y siempre al pulsar «Listo» o salir.
+  const [guardado, setGuardado] = useState<{ estado: 'limpio' | 'pendiente' | 'guardando' | 'guardado' | 'error'; en?: string }>({ estado: 'limpio' })
+  const pendiente = useRef<{ informeId: string; contenido: Record<string, string> } | null>(null)
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const cargar = useCallback(async () => {
     const [i, s, tr] = await Promise.all([obtenerInforme(id), obtenerSesion(id), obtenerTranscripcion(id).catch(() => null)])
@@ -52,19 +57,53 @@ export default function RevisionInforme() {
     if (s?.derivacion_id) setCaso(await obtenerCaso(s.derivacion_id).catch(() => null))
     setInforme(i)
     if (i) {
-      const base = (i.contenido_aprobado ?? i.contenido_borrador) as Record<string, unknown>
+      // Aprobado > copia de trabajo guardada > borrador del modelo. Si hay una
+      // edición sin guardar en pantalla, no se pisa con lo que llegue.
+      if (pendiente.current?.informeId === i.id) { setCargando(false); return }
+      const borrador = i.contenido_borrador as Record<string, unknown>
+      const base = (i.contenido_aprobado ?? i.contenido_en_revision ?? borrador) as Record<string, unknown>
       // La nota del borrador no es una sección del informe: es el modelo avisando
       // qué tan completa venía la transcripción.
-      setNota(typeof base.nota_del_borrador === 'string' ? base.nota_del_borrador : '')
+      setNota(typeof borrador.nota_del_borrador === 'string' ? borrador.nota_del_borrador : '')
       const claves = (Object.keys(base).length > 0 ? Object.keys(base) : SECCIONES_MANUAL).filter((k) => k !== 'nota_del_borrador')
       const t: Record<string, string> = {}
       for (const clave of claves) t[clave] = aTexto(base[clave])
       setSecciones(t)
+      if (i.revisado_en && i.estado !== 'aprobado') setGuardado({ estado: 'guardado', en: i.revisado_en })
     }
     setCargando(false)
   }, [id])
 
-  useFocusEffect(useCallback(() => { cargar() }, [cargar]))
+  const guardarAhora = useCallback(async () => {
+    if (temporizador.current) { clearTimeout(temporizador.current); temporizador.current = null }
+    const p = pendiente.current
+    if (!p) return
+    setGuardado({ estado: 'guardando' })
+    try {
+      await guardarRevision(p.informeId, aContenido(p.contenido))
+      // Si mientras se guardaba llegó otra tecla, queda pendiente para el siguiente ciclo.
+      if (pendiente.current === p) pendiente.current = null
+      setGuardado({ estado: 'guardado', en: new Date().toISOString() })
+    } catch {
+      setGuardado({ estado: 'error' })
+    }
+  }, [])
+
+  function editar(clave: string, valor: string) {
+    if (!informe) return
+    const siguiente = { ...secciones, [clave]: valor }
+    setSecciones(siguiente)
+    pendiente.current = { informeId: informe.id, contenido: siguiente }
+    setGuardado({ estado: 'pendiente' })
+    if (temporizador.current) clearTimeout(temporizador.current)
+    temporizador.current = setTimeout(guardarAhora, 1500)
+  }
+
+  // Al salir de la pantalla se guarda lo que quede pendiente.
+  useFocusEffect(useCallback(() => {
+    cargar()
+    return () => { if (pendiente.current) guardarAhora() }
+  }, [cargar, guardarAhora]))
 
   // El borrador llega ~30 s después de colgar (subida → transcripción →
   // redacción). Mientras no exista, se vuelve a consultar cada 10 s para que
@@ -109,11 +148,10 @@ export default function RevisionInforme() {
     try {
       const yo = await psicologoActual()
       if (!yo) throw new Error('sin psicólogo')
-      const contenido: Record<string, unknown> = {}
-      for (const [clave, t] of Object.entries(secciones)) {
-        contenido[clave] = t.split('\n').map((l) => l.trim()).filter(Boolean)
-      }
-      await aprobarInforme(informe.id, contenido, yo.id)
+      // Lo que se aprueba es exactamente lo que está en pantalla; la copia de
+      // trabajo queda guardada tal cual para que coincidan.
+      await guardarAhora()
+      await aprobarInforme(informe.id, aContenido(secciones), yo.id)
       router.back()
     } catch {
       Alert.alert('No se pudo aprobar', 'Inténtalo de nuevo.')
@@ -229,7 +267,11 @@ export default function RevisionInforme() {
               <View style={e.numero}><Text style={[texto.dato, { color: color.textoMedio }]}>{i + 1}</Text></View>
               <Text style={[texto.seccion, { color: color.texto, flex: 1 }]}>{ETIQUETAS[clave] ?? clave}</Text>
               {!aprobado && (
-                <Pressable onPress={() => setEditando(editando === clave ? null : clave)} style={e.editar} accessibilityRole="button">
+                <Pressable
+                  onPress={() => { if (editando === clave) guardarAhora(); setEditando(editando === clave ? null : clave) }}
+                  style={e.editar}
+                  accessibilityRole="button"
+                >
                   <IconoNota tamano={14} color={color.primarioProfundo} />
                   <Text style={[texto.cuerpoFuerte, { color: color.primarioProfundo }]}>{editando === clave ? 'Listo' : 'Editar'}</Text>
                 </Pressable>
@@ -239,7 +281,8 @@ export default function RevisionInforme() {
               <TextInput
                 style={e.entrada}
                 value={t}
-                onChangeText={(v) => setSecciones((s) => ({ ...s, [clave]: v }))}
+                onChangeText={(v) => editar(clave, v)}
+                onBlur={guardarAhora}
                 multiline
                 autoFocus
                 placeholder="Una línea por punto"
@@ -250,6 +293,17 @@ export default function RevisionInforme() {
             )}
           </Tarjeta>
         ))
+      )}
+
+      {informe && !aprobado && guardado.estado !== 'limpio' && (
+        <View style={[e.fila, { paddingHorizontal: 4, gap: 6 }]}>
+          {guardado.estado === 'guardado' && <IconoCheck tamano={12} color={color.exito} />}
+          <Text style={[texto.apoyo, { color: guardado.estado === 'error' ? color.tierra : color.textoMedio }]}>
+            {guardado.estado === 'guardando' || guardado.estado === 'pendiente' ? 'Guardando tus notas…'
+              : guardado.estado === 'error' ? 'No se pudieron guardar las notas. Se reintentará al seguir escribiendo.'
+              : `Notas guardadas ${guardado.en ? cuandoGuardado(guardado.en) : ''}. Puedes salir y retomarlas después.`}
+          </Text>
+        </View>
       )}
 
       {informe && !aprobado && (
@@ -392,6 +446,21 @@ function Puntos({ texto: t, citas }: { texto: string; citas: boolean }) {
       })}
     </View>
   )
+}
+
+function cuandoGuardado(iso: string): string {
+  const d = new Date(iso)
+  if (d.toDateString() === new Date().toDateString()) return `a las ${d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`
+  return haceCuanto(iso)
+}
+
+/** Texto de una sección → lista de puntos (una línea por punto). */
+function aContenido(secciones: Record<string, string>): Record<string, unknown> {
+  const contenido: Record<string, unknown> = {}
+  for (const [clave, t] of Object.entries(secciones)) {
+    contenido[clave] = t.split('\n').map((l) => l.trim()).filter(Boolean)
+  }
+  return contenido
 }
 
 function aTexto(valor: unknown): string {
