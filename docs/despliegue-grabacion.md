@@ -92,10 +92,10 @@ Dos funciones solo para el investigador (llamarlas con su sesión):
   de una sesión cuyo audio ya está en el bucket (si el webhook de LiveKit no
   llegó o Deepgram falló).
 
-Prueba realizada el 20 set 2026 (sesión `99b4a9c2…`): grabación → audio en el
-bucket → transcripción → borrador de informe, todo correcto. El webhook de
-LiveKit no había sido configurado, así que la transcripción se encoló con
-`retranscribir`.
+Pruebas del 20 set 2026: la primera sesión (`99b4a9c2…`) necesitó
+`retranscribir` porque el webhook de LiveKit aún no estaba configurado; la
+segunda (`3250af9f…`) salió completa y automática: audio en el bucket,
+transcripción y borrador de informe 30 s después de colgar.
 
 ## Paso 6 · Prueba de punta a punta (PB-24 / PB-25)
 
