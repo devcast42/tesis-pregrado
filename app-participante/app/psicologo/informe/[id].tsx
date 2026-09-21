@@ -5,7 +5,7 @@
  *  toca (RN-004-04). Si no hubo grabación, la misma estructura vacía para
  *  redacción manual (RF-004-12). El participante nunca lo ve (RN-004-03). */
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { obtenerSesion } from '../../../modules/consulta/datos'
@@ -57,6 +57,15 @@ export default function RevisionInforme() {
   }, [id])
 
   useFocusEffect(useCallback(() => { cargar() }, [cargar]))
+
+  // El borrador llega ~30 s después de colgar (subida → transcripción →
+  // redacción). Mientras no exista, se vuelve a consultar cada 10 s para que
+  // el psicólogo no tenga que salir y volver a entrar.
+  useEffect(() => {
+    if (informe || cargando) return
+    const t = setInterval(() => { cargar() }, 10_000)
+    return () => clearInterval(t)
+  }, [informe, cargando, cargar])
 
   async function empezarManual() {
     setOcupado(true)
@@ -171,8 +180,9 @@ export default function RevisionInforme() {
             <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Todavía no hay informe para esta sesión</Text>
           </View>
           <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
-            Si la sesión se grabó, el borrador aparecerá cuando la transcripción esté lista. Si no hubo
-            grabación, puedes redactar la nota a mano con la misma estructura.
+            {sesion?.consentimiento_participante && sesion?.consentimiento_psicologo
+              ? 'La sesión se grabó: el borrador aparece aquí solo, normalmente en menos de un minuto tras colgar. Esta pantalla se actualiza sola.'
+              : 'No hubo grabación (faltó una autorización): puedes redactar la nota a mano con la misma estructura.'}
           </Text>
           <Boton variante="secundario" onPress={empezarManual} cargando={ocupado}>Redactar nota manual</Boton>
         </Tarjeta>
