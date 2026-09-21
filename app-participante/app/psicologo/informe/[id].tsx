@@ -10,7 +10,7 @@ import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, T
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { obtenerSesion } from '../../../modules/consulta/datos'
 import {
-  abrirInformeManual, aprobarInforme, obtenerCaso, obtenerInforme, psicologoActual, type Caso, type Informe,
+  abrirInformeManual, aprobarInforme, obtenerCaso, obtenerInforme, obtenerTranscripcion, psicologoActual, type Caso, type Informe,
 } from '../../../modules/psicologo/datos'
 import { BarraUmbral, Pastilla, Tarjeta } from '../../../modules/psicologo/piezas'
 import { Boton, Cargando } from '../../../modules/nucleo/ui'
@@ -36,19 +36,25 @@ export default function RevisionInforme() {
   const [informe, setInforme] = useState<Informe | null>(null)
   const [caso, setCaso] = useState<Caso | null>(null)
   const [sesion, setSesion] = useState<any>(null)
+  const [transcripcion, setTranscripcion] = useState<{ estado: string; texto: string | null } | null>(null)
+  const [verTranscripcion, setVerTranscripcion] = useState(false)
+  const [nota, setNota] = useState<string>('')
   const [secciones, setSecciones] = useState<Record<string, string>>({})
   const [editando, setEditando] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [cargando, setCargando] = useState(true)
 
   const cargar = useCallback(async () => {
-    const [i, s] = await Promise.all([obtenerInforme(id), obtenerSesion(id)])
-    setSesion(s)
+    const [i, s, tr] = await Promise.all([obtenerInforme(id), obtenerSesion(id), obtenerTranscripcion(id).catch(() => null)])
+    setSesion(s); setTranscripcion(tr)
     if (s?.derivacion_id) setCaso(await obtenerCaso(s.derivacion_id).catch(() => null))
     setInforme(i)
     if (i) {
       const base = (i.contenido_aprobado ?? i.contenido_borrador) as Record<string, unknown>
-      const claves = Object.keys(base).length > 0 ? Object.keys(base) : SECCIONES_MANUAL
+      // La nota del borrador no es una sección del informe: es el modelo avisando
+      // qué tan completa venía la transcripción.
+      setNota(typeof base.nota_del_borrador === 'string' ? base.nota_del_borrador : '')
+      const claves = (Object.keys(base).length > 0 ? Object.keys(base) : SECCIONES_MANUAL).filter((k) => k !== 'nota_del_borrador')
       const t: Record<string, string> = {}
       for (const clave of claves) t[clave] = aTexto(base[clave])
       setSecciones(t)
@@ -161,6 +167,28 @@ export default function RevisionInforme() {
           <Text style={[texto.cuerpo, { color: color.texto }]}>Modalidad: Videollamada de apoyo</Text>
         </View>
       </Tarjeta>
+
+      {!!nota && !aprobado && (
+        <Tarjeta suave>
+          <View style={[e.fila, { gap: 8 }]}>
+            <IconoNota tamano={16} color={color.textoArena} />
+            <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Nota del borrador</Text>
+          </View>
+          <Text style={[texto.cuerpo, { color: color.textoMedio }]}>{nota}</Text>
+        </Tarjeta>
+      )}
+
+      {transcripcion?.texto && (
+        <Tarjeta suave>
+          <Pressable onPress={() => setVerTranscripcion((v) => !v)} style={[e.fila, { gap: 8 }]}>
+            <IconoNota tamano={16} color={color.textoMedio} />
+            <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Transcripción de la sesión</Text>
+            <Text style={[texto.apoyo, { color: color.primarioProfundo }]}>{verTranscripcion ? 'Ocultar' : 'Ver'}</Text>
+          </Pressable>
+          {verTranscripcion && <Text style={[texto.cuerpo, { color: color.textoMedio }]} selectable>{transcripcion.texto.trim()}</Text>}
+          <Text style={[texto.apoyo, { color: color.textoSuave }]}>Solo tú la ves. Se borra junto con el audio al vencer el plazo de retención.</Text>
+        </Tarjeta>
+      )}
 
       {(typeof agot === 'number' || typeof desv === 'number') && (
         <Tarjeta suave>

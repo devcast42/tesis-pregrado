@@ -133,6 +133,16 @@ export async function consentirGrabacion(sesionId: string, quien: 'psicologo' | 
   if (error) throw error
 }
 
+/** Transcripción de la sesión (solo el psicólogo de la derivación, RN-004-08). */
+export async function obtenerTranscripcion(sesionId: string): Promise<{ estado: string; texto: string | null; proveedor: string | null } | null> {
+  const { data } = await supabase
+    .from('transcripciones')
+    .select('estado, texto, proveedor')
+    .eq('sesion_id', sesionId)
+    .maybeSingle()
+  return (data as { estado: string; texto: string | null; proveedor: string | null } | null) ?? null
+}
+
 export async function obtenerInforme(sesionId: string): Promise<Informe | null> {
   const { data } = await supabase
     .from('informes')
