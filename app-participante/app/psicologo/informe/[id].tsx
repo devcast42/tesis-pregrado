@@ -238,7 +238,7 @@ export default function RevisionInforme() {
                 placeholderTextColor={color.textoSuave}
               />
             ) : (
-              <Text style={[texto.cuerpo, { color: t ? color.texto : color.textoSuave }]}>{t || 'Sin contenido. Toca «Editar» para escribir.'}</Text>
+              <Puntos texto={t} citas={clave === 'citas_textuales_relevantes'} />
             )}
           </Tarjeta>
         ))
@@ -269,6 +269,35 @@ function fechaHora(iso: string): string {
   return `${d.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })}, ${d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`
 }
 
+/** Cada línea del texto es un punto. Las citas van como bloque con la
+ *  frase literal y, debajo, el contexto en gris («texto — contexto»). */
+function Puntos({ texto: t, citas }: { texto: string; citas: boolean }) {
+  const lineas = t.split('\n').map((l) => l.trim()).filter(Boolean)
+  if (lineas.length === 0) return <Text style={[texto.cuerpo, { color: color.textoSuave }]}>Sin contenido. Toca «Editar» para escribir.</Text>
+  return (
+    <View style={{ gap: citas ? 10 : 6 }}>
+      {lineas.map((linea, i) => {
+        if (citas) {
+          const [frase, ...resto] = linea.split(' — ')
+          const contexto = resto.join(' — ')
+          return (
+            <View key={i} style={e.cita}>
+              <Text style={[texto.cuerpo, { color: color.texto, fontStyle: 'italic' }]}>«{frase.replace(/^[«"“]|[»"”]$/g, '')}»</Text>
+              {!!contexto && <Text style={[texto.apoyo, { color: color.textoMedio, marginTop: 2 }]}>{contexto}</Text>}
+            </View>
+          )
+        }
+        return (
+          <View key={i} style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={e.vineta} />
+            <Text style={[texto.cuerpo, { color: color.texto, flex: 1 }]}>{linea}</Text>
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
 function aTexto(valor: unknown): string {
   if (valor == null) return ''
   if (Array.isArray(valor)) {
@@ -285,6 +314,8 @@ const e = StyleSheet.create({
   separador: { paddingBottom: espacio.sm, borderBottomWidth: 1, borderBottomColor: color.borde },
   confidencial: { flexDirection: 'row', gap: espacio.sm, alignItems: 'flex-start', backgroundColor: color.arena, borderRadius: radio.xl, padding: espacio.md },
   numero: { width: 26, height: 26, borderRadius: 13, backgroundColor: color.superficieSuave, alignItems: 'center', justifyContent: 'center' },
+  vineta: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.primario, marginTop: 9 },
+  cita: { borderLeftWidth: 3, borderLeftColor: color.primarioClaro, paddingLeft: 12, paddingVertical: 2 },
   editar: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radio.md, backgroundColor: color.superficieSuave },
   entrada: {
     minHeight: 120, padding: espacio.sm, borderRadius: radio.md, borderWidth: 1, borderColor: color.borde,

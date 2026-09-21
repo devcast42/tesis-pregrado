@@ -133,6 +133,12 @@ function Escena({ onSalir, etiqueta, grabando }: Pick<PropsLlamada, 'onSalir' | 
             <View style={[e.punto, { backgroundColor: enCurso ? color.primarioClaro : color.textoSuave }]} />
             <Text style={e.estado}>{enCurso ? 'EN CURSO' : 'ESPERANDO'} · {transcurrido}</Text>
           </View>
+          {grabando && (
+            <View style={e.grabando}>
+              <View style={[e.puntoChico, { backgroundColor: '#E8A87C' }]} />
+              <Text style={e.grabandoTexto}>Grabando audio · confidencial</Text>
+            </View>
+          )}
         </View>
         <Pressable onPress={() => setIntercambiado((v) => !v)} style={e.propio} accessibilityRole="button" accessibilityLabel="Intercambiar videos">
           {chica ? (
@@ -145,14 +151,6 @@ function Escena({ onSalir, etiqueta, grabando }: Pick<PropsLlamada, 'onSalir' | 
           <Text style={e.propioEtiqueta}>{grandeEsPropia ? (etiqueta ?? 'Psicólogo') : 'Tú'}</Text>
         </Pressable>
       </View>
-
-      {grabando && (
-        <View style={e.grabando}>
-          <View style={[e.punto, { backgroundColor: '#E8A87C' }]} />
-          <IconoMicrofono tamano={14} color="#FFFFFF" />
-          <Text style={e.grabandoTexto}>Transcripción clínica confidencial activa</Text>
-        </View>
-      )}
 
       {/* Controles */}
       <View style={[e.controles, { bottom: 64 + insets.bottom }]}>
@@ -176,7 +174,7 @@ function Escena({ onSalir, etiqueta, grabando }: Pick<PropsLlamada, 'onSalir' | 
         </Pressable>
       </View>
       <View style={[e.fila, e.pie, { bottom: 24 + insets.bottom }]}>
-        <IconoCandado tamano={11} color="rgba(255,255,255,0.55)" />
+        <IconoCandado tamano={9} color="rgba(255,255,255,0.45)" />
         <Text style={e.pieTexto}>CANAL CIFRADO DE EXTREMO A EXTREMO</Text>
       </View>
     </View>
@@ -211,11 +209,10 @@ const e = StyleSheet.create({
     position: 'absolute', bottom: 8, left: 8, color: '#FFFFFF', fontFamily: fuente.media, fontSize: 11,
     backgroundColor: 'rgba(0,0,0,0.45)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999,
   },
-  grabando: {
-    position: 'absolute', top: 172, left: 20, flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999,
-  },
-  grabandoTexto: { color: '#FFFFFF', fontFamily: fuente.media, fontSize: 13 },
+  // Pequeño y pegado al estado: informa sin taparle la cara a nadie.
+  grabando: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.45)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, marginTop: 2 },
+  grabandoTexto: { color: 'rgba(255,255,255,0.85)', fontFamily: fuente.media, fontSize: 10.5, letterSpacing: 0.3 },
+  puntoChico: { width: 6, height: 6, borderRadius: 3 },
   controles: { position: 'absolute', bottom: 64, left: 20, right: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14 },
   control: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
   // Apagado = rojo lleno con el icono tachado: es el único rojo de la app además de los errores, y aquí significa lo mismo: «algo no está funcionando».
@@ -223,5 +220,5 @@ const e = StyleSheet.create({
   finalizar: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 60, paddingHorizontal: 26, borderRadius: 30, backgroundColor: '#A8663D' },
   finalizarTexto: { color: '#FFFFFF', fontFamily: fuente.fuerte, fontSize: 17 },
   pie: { position: 'absolute', bottom: 24, left: 0, right: 0, justifyContent: 'center' },
-  pieTexto: { color: 'rgba(255,255,255,0.55)', fontFamily: fuente.media, fontSize: 11, letterSpacing: 1.2 },
+  pieTexto: { color: 'rgba(255,255,255,0.45)', fontFamily: fuente.media, fontSize: 9, letterSpacing: 1 },
 })
