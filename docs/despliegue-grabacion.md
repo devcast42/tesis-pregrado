@@ -88,6 +88,14 @@ Dos funciones solo para el investigador (llamarlas con su sesión):
   Un `NoSuchBucket` significa que `S3_BUCKET` no es `audio-sesiones`.
 - `egress-estado` `{ "sala": "consulta-…" }` — lo que LiveKit sabe de la
   grabación de esa sala: estado, error y archivo subido.
+- `retranscribir` `{ "sesion_id": "…" }` — vuelve a encolar la transcripción
+  de una sesión cuyo audio ya está en el bucket (si el webhook de LiveKit no
+  llegó o Deepgram falló).
+
+Prueba realizada el 20 set 2026 (sesión `99b4a9c2…`): grabación → audio en el
+bucket → transcripción → borrador de informe, todo correcto. El webhook de
+LiveKit no había sido configurado, así que la transcripción se encoló con
+`retranscribir`.
 
 ## Paso 6 · Prueba de punta a punta (PB-24 / PB-25)
 
