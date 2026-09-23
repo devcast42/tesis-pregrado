@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Estado** | **Revisión 2 — parcialmente implementada.** Preentrenamiento (§5), tabla de versiones, cálculo en SQL y registro de predicciones (§8) están hechos y en producción con la versión `preentrenamiento-v1`. El entrenamiento con datos propios (§5.2 pasos 3–4, §7) espera los datos. Pendiente de la conformidad del asesor a §3. |
-| **Módulo** | `modelo/` (nuevo), `supabase/migrations` (vista de semanas), `supabase/functions/evaluar-olbi` (integración) |
+| **Estado** | **Revisión 2 — implementada salvo los datos.** Preentrenamiento (§5), tabla de versiones, cálculo en SQL y registro de predicciones (§8) están en producción con `preentrenamiento-v1`. La vista `semanas_modelo` (§8), el entrenamiento con datos propios (§5.2 pasos 3–4) y la evaluación (§7) están escritos y probados de punta a punta; los siete criterios de aceptación automatizables (§10) pasan. **Lo único que falta es la muestra**: hoy hay 3 personas con datos reales y ninguna aporta una fila entrenable. Pendiente de la conformidad del asesor a §3. |
+| **Módulo** | `modelo/` (`preentrenar.py`, `entrenar.py`, `pruebas.py`), `supabase/migrations` (`semanas_modelo`), `supabase/functions/evaluar-olbi` (integración) |
 | **Depende de** | ESP-002 rev. 2 (calendario semanal), ESP-003 (umbral OLBI), ESP-007 (adherencia) |
 | **Diseño** | [docs/diseno-semanal-con-preentrenamiento.md](../docs/diseno-semanal-con-preentrenamiento.md) |
 
@@ -216,8 +216,11 @@ Prevalencia esperada de semanas sobre el umbral: 10–25 %. `class_weight='balan
 | §5.1, §5.4 | `modelo/exploracion/` (README, `descargar.py`, `explorar.py`) |
 | §5.2 pasos 1–2 | `modelo/preentrenar.py` → `modelo/versiones/preentrenamiento-v1.json` y `supabase/migrations/20260918130000_modelo_version_preentrenamiento.sql` (generada) |
 | §4.1 en SQL, §8 (`modelo_versiones`, predicción, evento `prediccion_modelo`) | `supabase/migrations/20260918120000_modelo_versiones.sql` (`rasgos_semana`), `20260918150000_modelo_pronostico.sql` (`probabilidad_semana`, `registrar_prediccion` con tarea, `ultima_prediccion_semana`) |
-| CA-005-05, CA-005-06 | Verificado a mano el 2026-09-18: mismos rasgos y misma probabilidad (0.597) en SQL y en Python para el mismo participante-semana. Falta la prueba automatizada |
-| §5.2 pasos 3–4, §7, vista `semanas_modelo` para entrenamiento | **Pendiente** hasta tener datos propios |
+| CA-005-05, CA-005-06 | Automatizadas en `modelo/pruebas.py`: comparan la vista, `rasgos_semana` y `rasgos()` de Python en cada participante-semana, y la sigmoide de Postgres contra la de Python en cada versión cargada |
+| §8, vista `semanas_modelo` | `supabase/migrations/20260923100000_semanas_modelo.sql` — una fila por (participante, semana), rasgos de §4, ambas etiquetas y censura de §3.5 |
+| §5.2 pasos 3–4, §4.3 (A, B, A₀, B₀), §7 (GroupKFold, métricas, líneas base), §12 decisión 5 (λ hacia w₀ elegida en validación) | `modelo/entrenar.py`. Se niega a publicar una versión si el entrenamiento incluye la semilla de demostración o si hay menos de 20 personas |
+| CA-005-01 … CA-005-06, CA-005-08 | `modelo/pruebas.py` — los siete pasan (2026-09-23). CA-005-07 se revisa sobre la salida de `entrenar.py` |
+| §7 con datos propios | **Pendiente de la muestra.** El ensayo con la semilla de demostración (`modelo/resultados/ensayo-con-semilla-demo.json`) solo prueba la mecánica: sus números son de datos sintéticos y no son resultados del estudio |
 
 ## 12. Decisiones abiertas
 

@@ -1,0 +1,10 @@
+{
+  "nowcast": {
+    "tarea": "nowcast",
+    "error": "sin filas con etiqueta y señal diaria"
+  },
+  "pronostico": {
+    "tarea": "pronostico",
+    "error": "sin filas con etiqueta y señal diaria"
+  }
+}
