@@ -64,6 +64,9 @@ Definir los tres roles del sistema, qué puede ver y hacer cada uno, y el moment
 | RF-006-10 | Exporta el dataset anonimizado para análisis en Jupyter |
 | RF-006-11 | Gestiona psicólogos y derivaciones |
 | RF-006-12 | Accede al mapeo identidad ↔ código solo mediante una acción explícita y registrada |
+| RF-006-13 | La lista y la ficha del psicólogo salen de una sola vista (`casos_psicologo`): código, empresa, puntajes y umbrales de la detección, última sesión, estado del informe y estado del caso (`sesion_pendiente` / `sala_lista` / `informe_por_aprobar` / `cerrado`) |
+| RF-006-14 | La ficha muestra rol, modalidad y antigüedad del formulario `estable` (`perfil_caso`), como contexto laboral no clínico |
+| RF-006-15 | La ficha muestra la trayectoria de las últimas seis aplicaciones del OLBI y el pronóstico del modelo para la próxima semana con su confianza y una explicación metodológica plegada (ESP-005) |
 
 ## 6. Reglas de negocio
 
@@ -75,7 +78,7 @@ Definir los tres roles del sistema, qué puede ver y hacer cada uno, y el moment
 | RN-006-04 | El investigador ve datos anonimizados por defecto | Reduce la exposición innecesaria en el trabajo diario de análisis, que es la mayor parte del uso |
 | RN-006-05 | Ningún rol puede insertar eventos `deteccion` desde el cliente | Solo la `service_role` vía ESP-003. Una detección es un dato de investigación, no una opinión |
 | RN-006-06 | El rol vive en una tabla del servidor, nunca en metadatos editables del token | Un rol autodeclarado por el cliente no es un control de acceso |
-| RN-006-07 | Las respuestas de instrumentos distintos al OLBI no son visibles para el psicólogo | Horas de sueño y carga percibida son insumo del modelo, no información clínica que el participante consintió compartir con un terapeuta |
+| RN-006-07 | Las respuestas de instrumentos distintos al OLBI no son visibles para el psicólogo, **con una única excepción acotada**: rol, modalidad y antigüedad del formulario `estable`, expuestas por `perfil_caso` | Horas de sueño y carga percibida son insumo del modelo, no información clínica que el participante consintió compartir con un terapeuta. Rol y modalidad son contexto laboral que el psicólogo necesita para situar a la persona; se exponen por función, nunca por acceso a la tabla. El bloque «Contexto de la semana» del diseño (horas, sueño, guardias) **no se implementa** por esta regla; si el asesor lo quiere, cambia el consentimiento, no el código |
 
 ## 7. Contratos de datos
 
@@ -137,6 +140,13 @@ identidades
 | RN-006-05 | `20260829090300_roles_y_derivaciones.sql` — ausencia deliberada de políticas INSERT sobre `eventos` |
 | RN-006-06 | `20260829090300_roles_y_derivaciones.sql` — tabla `usuarios_rol` |
 | RF-006-05, RF-006-07, RF-006-09 … RF-006-11, RF-006-13, RF-006-14 | *pendiente* — panel web y app |
+
+### Trazabilidad de la revisión 2 (vista móvil)
+
+| Requisito | Implementado en |
+|---|---|
+| RF-006-13, RF-006-14, RN-006-07 (excepción) | `supabase/migrations/20260918170000_casos_psicologo.sql` (vista `casos_psicologo`, función `perfil_caso`, política sobre `organizaciones`) |
+| RF-006-13 … RF-006-15 (pantallas) | `app/psicologo/index.tsx`, `app/psicologo/caso/[id].tsx`, `modules/psicologo/piezas.tsx`, `modules/psicologo/datos.ts` |
 
 ## 11. Decisiones abiertas
 

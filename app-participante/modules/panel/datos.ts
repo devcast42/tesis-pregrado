@@ -34,6 +34,7 @@ export type FilaParticipacion = {
   consentimiento: boolean | null
   en_seguimiento: boolean
   dias_sin_responder: number | null
+  inscrito_en: string
 }
 
 export type Administrador = {

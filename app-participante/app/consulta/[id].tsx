@@ -1,13 +1,13 @@
 /** Videoconsulta, lado del participante — implementa ESP-004 RF-004-02.
  *
  *  El participante consiente su propia grabación aquí. Nunca ve el informe
- *  (RN-004-03): esta pantalla termina al colgar. */
+ *  clínico (RN-004-03): al colgar pasa a su propio resumen (RF-004-17). */
 
 import { useCallback, useEffect, useState } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { Alert, StyleSheet, View } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Llamada } from '../../modules/consulta/Llamada'
-import { obtenerCredenciales, obtenerSesion } from '../../modules/consulta/datos'
+import { iniciarGrabacion, obtenerCredenciales, obtenerSesion } from '../../modules/consulta/datos'
 import { supabase } from '../../modules/nucleo/supabase'
 import type { Credenciales } from '../../modules/consulta/tipos'
 import { Apoyo, Boton, Cargando, Pantalla, Parrafo, Titulo } from '../../modules/nucleo/ui'
@@ -18,6 +18,7 @@ export default function ConsultaParticipante() {
   const [sesion, setSesion] = useState<any>(null)
   const [credenciales, setCredenciales] = useState<Credenciales | null>(null)
   const [enLlamada, setEnLlamada] = useState(false)
+  const [ocupado, setOcupado] = useState<'autorizar' | 'entrar' | null>(null)
 
   const cargar = useCallback(async () => {
     setSesion(await obtenerSesion(id))
@@ -26,27 +27,46 @@ export default function ConsultaParticipante() {
   useEffect(() => { cargar() }, [cargar])
 
   async function autorizar() {
-    await supabase
-      .from('sesiones_consulta')
-      .update({ consentimiento_participante: true })
-      .eq('id', id)
-    await cargar()
+    if (ocupado) return
+    setOcupado('autorizar')
+    try {
+      await supabase
+        .from('sesiones_consulta')
+        .update({ consentimiento_participante: true })
+        .eq('id', id)
+      await cargar()
+      // Si la otra parte ya autorizó y ya hay alguien en la sala, la
+      // grabación arranca ahora; si no, lo hará el siguiente que entre.
+      iniciarGrabacion(id).catch(() => {})
+    } finally { setOcupado(null) }
   }
 
+  // Pedir el token tarda unos segundos (y arranca la grabación): el botón se
+  // bloquea mientras tanto para que no se pida dos veces.
   async function entrar() {
-    setCredenciales(await obtenerCredenciales(id))
-    setEnLlamada(true)
+    if (ocupado) return
+    setOcupado('entrar')
+    try {
+      setCredenciales(await obtenerCredenciales(id))
+      setEnLlamada(true)
+      // Ya dentro (la sala existe): un intento más por si el token salió antes de que existiera.
+      setTimeout(() => { iniciarGrabacion(id).catch(() => {}) }, 4000)
+    } catch (e) {
+      Alert.alert('No se pudo entrar', e instanceof Error ? e.message : 'Inténtalo de nuevo.')
+    } finally { setOcupado(null) }
   }
 
+  // Al salir se abre el resumen personal (RF-004-17): muestra el circuito
+  // paso a paso y, cuando está listo, el PDF con recomendaciones.
   const salir = useCallback(() => {
     setEnLlamada(false)
-    router.replace('/hoy')
-  }, [])
+    router.replace(`/consulta/resumen/${id}`)
+  }, [id])
 
   if (!sesion) return <Cargando />
 
   if (enLlamada && credenciales) {
-    return <Llamada url={credenciales.url} token={credenciales.token} onSalir={salir} />
+    return <Llamada url={credenciales.url} token={credenciales.token} onSalir={salir} onFallo={() => setEnLlamada(false)} />
   }
 
   return (
@@ -68,12 +88,12 @@ export default function ConsultaParticipante() {
         {sesion.consentimiento_participante ? (
           <Apoyo>Autorizaste la grabación de esta sesión.</Apoyo>
         ) : (
-          <Boton variante="secundario" onPress={autorizar}>
+          <Boton variante="secundario" onPress={autorizar} cargando={ocupado === 'autorizar'} inhabilitado={ocupado === 'entrar'}>
             Autorizo que se grabe el audio
           </Boton>
         )}
 
-        <Boton onPress={entrar}>Entrar a la sesión</Boton>
+        <Boton onPress={entrar} cargando={ocupado === 'entrar'} inhabilitado={ocupado === 'autorizar'}>Entrar a la sesión</Boton>
       </View>
     </Pantalla>
   )

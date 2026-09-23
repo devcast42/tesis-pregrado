@@ -6,8 +6,9 @@
 // Si ambas partes autorizaron la grabación (RN-004-06), aquí se arranca el
 // egress de audio. Solo audio: nunca video (RF-004-04).
 
-import { AccessToken, EgressClient, EncodedFileType } from 'npm:livekit-server-sdk@2'
+import { AccessToken } from 'npm:livekit-server-sdk@2'
 import { comoUsuario, json, preflight, servicio } from '../_compartido/supabase.ts'
+import { asegurarGrabacion } from '../_compartido/grabacion.ts'
 
 const LIVEKIT_URL = Deno.env.get('LIVEKIT_URL')!
 const LIVEKIT_API_KEY = Deno.env.get('LIVEKIT_API_KEY')!
@@ -70,51 +71,9 @@ Deno.serve(async (req) => {
   token.addGrant({ roomJoin: true, room: sesion.sala_livekit, canPublish: true, canSubscribe: true })
 
   // RF-004-02 y RF-004-04 — grabación solo con doble consentimiento, y solo audio.
-  if (sesion.consentimiento_participante && sesion.consentimiento_psicologo) {
-    await iniciarGrabacion(db, sesion.id, sesion.sala_livekit)
-  }
+  // Es un extra sobre la sesión, no una condición: si no arranca, la persona
+  // entra igual y la etapa queda anotada para la pantalla del psicólogo.
+  const grab = await asegurarGrabacion(db, sesion)
 
-  return json({ url: LIVEKIT_URL, token: await token.toJwt(), sala: sesion.sala_livekit })
+  return json({ url: LIVEKIT_URL, token: await token.toJwt(), sala: sesion.sala_livekit, grabacion: grab.grabando, grabacion_error: grab.detalle })
 })
-
-async function iniciarGrabacion(
-  db: ReturnType<typeof servicio>,
-  sesionId: string,
-  sala: string,
-) {
-  const { data: existente } = await db
-    .from('transcripciones')
-    .select('id')
-    .eq('sesion_id', sesionId)
-    .maybeSingle()
-
-  if (existente) return
-
-  const dias = Number(Deno.env.get('RETENCION_DIAS') ?? '30')
-  const rutaAudio = `sesiones/${sesionId}.ogg`
-
-  const egress = new EgressClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
-  await egress.startRoomCompositeEgress(
-    sala,
-    {
-      fileType: EncodedFileType.OGG,
-      filepath: rutaAudio,
-      s3: {
-        accessKey: Deno.env.get('S3_ACCESS_KEY')!,
-        secret: Deno.env.get('S3_SECRET')!,
-        bucket: Deno.env.get('S3_BUCKET')!,
-        region: Deno.env.get('S3_REGION') ?? 'auto',
-        endpoint: Deno.env.get('S3_ENDPOINT'),
-      },
-    },
-    { audioOnly: true },
-  )
-
-  // RN-004-09 — el plazo de borrado se fija al crear la fila, no después.
-  await db.from('transcripciones').insert({
-    sesion_id: sesionId,
-    estado: 'procesando',
-    audio_ruta: rutaAudio,
-    borrar_despues_de: new Date(Date.now() + dias * 86_400_000).toISOString(),
-  })
-}

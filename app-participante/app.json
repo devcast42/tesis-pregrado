@@ -20,12 +20,15 @@
     "android": {
       "package": "pe.edu.unitru.estudioburnout",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#E8F3EC",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.USE_EXACT_ALARM"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -40,7 +43,19 @@
           "microphonePermission": "La videoconsulta con tu psicólogo necesita acceso al micrófono."
         }
       ],
-      "expo-font"
-    ]
+      "expo-font",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Para abrir el estudio con Face ID en lugar de tu contraseña."
+        }
+      ]
+    ],
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAF9F7",
+      "imageWidth": 160
+    }
   }
 }

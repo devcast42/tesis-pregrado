@@ -1,0 +1,258 @@
+/** Panel del empresario — datos. Implementa ESP-008 rev. 2 (RF-008-13 … 23).
+ *
+ *  Todo viene de vistas SECURITY DEFINER que ya aplican el mínimo de reporte:
+ *  aquí no se filtra nada por tamaño, y si una semana no llega, simplemente
+ *  no está (RN-008-11). Lo único que se calcula en el cliente es lo que
+ *  necesita varias semanas juntas: la correlación entre factores y
+ *  agotamiento (RF-008-16) y las recomendaciones (RF-008-18). */
+
+import { supabase } from '../nucleo/supabase'
+
+export type Nivel = 'bajo' | 'a_vigilar' | 'alto'
+
+export type PulsoSemana = {
+  semana: string
+  respondientes: number
+  agotamiento_media: number
+  desvinculacion_media: number
+  nivel_agotamiento: Nivel
+  nivel_desvinculacion: Nivel
+}
+
+export type PulsoEstudio = {
+  semana: string
+  empresas: number
+  respondientes: number
+  agotamiento_media: number
+  desvinculacion_media: number
+}
+
+export type FactoresSemana = {
+  semana: string
+  respondientes: number
+  horas_dia_media: number | null
+  sueno_media: number | null
+  fin_de_semana_media: number | null
+  sobretiempo_media: number | null
+  guardia_pct: number | null
+  apoyo_lider_media: number | null
+}
+
+export type Segmento = { tipo_segmento: 'modalidad' | 'rol'; segmento: string }
+
+export type ParticipacionSemana = {
+  semana: string
+  en_seguimiento: number
+  respondieron_viernes: number
+  tasa_respuesta_pct: number | null
+}
+
+export type Umbral = { dimension: 'agotamiento' | 'desvinculacion'; a_vigilar: number; alto: number }
+
+export async function pulsoEmpresa(orgId: string, segmento?: Segmento): Promise<PulsoSemana[]> {
+  const base = segmento
+    ? supabase.from('pulso_empresa_segmento').select('*').eq('tipo_segmento', segmento.tipo_segmento).eq('segmento', segmento.segmento)
+    : supabase.from('pulso_empresa').select('*')
+  const { data } = await base.eq('organizacion_id', orgId).order('semana')
+  return (data ?? []) as PulsoSemana[]
+}
+
+export async function pulsoEstudio(): Promise<PulsoEstudio[]> {
+  const { data } = await supabase.from('pulso_estudio').select('*').order('semana')
+  return (data ?? []) as PulsoEstudio[]
+}
+
+export async function factoresEmpresa(orgId: string, segmento?: Segmento): Promise<FactoresSemana[]> {
+  const base = segmento
+    ? supabase.from('factores_empresa_segmento').select('*').eq('tipo_segmento', segmento.tipo_segmento).eq('segmento', segmento.segmento)
+    : supabase.from('factores_empresa').select('*')
+  const { data } = await base.eq('organizacion_id', orgId).order('semana')
+  return (data ?? []) as FactoresSemana[]
+}
+
+/** Segmentos que alcanzan el mínimo en la última semana reportable (RF-008-17).
+ *  Los que no llegan no se devuelven: no aparecen en el selector. */
+export async function segmentosDisponibles(orgId: string): Promise<(Segmento & { respondientes: number })[]> {
+  const { data } = await supabase
+    .from('pulso_empresa_segmento')
+    .select('tipo_segmento, segmento, respondientes, semana')
+    .eq('organizacion_id', orgId)
+    .order('semana', { ascending: false })
+  const vistos = new Map<string, Segmento & { respondientes: number }>()
+  let ultima: string | null = null
+  for (const f of (data ?? []) as (Segmento & { respondientes: number; semana: string })[]) {
+    ultima ??= f.semana
+    if (f.semana !== ultima) break
+    vistos.set(`${f.tipo_segmento}:${f.segmento}`, f)
+  }
+  return [...vistos.values()]
+}
+
+export async function participacionSemanal(orgId: string): Promise<ParticipacionSemana[]> {
+  const { data } = await supabase.from('participacion_empresa_semanal').select('*').eq('organizacion_id', orgId).order('semana')
+  return (data ?? []) as ParticipacionSemana[]
+}
+
+export async function apoyoMensual(orgId: string): Promise<{ mes: string; sesiones_aprox: number }[]> {
+  const { data } = await supabase.from('apoyo_empresa_mensual').select('mes, sesiones_aprox').eq('organizacion_id', orgId).order('mes', { ascending: false })
+  return (data ?? []) as { mes: string; sesiones_aprox: number }[]
+}
+
+export async function umbrales(): Promise<Umbral[]> {
+  const { data } = await supabase.from('umbrales_empresa').select('dimension, a_vigilar, alto')
+  return (data ?? []) as Umbral[]
+}
+
+export async function darDeBaja(participanteId: string) {
+  const { error } = await supabase.rpc('dar_de_baja_participante', { p_participante: participanteId, p_motivo: 'salida_empresa' })
+  if (error) throw error
+}
+
+// ----------------------------------------------------------- Referencias
+
+/** Valor de referencia de cada factor y sentido en que «fuera» es peor. */
+export const FACTORES = [
+  { clave: 'horas_dia_media', nombre: 'Jornada media', unidad: 'h / día', grupo: 'Carga diaria', ref: 8.5, peorSi: 'mayor' },
+  { clave: 'sueno_media', nombre: 'Sueño medio', unidad: 'h / noche', grupo: 'Recuperación', ref: 7.0, peorSi: 'menor' },
+  { clave: 'fin_de_semana_media', nombre: 'Horas fin de semana', unidad: 'h / sem', grupo: 'Desconexión', ref: 2.0, peorSi: 'mayor' },
+  { clave: 'sobretiempo_media', nombre: 'Sobretiempo semanal', unidad: 'h / sem', grupo: 'Intensidad', ref: 4.0, peorSi: 'mayor' },
+  { clave: 'guardia_pct', nombre: 'Personas en guardia', unidad: '% del equipo', grupo: 'Disponibilidad', ref: 20, peorSi: 'mayor' },
+  { clave: 'apoyo_lider_media', nombre: 'Apoyo percibido del líder', unidad: 'de 5 pts', grupo: 'Liderazgo y clima', ref: 3.5, peorSi: 'menor' },
+] as const
+
+export type ClaveFactor = (typeof FACTORES)[number]['clave']
+
+export function fueraDeReferencia(clave: ClaveFactor, valor: number | null): boolean {
+  if (valor === null) return false
+  const f = FACTORES.find((x) => x.clave === clave)!
+  return f.peorSi === 'mayor' ? valor > f.ref : valor < f.ref
+}
+
+// --------------------------------------------------------- Correlaciones
+
+/** Pearson entre un factor y el agotamiento a lo largo de las semanas
+ *  reportables (RF-008-16). Solo se informa con ≥ 6 semanas y |r| ≥ 0.4. */
+export type Relacion = { clave: ClaveFactor; r: number; fuerza: 'fuerte' | 'moderada'; protector: boolean }
+
+export function relaciones(pulso: PulsoSemana[], factores: FactoresSemana[]): { listas: Relacion[]; semanas: number } {
+  const porSemana = new Map(factores.map((f) => [f.semana, f]))
+  const pares = pulso.filter((p) => porSemana.has(p.semana))
+  const n = pares.length
+  if (n < 6) return { listas: [], semanas: n }
+
+  const listas: Relacion[] = []
+  for (const f of FACTORES) {
+    const xs: number[] = [], ys: number[] = []
+    for (const p of pares) {
+      const v = porSemana.get(p.semana)![f.clave]
+      if (v === null || v === undefined) continue
+      xs.push(Number(v)); ys.push(Number(p.agotamiento_media))
+    }
+    if (xs.length < 6) continue
+    const r = pearson(xs, ys)
+    if (Math.abs(r) < 0.4) continue
+    // «Protector»: el factor va en sentido contrario al agotamiento y eso
+    // es lo esperado (más apoyo, más sueño → menos agotamiento).
+    const esperadoNegativo = f.peorSi === 'menor'
+    listas.push({ clave: f.clave, r, fuerza: Math.abs(r) >= 0.7 ? 'fuerte' : 'moderada', protector: esperadoNegativo && r < 0 })
+  }
+  listas.sort((a, b) => Math.abs(b.r) - Math.abs(a.r))
+  return { listas, semanas: n }
+}
+
+function pearson(x: number[], y: number[]): number {
+  const n = x.length
+  const mx = x.reduce((a, b) => a + b, 0) / n
+  const my = y.reduce((a, b) => a + b, 0) / n
+  let sxy = 0, sxx = 0, syy = 0
+  for (let i = 0; i < n; i++) {
+    sxy += (x[i] - mx) * (y[i] - my)
+    sxx += (x[i] - mx) ** 2
+    syy += (y[i] - my) ** 2
+  }
+  return sxx === 0 || syy === 0 ? 0 : sxy / Math.sqrt(sxx * syy)
+}
+
+export function fraseRelacion(rel: Relacion): string {
+  const F: Record<ClaveFactor, [string, string]> = {
+    horas_dia_media: ['Las semanas con jornadas más largas son las de mayor agotamiento', 'Las semanas con jornadas más largas muestran menor agotamiento'],
+    sueno_media: ['Las semanas con menos sueño son las de mayor agotamiento', 'Las semanas con más sueño muestran mayor agotamiento'],
+    fin_de_semana_media: ['Las semanas con más trabajo de fin de semana son las de mayor agotamiento', 'Las semanas con más fin de semana muestran menor agotamiento'],
+    sobretiempo_media: ['El sobretiempo se mueve junto con el agotamiento', 'El sobretiempo va en sentido contrario al agotamiento'],
+    guardia_pct: ['Las semanas con más gente de guardia son las de mayor agotamiento', 'Las semanas con más guardias muestran menor agotamiento'],
+    apoyo_lider_media: ['El apoyo del líder amortigua el agotamiento: a más apoyo, menos desgaste', 'El apoyo del líder sube junto con el agotamiento'],
+  }
+  const esperado = FACTORES.find((f) => f.clave === rel.clave)!.peorSi === 'mayor' ? rel.r > 0 : rel.r < 0
+  return F[rel.clave][esperado ? 0 : 1]
+}
+
+// ------------------------------------------------------- Recomendaciones
+
+/** Reglas declaradas (RN-008-15): condición legible, texto y referencia.
+ *  Se evalúan sobre la última semana reportable. */
+export type Recomendacion = { id: string; titulo: string; texto: string; referencia: string }
+
+export function recomendaciones(
+  ultimaSemana: FactoresSemana | undefined,
+  pulso: PulsoSemana[],
+  participacion: ParticipacionSemana | undefined,
+): Recomendacion[] {
+  const r: Recomendacion[] = []
+  const f = ultimaSemana
+  if (f?.horas_dia_media != null && f.horas_dia_media >= 9.5) r.push({
+    id: 'REC-01', titulo: 'Revisar la carga de trabajo',
+    texto: `La jornada media supera las 9.5 h (${f.horas_dia_media} h/día). Considera límites de sobretiempo y redistribuir entregas.`,
+    referencia: 'Demerouti et al. (2001), Job Demands-Resources Model',
+  })
+  if ((f?.fin_de_semana_media != null && f.fin_de_semana_media >= 3) || (f?.sobretiempo_media != null && f.sobretiempo_media >= 5)) r.push({
+    id: 'REC-02', titulo: 'Política de desconexión efectiva',
+    texto: 'El trabajo fuera de horario es el mayor predictor de agotamiento en el modelo JD-R. Limita respuestas en canales técnicos después de las 19:00 y define relevos claros.',
+    referencia: 'Demerouti et al. (2001)',
+  })
+  if (f?.guardia_pct != null && f.guardia_pct >= 40) r.push({
+    id: 'REC-03', titulo: 'Rotar las guardias y compensar con descanso',
+    texto: `Más del 40 % del equipo estuvo disponible fuera de horario (${f.guardia_pct} %). Diversifica los turnos y estipula una ventana de compensación horaria.`,
+    referencia: 'Bakker & Demerouti (2007)',
+  })
+  if (f?.sueno_media != null && f.sueno_media < 6.5) r.push({
+    id: 'REC-04', titulo: 'Proteger el descanso',
+    texto: `El sueño promedio está en ${f.sueno_media} h, bajo 6.5 h. Revisa horarios de inicio y guardias nocturnas.`,
+    referencia: 'Åkerstedt (2006), Psychosocial stress and impaired sleep',
+  })
+  if (f?.apoyo_lider_media != null && f.apoyo_lider_media < 3) r.push({
+    id: 'REC-05', titulo: 'Fortalecer el liderazgo de primera línea',
+    texto: `El apoyo percibido del líder está en ${f.apoyo_lider_media} de 5. Es el recurso con mayor efecto protector; conviene formación y espacios 1:1.`,
+    referencia: 'Bakker & Demerouti (2007), Buffer de Recursos Laborales',
+  })
+  const ultimas = pulso.slice(-2)
+  if (ultimas.length === 2 && ultimas.every((p) => p.nivel_agotamiento === 'alto')) r.push({
+    id: 'REC-06', titulo: 'Agotamiento organizacional sostenido',
+    texto: 'Dos semanas seguidas en nivel alto. Conversa con el equipo de investigación sobre una intervención estructurada.',
+    referencia: 'Protocolo del estudio',
+  })
+  if (participacion?.tasa_respuesta_pct != null && participacion.tasa_respuesta_pct < 60) r.push({
+    id: 'REC-07', titulo: 'Participación baja',
+    texto: `Con ${participacion.tasa_respuesta_pct} % de respuesta la lectura es poco fiable. Recuerda en reunión de equipo que las respuestas son anónimas.`,
+    referencia: 'ESP-007, adherencia',
+  })
+  return r
+}
+
+// ------------------------------------------------------------- Utilidades
+
+export const ETIQUETA_NIVEL: Record<Nivel, string> = { bajo: 'Bajo', a_vigilar: 'A vigilar', alto: 'Alto' }
+
+/** «12–16 de setiembre» a partir del lunes ISO. */
+export function rangoSemana(lunesIso: string): string {
+  const l = new Date(`${lunesIso}T12:00:00`)
+  const v = new Date(l); v.setDate(l.getDate() + 4)
+  const mes = v.toLocaleDateString('es-PE', { month: 'long' })
+  return l.getMonth() === v.getMonth()
+    ? `${l.getDate()}–${v.getDate()} de ${mes}`
+    : `${l.getDate()} de ${l.toLocaleDateString('es-PE', { month: 'short' }).replace('.', '')} – ${v.getDate()} de ${mes}`
+}
+
+export function etiquetaSemana(lunesIso: string): string {
+  const l = new Date(`${lunesIso}T12:00:00`)
+  return l.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' }).replace('.', '')
+}

@@ -1,332 +1,95 @@
-# Prompt para Stitch — Panel del investigador
+# Prompt para Stitch — panel web del investigador
 
-Stitch genera **una pantalla por vez**. Pega primero el **Prompt base** (define
-el estilo), y después el prompt de cada pantalla en una generación nueva.
-Si Stitch pierde el estilo entre pantallas, vuelve a pegar el bloque de
-"Sistema visual" al inicio del prompt de pantalla.
+Copiar desde la línea siguiente.
 
 ---
 
-## Prompt base (pegar primero)
-
-```
-Diseña un panel web de escritorio para un estudio académico de investigación
-sobre detección temprana de burnout en profesionales del sector tecnológico.
-El usuario es el investigador: revisa indicadores del estudio y administra
-empresas, psicólogos y participantes. Idioma: español (España/Perú neutro).
-
-SISTEMA VISUAL
-
-Paleta cálida y apagada, nunca corporativa saturada. Esta herramienta trata
-sobre agotamiento laboral: debe leerse como cuidado clínico y rigor académico,
-no como un panel de recursos humanos.
-
-- Fondo de página: #FAF9F7 (blanco cálido)
-- Superficie de tarjeta: #FFFFFF
-- Superficie suave / deshabilitada: #F5F4F1
-- Texto principal: #1C1917
-- Texto secundario: #57534E
-- Texto terciario / metadatos: #8A8580
-- Borde sutil: #E8E5E0
-- Borde de campo: #D6D2CC
-- Color primario (verde azulado): #0F766E
-- Primario oscuro (hover): #115E59
-- Primario suave (fondo de item activo): #EFF9F7
-- Éxito: #15803D sobre #F0FDF4
-- Alerta: #B45309 sobre #FFFBEB
-- Peligro: #B4413C sobre #FEF2F2
-
-TIPOGRAFÍA
-Fuente sans-serif del sistema (Inter o similar), nunca decorativa.
-- Título de pantalla: 27px / 34px, peso 600, letter-spacing -0.4px
-- Título de sección: 20px / 27px, peso 600
-- Cuerpo: 16px / 24px, peso 400
-- Cuerpo fuerte: 16px / 24px, peso 500
-- Apoyo / nota: 14px / 21px, peso 400, color #8A8580
-- Etiqueta de campo: 12px / 16px, peso 600, MAYÚSCULAS, letter-spacing 0.6px,
-  color #8A8580
-- Cifra grande: 34px / 40px, peso 600, letter-spacing -1px
-
-FORMA Y ESPACIO
-- Escala de espaciado múltiplo de 4: 4, 8, 12, 16, 24, 32, 48
-- Radios: 8px (chico), 12px (medio), 16px (grande), 20px (extra)
-- Tarjetas: fondo blanco, radio 16px, borde 1px #E8E5E0, sombra muy tenue
-  (0 2px 12px rgba(28,25,23,0.05)). Nada de sombras marcadas.
-- Botones: alto mínimo 52px, radio 12px.
-  Primario = relleno #0F766E con texto blanco.
-  Secundario = borde 1px #D6D2CC sobre blanco, texto #0F766E.
-  Texto = sin fondo ni borde, texto #0F766E.
-  Botón pequeño de fila de tabla: alto 38px, radio 8px, texto 14px peso 500.
-- Campos de texto: alto mínimo 52px, radio 12px, borde 1px #D6D2CC,
-  fondo blanco, placeholder #8A8580. Foco: borde #0F766E.
-
-ESTRUCTURA (idéntica en todas las pantallas)
-
-Barra lateral fija a la izquierda de 232px, fondo #FFFFFF, borde derecho 1px
-#E8E5E0, padding vertical 24px y horizontal 12px:
-  - Arriba, la marca "ESTUDIO BURNOUT" en etiqueta 12px peso 600 MAYÚSCULAS,
-    letter-spacing 0.6px, color #0F766E, con padding horizontal de 12px.
-  - Grupo 1 de enlaces (sin encabezado): Resumen · Participantes · Derivaciones
-  - Grupo 2 con el encabezado "Maestros" en estilo etiqueta color #8A8580:
-    Empresas · Psicólogos · Auditoría
-  - Al pie, separado por un borde superior 1px #E8E5E0: "Cerrar sesión"
-  - Cada enlace: alto 42px, radio 8px, padding horizontal 12px, texto 16px
-    color #57534E. El activo lleva fondo #EFF9F7 y texto #0F766E peso 600.
-
-Área de contenido a la derecha: fondo #FAF9F7, contenido con ancho máximo de
-960px, padding de 24px, y bloques separados por 24px verticales.
-
-Cada pantalla empieza con un título grande y, debajo, un párrafo de una o dos
-líneas en color #57534E que explica qué es y por qué. Ese párrafo es parte del
-diseño, no relleno: el panel enseña mientras se usa.
-
-Las tablas no llevan fondo de cabecera ni bordes verticales. Solo: fila de
-encabezado en estilo etiqueta (12px, MAYÚSCULAS, #8A8580) con un borde
-inferior 1px #D6D2CC, y cada fila con borde inferior 1px #E8E5E0 y 12px de
-padding vertical.
-
-Sin modales, sin menús desplegables de usuario, sin iconos decorativos.
-Todo formulario de alta es una fila de campos en línea dentro de una tarjeta,
-con su botón a la derecha. Nunca un modal.
-```
-
----
-
-## Pantalla 1 · Resumen
-
-```
-Pantalla "Resumen" del panel. Enlace activo en la barra lateral: Resumen.
-
-Título "Estudio". Debajo: "Detección temprana de burnout en profesionales del
-sector tecnológico."
-
-1. Tarjeta con tres cifras grandes en fila, cada una con su etiqueta debajo en
-   14px color #8A8580: 128 Inscritos · 96 Activos · 14 Detectados.
-
-2. Encabezado de sección en estilo etiqueta: "ADHERENCIA". Tarjeta con tres
-   cifras coloreadas: 71 "Al día" en #15803D, 18 "En riesgo" en #B45309,
-   7 "Inactivos" en #B4413C. Bajo las cifras, una nota 14px #8A8580:
-   "Tasa promedio: 82.4%". Debajo de la tarjeta, un botón secundario de ancho
-   completo: "Ver detalle por participante".
+Diseña el **panel web del investigador principal** de un sistema de detección temprana de burnout en profesionales de tecnología, usado en un estudio universitario. Escritorio (1440 × 900; razonable a 1024), barra lateral con grupos. Ya existen, con el mismo esqueleto y sistema visual, el panel del administrador de empresa (teal, Inter, tarjetas blancas sobre fondo cálido, pastillas, gráficas limpias) y la app móvil del participante; esta parte debe sentirse de la misma familia, pero es la más **densa** de todas: es la herramienta de trabajo de una sola persona que analiza datos todos los días.
 
-3. Sección "INDICADOR 1 · PRECISIÓN DEL MODELO". Tarjeta de fondo suave
-   #F5F4F1 con un párrafo en #57534E: "Sin datos: requiere que el modelo de ML
-   esté operando junto al método por umbral. Se reporta con recall y F1 porque
-   la precisión sola es manipulable —un modelo que casi nunca detecta puede
-   alcanzar 100% y no servir de nada."
+Quién la usa: el investigador que dirige el estudio. Es la única persona que ve **todo**, hasta la unidad: cada participante, cada día, cada ítem respondido, cada predicción del modelo y si acertó. Trabaja siempre con **códigos anónimos** («P-042»), nunca con nombres; la identidad se abre solo por una acción explícita que queda registrada. Nunca ve el contenido clínico del psicólogo (informes, transcripciones): solo que ocurrieron.
 
-4. Sección "INDICADOR 2 · VOLUMEN EVALUADO". Tarjeta con una cifra grande 96 y
-   la etiqueta "Profesionales en seguimiento activo".
+Tres momentos de uso, y cada uno merece su entrada:
 
-5. Sección "INDICADOR 3 · TIEMPO DE DETECCIÓN". Tarjeta con la cifra "23 d" y
-   la etiqueta "Promedio hasta la detección", más una nota 14px #8A8580:
-   "14 detectados · 82 censurados a la derecha. Los censurados no son
-   negativos: terminaron el seguimiento sin detección y podrían haberse
-   detectado después."
+- **Operación (5 minutos, cada mañana):** ¿a quién hay que recordar?, ¿qué derivación no avanzó?, ¿qué cita nadie confirmó?
+- **Análisis (una hora):** ¿cómo evoluciona la cohorte?, ¿el modelo acierta?, ¿qué factor pesa?, ¿por empresa?
+- **Caso a caso (10 minutos por persona):** el arco completo de un participante para entender un falso positivo, una trayectoria rara, una detección tardía.
 
-6. Sección "PENDIENTES". Tarjeta clicable con dos cifras: 5 "Derivaciones
-   abiertas" · 2 "Informes sin revisar".
-```
+## Barra lateral
 
----
+Grupos con encabezado en mayúsculas pequeñas:
 
-## Pantalla 2 · Participantes
+- **ESTUDIO**: Hoy (con badge numérico de pendientes), Resumen, Cohorte.
+- **PERSONAS**: Participantes, Derivaciones.
+- **MODELO**: Versiones, Desempeño.
+- **DATOS**: Exportación, Auditoría.
+- **MAESTROS**: Empresas, Psicólogos, Umbrales.
 
-```
-Pantalla "Participantes" del panel. Enlace activo: Participantes.
+Arriba, un **filtro global** siempre visible: empresa (Todas / Fintech Nova / …) y rango de semanas del estudio (Semana 1 → 6), más una búsqueda `⌘K` por código. Abajo: nombre, «Investigador principal», salir.
 
-Título "Participantes". Párrafo: "Ordenados por adherencia. Conviene contactar
-a quien lleve varios días sin responder: un hueco detectado hoy se recupera con
-una llamada; detectado al cerrar el estudio, ya no."
+## Las cinco pantallas que quiero diseñadas
 
-Tabla de ancho completo, sin nombres de personas. Columnas:
-Código (90px) · Empresa (flexible) · Adherencia (130px) · Tasa (80px) ·
-Sin check-in (110px) · OLBI (70px) · Detección (110px).
+### 1. Hoy — bandeja de pendientes
 
-La columna Adherencia va en texto de 16px peso 500 y color según el estado:
-"Al día" #15803D, "En riesgo" #B45309, "Inactivo" #B4413C.
-Los valores ausentes se muestran como "—" en color #8A8580.
+Una lista agrupada por tipo, cada grupo con su conteo y una línea que explica la regla:
 
-Ocho filas de ejemplo, por ejemplo:
-P-001 · Nexa Software · Al día · 94% · 0 d · 3 · —
-P-014 · Nexa Software · En riesgo · 61% · 4 d · 2 · 21 d
-P-027 · Andes Digital · Inactivo · 28% · 12 d · 1 · —
-P-033 · Andes Digital · Al día · 88% · 1 d · 3 · —
+- Inactivos: «4 días hábiles o más sin registro» — filas: código, empresa, días sin responder, último registro, botón «Ver ficha» y «Pedir contacto al admin».
+- Semanas sin viernes: código, empresa, semana.
+- Detecciones sin derivación (no había psicólogo disponible): código, fecha, botón «Asignar psicólogo».
+- Derivaciones sin sesión ≥ 7 días: código, psicólogo, días.
+- Citas sin confirmar ≥ 2 días: código, psicólogo, fecha pedida.
+- Informes sin aprobar ≥ 7 días: código, psicólogo, sesión.
+- Consentimientos pendientes ≥ 7 días: código, empresa, inscrito hace.
 
-Al pie, una nota 14px #8A8580: "Ningún dato de esta tabla permite identificar a
-una persona. Para contactar a quien está en riesgo de abandono hay que pasar
-por el administrador de su empresa."
-```
+Cada grupo se puede plegar. Estado «todo al día» cuando no hay nada, sin celebrar demasiado. Las urgencias van en **ámbar**, no en rojo.
 
----
+### 2. Participantes — la tabla
 
-## Pantalla 3 · Derivaciones
+Densa, con cabecera fija: código, empresa, semana N/6, estado (activo / detectado / retirado / finalizado, en pastillas neutras salvo detectado en tierra), adherencia (%, con mini barra), días sin responder, último OLBI (agotamiento · desvinculación con nivel), nowcast de la semana (probabilidad + confianza), derivación (sí/no, psicólogo), cita (estado). Filtros combinables arriba como chips (empresa, estado, nivel, nowcast ≥ 50 %, sin responder ≥ 4 d, con derivación, con cita) y búsqueda por código. Selección múltiple con acción «Exportar seleccionados». Orden por defecto: **urgencia**. Paginación abajo. Un panel lateral opcional (drawer) con la vista previa del participante al pasar o al hacer clic, sin salir de la tabla.
 
-```
-Pantalla "Derivaciones" del panel. Enlace activo: Derivaciones.
+### 3. Ficha del participante — la pantalla más importante
 
-Título "Derivaciones". Párrafo: "Cada detección abre una derivación al
-psicólogo con menos casos abiertos. Una derivación que lleva semanas abierta es
-una señal de proceso, no de diagnóstico."
+Todo en una sola página larga con navegación lateral por secciones (ancla) y un encabezado fijo:
 
-Tarjeta con tres cifras en fila: 5 "Abiertas" · 9 "Cerradas" · "12 d"
-"Promedio hasta el cierre".
+- **Encabezado**: «P-042 · Fintech Nova · Semana 5 de 6», estado, adherencia 87 %, insignias (Detectado S4 · Derivado · Cita confirmada), y acciones: Exportar ficha · Ver identidad (con aviso «queda registrado») · Reasignar psicólogo · Cerrar seguimiento · ← anterior / siguiente →.
+- **Calendario de respuestas**: rejilla 6 semanas × L–V. Celda llena = respondió (con hora al pasar), vacía = no, gris = fin de semana, punteada = futuro; el viernes con OLBI se distingue del check-in. Al lado, adherencia por semana.
+- **Serie diaria**: los cuatro ítems OLBI diarios (escala 1–5) como líneas finas, y debajo horas trabajadas y horas de sueño como barras; los lunes, un punto extra con las horas de fin de semana. Seis semanas en el eje, con los viernes marcados.
+- **Trayectoria OLBI**: agotamiento y desvinculación por viernes, con las bandas de umbral y el **punto de detección** marcado; a la derecha, la tabla semana a semana con puntajes y nivel.
+- **Modelo**: dos gráficas. (a) *Nowcast*: por cada semana, la probabilidad de lunes a jueves como puntos que suben o bajan, y al final el resultado real del viernes (alto / no alto) como marca; verde si acertó, tierra si falló. (b) *Pronóstico*: la probabilidad dicha el viernes para la semana siguiente contra lo que pasó. Cada predicción con versión del modelo y confianza. Un resumen: «5 de 6 nowcasts acertaron; 4 de 5 pronósticos».
+- **Respuestas ítem a ítem**: acordeón por fecha; dentro, tabla ítem → valor, con el texto del ítem. Es la única pantalla del sistema con este detalle.
+- **Línea de tiempo**: vertical, con hitos: inscripción, consentimiento, inicio, cada detección (con puntajes y umbrales), derivación (psicólogo), cita (pedida/confirmada), sesión (fecha y duración, sin contenido), informe aprobado (solo el hecho), acceso a identidad (quién y cuándo), retiro. Íconos por tipo, sin color de alarma.
 
-Tabla con columnas: Código (90px) · Psicólogo (flexible) · Abierta (130px) ·
-Estado (150px).
-En Estado, las cerradas van en #15803D ("Cerrada en 8 d"), las abiertas
-recientes en #1C1917 ("Abierta hace 3 d") y las abiertas hace más de 14 días en
-#B45309 ("Abierta hace 21 d"). Texto de 16px peso 500.
+Diseña esta pantalla como la ficha que un investigador mira para escribir un caso en su tesis: qué se lee primero, qué se lee después, qué se pliega.
 
-Seis filas de ejemplo con fechas del tipo "03 set. 2026".
+### 4. Desempeño del modelo
 
-Nota al pie: "Solo el psicólogo asignado puede cerrar una derivación, y solo
-desde su propia pantalla de caso."
-```
+Selector de tarea (Nowcast / Pronóstico) y de versión. Arriba: matriz de confusión 2×2 grande y legible, con VP/FP/VN/FN y sus porcentajes; al lado, precisión, recall, especificidad y ROC-AUC, cada una con su n. Debajo: (a) precisión y recall **por semana del estudio** como líneas, (b) **calibración**: probabilidad dicha (deciles) vs. frecuencia observada, con la diagonal ideal, y cada punto con su n; los deciles con n < 20 se marcan como poco fiables sin ocultarse. Un bloque de comparación cuando coexisten dos versiones (preentrenado vs. propio). Nota permanente: «Calculado solo con las predicciones registradas en su momento; nunca recalculado con el modelo actual».
 
----
+### 5. Exportación
 
-## Pantalla 4 · Empresas
+Una pantalla sobria: qué se exporta (respuestas, ítems, puntajes OLBI, ventanas del modelo, predicciones, eventos), con el filtro global aplicado y los conteos de filas por tabla; formato (CSV / Parquet); un resumen del **manifiesto** (fecha, filtros, versión del esquema, hash) y el botón «Descargar ZIP». Debajo, el historial de exportaciones anteriores (fecha, filtros, conteos, hash) porque cada una queda registrada. Y un diccionario de variables plegable.
 
-```
-Pantalla "Empresas" del panel. Enlace activo: Empresas (bajo "Maestros").
+## Estados que quiero ver resueltos
 
-Título "Empresas". Párrafo: "Cada empresa agrupa a sus participantes y a sus
-administradores."
+- Hoy sin pendientes.
+- Ficha de un participante con solo dos semanas (tendencias cortas, modelo sin pronóstico todavía).
+- Desempeño con n pequeño (menos de 30 predicciones).
+- Tabla con filtro que no devuelve nada.
 
-Tarjeta con un formulario en línea: un campo de texto ancho con placeholder
-"Nombre de la empresa" y, a su derecha, un botón primario "Agregar" en estado
-deshabilitado (opacidad 0.4) porque el campo está vacío.
+## Reglas que no se negocian
 
-Tabla con columnas: Empresa (flexible) · Creada (120px) · una última columna
-sin encabezado con un botón secundario pequeño "Gestionar" (alto 38px).
-Cuatro filas: Nexa Software · 12/8/2026; Andes Digital · 3/9/2026;
-Lumen Labs · 4/9/2026; Cordillera Tech · 4/9/2026.
+- **Códigos, nunca nombres.** La identidad aparece solo tras «Ver identidad», en un panel aparte con el aviso de registro.
+- **Nada del contenido clínico.** Informe y sesión son hitos, no documentos.
+- **Nada rojo** salvo errores técnicos: detectado y alto en tierra, urgencia de operación en ámbar.
+- Toda cifra con su n; toda métrica con su fórmula a un clic (ⓘ).
+- Densidad alta pero legible: 13 px mínimo en tablas, números tabulares, cabeceras fijas.
 
-Nota al pie: "Para agregar participantes o administradores, entra a una
-empresa."
-```
+## Sistema visual (ya existe; respétalo)
 
----
+- Inter (400 / 500 / 600). Verde azulado primario #0F766E, profundo #005C55, suave #EFF9F7. Fondo #FAF9F7, superficies blancas con borde #E8E5E0, texto #1C1917 / #57534E / #8A8580.
+- Niveles: bajo verde #F0FDF4 / #15803D; a vigilar ámbar #FFFBEB / #B45309; alto tierra #FBF3E6 / #9A5B2B. Acierto del modelo en verde, fallo en tierra.
+- Esquinas 16 px en tarjetas, 999 en pastillas. Gráficas sin cuadrícula densa, ejes con pocas marcas, leyendas en caja.
+- Misma barra lateral que el panel del empresario, con grupos.
 
-## Pantalla 5 · Detalle de empresa (la más importante)
+## Lo que quiero de ti
 
-```
-Pantalla de detalle de una empresa. Enlace activo en la barra lateral:
-Empresas.
-
-Encabezado: título "Nexa Software" y, justo debajo, tres cifras grandes en
-fila con sus etiquetas: 42 Inscritos · 38 En seguimiento · 2 Administradores.
-
-Debajo, una fila de pestañas de texto sobre un borde inferior 1px #E8E5E0:
-"Participantes" y "Administradores". La pestaña activa (Participantes) lleva
-el texto en #0F766E peso 500 y un subrayado de 2px en #0F766E que solo cubre
-esa pestaña; la inactiva va en #57534E sin subrayado.
-
-Contenido de la pestaña Participantes:
-
-1. Tarjeta con formulario en línea: campo "Nombre y apellido", campo "Correo"
-   y botón primario "Inscribir" a la derecha, deshabilitado.
-
-2. Bajo el formulario, dentro de la misma tarjeta, un bloque de credenciales
-   recién generadas: fondo #F0FDF4, borde 1px #BBF7D0, radio 16px, padding
-   16px. Contiene la etiqueta "CORREO" (12px MAYÚSCULAS #8A8580) con el valor
-   "persona@nexa.com" en 18px peso 500, luego la etiqueta "CONTRASEÑA" con el
-   valor "nube-cedro-duna-737" en 18px peso 500, y al final una nota 14px
-   #57534E: "Entrégasela junto con el consentimiento informado. No se vuelve a
-   mostrar."
-
-3. Tabla SIN columna de nombre. Columnas: Código (90px) · Consentimiento
-   (140px) · Participación (185px) · última columna sin encabezado con un
-   botón secundario pequeño "Restablecer clave".
-   En Consentimiento: "Aceptado" en #1C1917, "Pendiente" y "Rechazado" en
-   #8A8580. En Participación: "Al día" en #1C1917; "3 días sin responder",
-   "Sin responder aún" y "Fuera de seguimiento" en #8A8580.
-   Cinco filas de ejemplo (P-001 … P-005).
-
-4. Nota al pie en 14px #8A8580: "Aquí no aparecen nombres: el investigador
-   trabaja con códigos anónimos. Los nombres solo los ve el administrador de la
-   empresa, que es quien gestiona las cuentas. Y «fuera de seguimiento» no
-   distingue el motivo —puede haber terminado, retirado su consentimiento o
-   pasado a acompañamiento— porque el motivo es información clínica."
-```
-
-Variante de la misma pantalla con la otra pestaña activa:
-
-```
-La misma pantalla de detalle de empresa, pero con la pestaña
-"Administradores" activa (subrayada en #0F766E) y "Participantes" inactiva.
-
-Contenido:
-1. Un párrafo en #57534E sobre el formulario: "Un administrador gestiona las
-   cuentas de su empresa. No accede a respuestas, puntajes ni derivaciones."
-2. Tarjeta con formulario en línea: campo "Nombre y apellido", campo "Correo",
-   botón primario "Crear" deshabilitado.
-3. Tabla con columnas: Nombre (flexible) · Estado (120px). Dos filas:
-   "Ana Torres · Activo" y "Diego Salas · Activo". Los inactivos irían en
-   #8A8580.
-```
-
----
-
-## Pantalla 6 · Psicólogos
-
-```
-Pantalla "Psicólogos" del panel. Enlace activo: Psicólogos (bajo "Maestros").
-
-Título "Psicólogos". Párrafo: "Atienden casos de cualquier empresa del estudio.
-Las derivaciones se asignan automáticamente al que tenga menos casos abiertos."
-
-Tarjeta con un formulario en línea de tres campos con etiqueta encima en estilo
-etiqueta (12px MAYÚSCULAS #8A8580): "NOMBRE" (campo ancho, placeholder "Nombre
-y apellido"), "CORREO" (campo ancho, placeholder "correo@ejemplo.com") y
-"COLEGIATURA" (campo angosto de 160px, placeholder "CPsP 00000"). A la derecha,
-alineado al fondo de la fila, un botón primario "Crear" deshabilitado.
-
-Tabla con columnas: Nombre (flexible) · Colegiatura (140px) · Casos abiertos
-(140px) · Estado (100px) · última columna sin encabezado con un botón
-secundario pequeño "Restablecer clave".
-En "Casos abiertos", el valor 0 va en #8A8580 y los demás en #1C1917.
-Tres filas de ejemplo.
-
-Nota al pie: "Dar de baja a un psicólogo con casos abiertos requiere
-reasignarlos primero; por ahora se hace desde la base de datos."
-```
-
----
-
-## Pantalla 7 · Auditoría
-
-```
-Pantalla "Auditoría" del panel. Enlace activo: Auditoría (bajo "Maestros").
-
-Título "Auditoría". Párrafo largo en #57534E: "Cada vez que un psicólogo revela
-el nombre y el correo de un participante derivado, queda este registro. Es el
-contrapeso de haber separado identidad y datos de investigación: la separación
-se puede levantar, pero nunca en silencio."
-
-Tabla con columnas: Momento (200px) · Psicólogo (flexible) · Participante
-(120px). Seis filas con momentos del tipo "03 set. 2026, 11:43 p. m.".
-
-Nota al pie: "Se muestran los últimos 200 accesos. El registro completo vive en
-la tabla de eventos y no se puede borrar desde la aplicación."
-```
-
----
-
-## Extra · Estados que conviene pedirle aparte
-
-```
-Genera la misma pantalla de Empresas pero con la tabla vacía: en lugar de
-filas, un bloque centrado con 32px de padding vertical y el texto en 16px
-color #8A8580: "Todavía no hay empresas registradas."
-```
-
-```
-Genera la pantalla de Empresas en un navegador angosto (menos de 1024px de
-ancho): la barra lateral desaparece y se convierte en una barra horizontal
-superior desplazable, con los mismos enlaces en fila (Resumen, Participantes,
-Derivaciones, Empresas, Psicólogos, Auditoría, Cerrar sesión), fondo blanco,
-borde inferior 1px #E8E5E0, cada enlace de alto 40px y padding horizontal 16px.
-El contenido pasa a ocupar todo el ancho debajo.
-```
+Resuelve la **ficha del participante** como una sola narrativa vertical —de lo que la persona hizo (calendario) a lo que respondió (serie, OLBI) a lo que el modelo dijo (predicciones) a lo que pasó después (línea de tiempo)— sin que parezca un informe de base de datos. Y resuelve **Hoy** como una bandeja que se vacía: cada fila tiene una acción y desaparece al resolverse. Piensa en el investigador a las 8 de la mañana con café: en un minuto sabe si hay algo que hacer y en diez lo hizo.

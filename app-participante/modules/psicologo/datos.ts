@@ -26,6 +26,9 @@ export type Informe = {
   sesion_id: string
   contenido_borrador: Record<string, unknown>
   contenido_aprobado: Record<string, unknown> | null
+  /** Copia de trabajo: lo que el psicólogo va editando antes de aprobar. */
+  contenido_en_revision: Record<string, unknown> | null
+  revisado_en: string | null
   estado: 'sin_revisar' | 'aprobado' | 'descartado'
   modelo: string
   generado_en: string
@@ -133,6 +136,17 @@ export async function consentirGrabacion(sesionId: string, quien: 'psicologo' | 
   if (error) throw error
 }
 
+/** Transcripción de la sesión (solo el psicólogo de la derivación, RN-004-08). */
+export type Transcripcion = { estado: string; etapa: string; detalle: string | null; texto: string | null; proveedor: string | null; creada_en: string; actualizada_en: string }
+export async function obtenerTranscripcion(sesionId: string): Promise<Transcripcion | null> {
+  const { data } = await supabase
+    .from('transcripciones')
+    .select('estado, etapa, detalle, texto, proveedor, creada_en, actualizada_en')
+    .eq('sesion_id', sesionId)
+    .maybeSingle()
+  return (data as Transcripcion | null) ?? null
+}
+
 export async function obtenerInforme(sesionId: string): Promise<Informe | null> {
   const { data } = await supabase
     .from('informes')
@@ -141,6 +155,18 @@ export async function obtenerInforme(sesionId: string): Promise<Informe | null> 
     .maybeSingle()
 
   return (data as Informe | null) ?? null
+}
+
+/** RF-004-10 — las correcciones se guardan mientras se escriben, en una
+ *  copia de trabajo aparte. Ni el borrador (inmutable) ni la versión aprobada
+ *  (que nace al aprobar) se tocan. */
+export async function guardarRevision(informeId: string, contenido: Record<string, unknown>) {
+  const { error } = await supabase
+    .from('informes')
+    .update({ contenido_en_revision: contenido, revisado_en: new Date().toISOString() })
+    .eq('id', informeId)
+    .eq('estado', 'sin_revisar')
+  if (error) throw error
 }
 
 /** RF-004-11 y RN-004-02 — solo el psicólogo aprueba, y al aprobar queda
@@ -195,4 +221,100 @@ export async function obtenerDerivacion(derivacionId: string): Promise<Derivacio
     cerrada_en: fila.cerrada_en,
     codigo_anonimo: fila.participantes?.codigo_anonimo ?? '—',
   }
+}
+
+// ------------------------------------------------------- Vista móvil (rev. 2)
+
+export type EstadoCaso = 'sesion_pendiente' | 'cita_por_confirmar' | 'cita_confirmada' | 'sala_lista' | 'informe_por_aprobar' | 'cerrado'
+
+/** Una fila de `casos_psicologo` (ESP-006 RF-006-13). */
+export type Caso = {
+  derivacion_id: string
+  participante_id: string
+  codigo_anonimo: string
+  empresa: string | null
+  abierta_en: string
+  cerrada_en: string | null
+  detectado_en: string | null
+  puntajes: Partial<Record<'agotamiento' | 'desvinculacion', number>> | null
+  umbrales: Partial<Record<'agotamiento' | 'desvinculacion', number | null>> | null
+  sesion_id: string | null
+  sesion_iniciada_en: string | null
+  sesion_finalizada_en: string | null
+  consentimiento_participante: boolean | null
+  consentimiento_psicologo: boolean | null
+  informe_estado: 'sin_revisar' | 'aprobado' | 'descartado' | null
+  /** deteccion: la abrió el modelo. solicitud: la pidió el participante (ESP-004 RF-004-13). */
+  origen: 'deteccion' | 'solicitud'
+  cita_id: string | null
+  cita_para: string | null
+  cita_motivo: string | null
+  cita_estado: 'solicitada' | 'confirmada' | null
+  estado_caso: EstadoCaso
+}
+
+/** RF-004-15 — el psicólogo confirma la hora pedida o la cancela (y el
+ *  participante puede pedir otra). Ambas son funciones de base de datos. */
+export async function confirmarCita(citaId: string) {
+  const { error } = await supabase.rpc('confirmar_cita', { p_cita: citaId })
+  if (error) throw error
+}
+
+export async function cancelarCitaComoPsicologo(citaId: string) {
+  const { error } = await supabase.rpc('cancelar_cita', { p_cita: citaId })
+  if (error) throw error
+}
+
+export type PerfilCaso = {
+  rol: string | null
+  modalidad: string | null
+  antiguedad_empresa: number | null
+  antiguedad_sector: number | null
+}
+
+export async function listarCasos(): Promise<Caso[]> {
+  const { data, error } = await supabase
+    .from('casos_psicologo')
+    .select('*')
+    .order('abierta_en', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as Caso[]
+}
+
+export async function obtenerCaso(derivacionId: string): Promise<Caso | null> {
+  const { data } = await supabase
+    .from('casos_psicologo')
+    .select('*')
+    .eq('derivacion_id', derivacionId)
+    .maybeSingle()
+  return (data as Caso | null) ?? null
+}
+
+/** RF-006-14 — rol, modalidad y antigüedad (excepción acotada a RN-006-07). */
+export async function perfilCaso(participanteId: string): Promise<PerfilCaso | null> {
+  const { data } = await supabase.rpc('perfil_caso', { p_participante: participanteId })
+  return (data as PerfilCaso | null) ?? null
+}
+
+/** ESP-005 — pronóstico para la próxima semana, con la versión activa. Se
+ *  consulta sin registrar evento: la predicción «oficial» del día la registra
+ *  la app del participante; el psicólogo solo la lee. */
+export async function pronosticoCaso(participanteId: string) {
+  const { data } = await supabase.rpc('probabilidad_semana', {
+    p_participante: participanteId,
+    p_tarea: 'pronostico',
+  })
+  return data && data.probabilidad != null ? (data as import('../participante/resultado').Prediccion) : null
+}
+
+/** RF-004-12 — informe manual cuando no hubo grabación: borrador vacío,
+ *  lo escrito va directo a `contenido_aprobado` al aprobar. */
+export async function abrirInformeManual(sesionId: string): Promise<Informe> {
+  const { data, error } = await supabase
+    .from('informes')
+    .insert({ sesion_id: sesionId, transcripcion_id: null, contenido_borrador: {}, modelo: 'manual' })
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as Informe
 }

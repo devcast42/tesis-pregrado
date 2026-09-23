@@ -248,19 +248,20 @@ se ve mezclado: unas tablas van en tarjeta y otras no.
 
 ## E4 · Videoconsulta, transcripción e informe
 
-Todo el código está escrito: `crear-sesion`, `token-livekit`, `egress-webhook`,
-`transcripcion-lista`, `redactar-informe`, la sala en nativo y en web, y las
-pantallas de ambos lados. Nada está desplegado ni probado end-to-end.
+Decidido (20 set 2026): **entra**. Las cinco funciones están desplegadas, el
+bucket privado `audio-sesiones` existe y el texto del consentimiento declara
+los proveedores. Faltan las llaves y el webhook: `docs/despliegue-grabacion.md`
+tiene el paso a paso. Sin llaves la sesión ocurre igual, sin grabación.
 
 | ID | Historia | Estado | Prio | Tam |
 |---|---|---|---|---|
-| PB-22 | Cuentas y llaves de LiveKit, Deepgram y Anthropic en los secretos del proyecto | Listo para tomar | Alto | S |
-| PB-23 | Desplegar las cinco funciones y configurar los dos webhooks | Bloqueado por PB-22 | Alto | S |
-| PB-24 | Probar videollamada 1 a 1 entre dos navegadores | Bloqueado por PB-23 | Alto | M |
-| PB-25 | Probar el circuito completo: grabar → transcribir → redactar → aprobar | Bloqueado por PB-24 | Alto | M |
+| PB-22 | Llaves S3 de Storage, Deepgram y Anthropic en los secretos (LiveKit ya está) | **Hecho** (20 set 2026) | Alto | S |
+| PB-23 | Desplegar las cinco funciones y configurar los dos webhooks | **Hecho** (20 set 2026) | Alto | S |
+| PB-24 | Probar videollamada 1 a 1 entre dos navegadores | **Hecho** (20 set 2026, teléfono + web) | Alto | M |
+| PB-25 | Probar el circuito completo: grabar → transcribir → redactar → aprobar | **Hecho** de forma automática (20 set 2026, sesión `3250af9f…`: audio → transcripción → borrador en 30 s). Falta ejercitar «Aprobar informe» | Alto | M |
 | PB-26 | Ajustar el esquema del informe con el psicólogo colaborador | Bloqueado (ESP-004 §11 #5) | Medio | M |
 | PB-27 | Programar `borrar_datos_vencidos()` cuando el comité fije el plazo | Bloqueado por B7 | Alto | S |
-| PB-28 | Declarar los proveedores en el texto del consentimiento (RN-004-07) | Bloqueado por B6 | **Crítico** | S |
+| PB-28 | Declarar los proveedores en el texto del consentimiento (RN-004-07) | Redactado en la app (`v2-2026-09`); pendiente de aprobación del comité (B6) | **Crítico** | S |
 
 > Decidid pronto si este componente entra o no. Si entra, hay que declararlo en
 > el consentimiento **antes** de reclutar (PB-28), no después. Si se retira, se
@@ -351,7 +352,7 @@ Escrito aquí para no volver a discutirlo:
 **Después:**
 
 4. **PB-15 y PB-38** — la app en un teléfono real con notificaciones.
-5. Decidir E4: se despliega (PB-22 → PB-25) o se retira del documento.
+5. E4 decidido: se despliega. Cargar llaves y webhook (PB-22, PB-23) y probar (PB-24, PB-25).
 6. **PB-35 a PB-37 y PB-43** — cargar contenido definitivo y cerrar el sistema
    para reclutar.
 

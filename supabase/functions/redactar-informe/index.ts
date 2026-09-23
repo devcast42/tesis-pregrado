@@ -13,7 +13,7 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.68.0'
 import { json, servicio } from '../_compartido/supabase.ts'
 
-const MODELO = 'claude-opus-5'
+const MODELO = 'claude-haiku-4-5-20251001' // ~USD 0.02 por informe; Opus solo si el borrador queda pobre
 
 const ESQUEMA = {
   type: 'object',
@@ -50,6 +50,10 @@ const ESQUEMA = {
         additionalProperties: false,
       },
     },
+    nota_del_borrador: {
+      type: 'string',
+      description: 'Una o dos frases sobre qué tan completa es la transcripción (audio claro, fragmentaria, ininteligible, muy corta) y por qué alguna sección quedó vacía. Vacío si no hay nada que advertir.',
+    },
   },
   required: [
     'temas_tratados',
@@ -57,6 +61,7 @@ const ESQUEMA = {
     'recursos_de_apoyo_mencionados',
     'acuerdos_de_la_sesion',
     'citas_textuales_relevantes',
+    'nota_del_borrador',
   ],
   additionalProperties: false,
 }
@@ -70,6 +75,8 @@ Reglas:
 - No recomiendes tratamiento, medicación ni intervenciones.
 - No infieras lo que la persona "realmente" siente. Registra lo que dijo.
 - Si algo no se mencionó en la sesión, deja el arreglo vacío. No completes con lo que suele ocurrir en casos parecidos.
+- En "temas_tratados" registra de qué se habló aunque sea breve o la transcripción esté entrecortada: es la sección que resume la sesión.
+- Si la transcripción es fragmentaria, muy corta o ininteligible, dilo en "nota_del_borrador" para que el profesional sepa por qué el borrador viene incompleto. No lo compenses inventando.
 - Las citas textuales deben ser literales de la transcripción.
 - Escribe en español neutro, en tercera persona, sin adjetivos valorativos.
 
@@ -118,13 +125,20 @@ Deno.serve(async (req) => {
   // Una negativa del modelo deja `content` vacío: leer content[0] sin
   // comprobar stop_reason rompería aquí.
   if (respuesta.stop_reason === 'refusal') {
+    await db.from('transcripciones').update({ etapa: 'fallida', detalle: 'El modelo declinó redactar el borrador' }).eq('sesion_id', sesion_id)
     return json({ error: 'el modelo declino generar el informe' }, 422)
   }
 
   const bloque = respuesta.content.find((b) => b.type === 'text')
   if (!bloque || bloque.type !== 'text') return json({ error: 'sin contenido' }, 502)
 
-  const contenido = JSON.parse(bloque.text)
+  // El modelo a veces deja espacios iniciales en las cadenas del JSON.
+  const limpiar = (v: unknown): unknown =>
+    typeof v === 'string' ? v.trim()
+    : Array.isArray(v) ? v.map(limpiar)
+    : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, limpiar(x)]))
+    : v
+  const contenido = limpiar(JSON.parse(bloque.text))
 
   const { data: informe, error } = await db
     .from('informes')
@@ -137,6 +151,13 @@ Deno.serve(async (req) => {
     .select('id')
     .single()
 
+  // Deepgram puede llamar dos veces al callback: si otra ejecución ya insertó
+  // el informe entre nuestra comprobación y este insert, no es un fallo.
+  if (error?.code === '23505') {
+    await db.from('transcripciones').update({ etapa: 'informe_listo', detalle: null }).eq('sesion_id', sesion_id)
+    const { data: otro } = await db.from('informes').select('id').eq('sesion_id', sesion_id).maybeSingle()
+    return json({ ya_existe: true, informe_id: otro?.id })
+  }
   if (error) return json({ error: error.message }, 500)
 
   const { data: sesion } = await db
@@ -150,6 +171,8 @@ Deno.serve(async (req) => {
     tipo: 'informe_generado',
     metadata: { sesion_id, informe_id: informe.id, modelo: MODELO },
   })
+
+  await db.from('transcripciones').update({ etapa: 'informe_listo', detalle: null }).eq('sesion_id', sesion_id)
 
   return json({ informe_id: informe.id })
 })

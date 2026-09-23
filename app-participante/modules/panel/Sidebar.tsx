@@ -13,7 +13,12 @@ import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } fr
 import { usePathname, router } from 'expo-router'
 import { supabase } from '../nucleo/supabase'
 import { color, espacio, fuente, radio, texto } from '../nucleo/diseno'
+import { Logo } from '../nucleo/Logo'
+import {
+  IconoAjustes, IconoArchivo, IconoCuadricula, IconoEquipo, IconoEscudoCheck, IconoGrafica, IconoHoja, IconoPersona, IconoSalir,
+} from '../nucleo/iconos'
 import type { Rol } from '../nucleo/rol'
+import { PanelInvestigador } from './SidebarInvestigador'
 
 async function salir() {
   await supabase.auth.signOut()
@@ -40,6 +45,24 @@ function BarraSuperior({ rol }: { rol: 'investigador' | 'admin' }) {
 
   const inicial = correo.trim().charAt(0).toUpperCase() || '·'
 
+  if (rol === 'admin') {
+    return (
+      <View style={e.barraSuperior}>
+        <View style={e.identidad}>
+          <View style={{ alignItems: 'flex-start', maxWidth: 210 }}>
+            <Text style={[texto.dato, { color: color.textoSuave, fontSize: 11, lineHeight: 13 }]}>Estudio</Text>
+            <Text style={[texto.dato, { color: color.textoMedio, lineHeight: 16 }]} numberOfLines={2}>Académico Multicéntrico · Bienestar Laboral Tech</Text>
+          </View>
+          <View style={e.cohorte}>
+            <View style={e.puntoVerde} />
+            <Text style={[texto.datoFuerte, { color: color.texto }]}>Cohorte{'\n'}Activa</Text>
+          </View>
+          <View style={e.avatar}><IconoPersona tamano={14} color="#FFFFFF" /></View>
+        </View>
+      </View>
+    )
+  }
+
   return (
     <View style={e.barraSuperior}>
       <View style={e.identidad}>
@@ -57,7 +80,7 @@ function BarraSuperior({ rol }: { rol: 'investigador' | 'admin' }) {
   )
 }
 
-type Seccion = { ruta: string; titulo: string; grupo?: string }
+type Seccion = { ruta: string; titulo: string; grupo?: string; icono?: (c: string) => ReactNode }
 
 const SECCIONES: Record<'investigador' | 'admin', Seccion[]> = {
   investigador: [
@@ -69,8 +92,11 @@ const SECCIONES: Record<'investigador' | 'admin', Seccion[]> = {
     { ruta: '/investigador/auditoria', titulo: 'Auditoría', grupo: 'Maestros' },
   ],
   admin: [
-    { ruta: '/admin', titulo: 'Mi empresa' },
-    { ruta: '/admin/participantes', titulo: 'Participantes' },
+    { ruta: '/admin', titulo: 'Inicio', icono: (c) => <IconoCuadricula tamano={18} color={c} /> },
+    { ruta: '/admin/pulso', titulo: 'Pulso', icono: (c) => <IconoGrafica tamano={18} color={c} /> },
+    { ruta: '/admin/factores', titulo: 'Factores de trabajo', icono: (c) => <IconoAjustes tamano={16} color={c} /> },
+    { ruta: '/admin/participantes', titulo: 'Personas y participación', icono: (c) => <IconoEquipo tamano={18} color={c} /> },
+    { ruta: '/admin/informe', titulo: 'Informe mensual', icono: (c) => <IconoArchivo tamano={18} color={c} /> },
   ],
 }
 
@@ -83,6 +109,12 @@ export function Panel({
   rol: Extract<Rol, 'investigador' | 'admin'>
   children: ReactNode
 }) {
+  if (rol === 'investigador') return <PanelInvestigador>{children}</PanelInvestigador>
+  return <PanelAdmin>{children}</PanelAdmin>
+}
+
+function PanelAdmin({ children }: { children: ReactNode }) {
+  const rol = 'admin' as const
   const { width } = useWindowDimensions()
   const horizontal = width < ANCHO_ESCRITORIO
   const secciones = SECCIONES[rol]
@@ -118,14 +150,26 @@ export function Panel({
 
   return (
     <View style={e.contenedor}>
-      <View style={e.barra}>
-        <Text style={[texto.etiqueta, e.marca]}>ESTUDIO BURNOUT</Text>
+      <View style={e.barra} nativeID="panel-nav">
+        <View style={e.marcaBloque}>
+          {rol === 'admin' ? <IconoHoja tamano={24} color={color.primario} /> : <View style={e.marcaLogo}><Logo tamano={24} /></View>}
+          <View>
+            <Text style={[texto.seccion, { color: color.primarioProfundo, fontSize: 18, lineHeight: 22 }]}>Bienestar{'\n'}Tech</Text>
+            <Text style={[texto.etiqueta, { color: color.textoMedio, fontSize: 10 }]}>{rol === 'admin' ? 'EMPRESA' : 'INVESTIGACIÓN'}</Text>
+          </View>
+        </View>
+        <View style={e.pastillaPortal}>
+          <Text style={[texto.datoFuerte, { color: color.textoMedio }]}>
+            {rol === 'admin' ? 'Portal de Gestión Organizacional' : 'Panel del estudio'}
+          </Text>
+        </View>
 
         <View style={e.grupo}>
           {sueltas.map((s) => (
             <Enlace
               key={s.ruta}
               titulo={s.titulo}
+              icono={s.icono}
               activo={ruta === s.ruta}
               onPress={() => router.push(s.ruta as never)}
             />
@@ -149,14 +193,45 @@ export function Panel({
         ))}
 
         <View style={e.pie}>
-          <Enlace titulo="Cerrar sesión" activo={false} onPress={salir} />
+          {rol === 'admin' && (
+            <View style={e.garantia}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={[texto.etiqueta, { color: color.primarioProfundo, flex: 1 }]}>GARANTÍA ÉTICA</Text>
+                <IconoEscudoCheck tamano={13} color={color.primarioProfundo} />
+              </View>
+              <Text style={[texto.dato, { color: color.textoMedio }]}>
+                Datos agregados (k ≥ 10). Resguardo irrestricto de confidencialidad e identidad participante.
+              </Text>
+            </View>
+          )}
+          <Identidad rol={rol} />
         </View>
       </View>
 
       <View style={e.contenido}>
-        <BarraSuperior rol={rol} />
+        <View nativeID="panel-top"><BarraSuperior rol={rol} /></View>
         {children}
       </View>
+    </View>
+  )
+}
+
+/** Correo, rol y salida, al pie de la barra (diseño Figma 3fRKKoY8Urkjlh1KQkPC9x). */
+function Identidad({ rol }: { rol: 'investigador' | 'admin' }) {
+  const [correo, setCorreo] = useState('')
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setCorreo(data.session?.user.email ?? ''))
+  }, [])
+  return (
+    <View style={e.identidadPie}>
+      <View style={e.avatarChico}><IconoPersona tamano={14} color="#FFFFFF" /></View>
+      <View style={{ flex: 1 }}>
+        <Text style={[texto.datoFuerte, { color: color.texto }]} numberOfLines={1}>{rol === 'admin' ? 'Admin Institucional' : 'Investigador'}</Text>
+        <Text style={[texto.dato, { color: color.textoSuave }]} numberOfLines={1}>{rol === 'admin' ? 'Tech Lead / RR.HH.' : (correo || '—')}</Text>
+      </View>
+      <Pressable onPress={salir} accessibilityRole="button" accessibilityLabel="Cerrar sesión" hitSlop={8}>
+        <IconoSalir tamano={18} color={color.textoMedio} />
+      </Pressable>
     </View>
   )
 }
@@ -166,12 +241,15 @@ function Enlace({
   activo,
   onPress,
   compacto,
+  icono,
 }: {
   titulo: string
   activo: boolean
   onPress: () => void
   compacto?: boolean
+  icono?: (c: string) => ReactNode
 }) {
+  const tinta = activo ? '#FFFFFF' : color.textoMedio
   return (
     <Pressable
       onPress={onPress}
@@ -184,11 +262,12 @@ function Enlace({
         pressed && !activo && e.enlacePresionado,
       ]}
     >
+      {icono && !compacto && icono(tinta)}
       <Text
         style={[
-          texto.cuerpo,
-          { color: activo ? color.primario : color.textoMedio },
-          activo && { fontFamily: fuente.fuerte },
+          texto.apoyo,
+          { color: tinta },
+          activo && { fontFamily: fuente.media },
         ]}
       >
         {titulo}
@@ -217,6 +296,12 @@ const e = StyleSheet.create({
   },
   filaEnlaces: { flexDirection: 'row', padding: espacio.sm, gap: espacio.xs },
   marca: { color: color.primario, paddingHorizontal: espacio.md },
+  marcaBloque: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, paddingHorizontal: espacio.xs },
+  marcaLogo: { width: 40, height: 40, borderRadius: 20, backgroundColor: color.primarioSuave, alignItems: 'center', justifyContent: 'center' },
+  pastillaPortal: { alignSelf: 'flex-start', backgroundColor: color.superficieSuave, borderRadius: radio.sm, paddingHorizontal: 10, paddingVertical: 5, marginTop: -espacio.sm },
+  garantia: { backgroundColor: color.superficieSuave, borderRadius: radio.md, padding: espacio.md, gap: 4, marginBottom: espacio.md },
+  identidadPie: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, paddingHorizontal: espacio.xs },
+  avatarChico: { width: 30, height: 30, borderRadius: 15, backgroundColor: color.primarioProfundo, alignItems: 'center', justifyContent: 'center' },
   grupo: { gap: 2 },
   encabezadoGrupo: {
     color: color.textoSuave,
@@ -225,14 +310,14 @@ const e = StyleSheet.create({
   },
   enlace: {
     minHeight: 42,
-    justifyContent: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: espacio.sm,
     paddingHorizontal: espacio.md,
     borderRadius: radio.sm,
   },
   enlaceCompacto: { minHeight: 40, paddingHorizontal: espacio.base },
-  enlaceActivo: { backgroundColor: color.primarioSuave },
+  enlaceActivo: { backgroundColor: color.primario },
   enlacePresionado: { backgroundColor: color.superficieSuave },
-  pie: { marginTop: 'auto', borderTopWidth: 1, borderTopColor: color.borde, paddingTop: espacio.md },
+  pie: { marginTop: 'auto', borderTopWidth: 1, borderTopColor: color.borde, paddingTop: espacio.md, gap: 0 },
   // minHeight: 0 no es un adorno. En web, un hijo flex arranca con
   // min-height:auto y se niega a encogerse por debajo de su contenido: el
   // ScrollView de dentro crecía hasta el alto del panel entero y nada
@@ -247,6 +332,8 @@ const e = StyleSheet.create({
     backgroundColor: color.fondo,
   },
   identidad: { flexDirection: 'row', alignItems: 'center', gap: espacio.md },
+  cohorte: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: color.superficieSuave, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  puntoVerde: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.primario },
   identidadTexto: { alignItems: 'flex-end', gap: 1 },
   avatar: {
     width: 32, height: 32, borderRadius: radio.completo,

@@ -19,6 +19,8 @@ const PUNTOS = [
   'Tus respuestas se guardan bajo un código anónimo. Tu empresa no accede a tus respuestas individuales.',
   'Puedes retirar tu consentimiento en cualquier momento, sin dar explicaciones y sin consecuencia alguna.',
   'Si el sistema identifica señales de riesgo, se te ofrecerá una sesión de apoyo con un profesional de psicología. Aceptarla es voluntario.',
+  // RN-004-07 — los proveedores se declaran aquí, antes de reclutar (PB-28).
+  'Cada sesión de apoyo se graba solo en audio y solo si tú y el psicólogo lo autorizan en ese momento. El audio se transcribe con Deepgram y un borrador de informe se redacta con Claude (Anthropic) para que el psicólogo lo revise; la videollamada usa LiveKit y los datos se guardan en Supabase. El audio y la transcripción se borran automáticamente al vencer el plazo fijado por el comité de ética.',
 ]
 
 export default function Consentimiento() {

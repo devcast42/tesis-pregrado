@@ -12,6 +12,9 @@ Deno.serve(async (req) => {
   const sesionId = url.searchParams.get('sesion')
   if (!sesionId) return json({ error: 'falta sesion' }, 400)
 
+  const clave = Deno.env.get('WEBHOOK_SECRET')
+  if (!clave || url.searchParams.get('clave') !== clave) return json({ error: 'clave invalida' }, 401)
+
   const db = servicio()
   const cuerpo = await req.json().catch(() => null)
 
@@ -20,7 +23,7 @@ Deno.serve(async (req) => {
     ?? null
 
   if (!texto) {
-    await db.from('transcripciones').update({ estado: 'fallida' }).eq('sesion_id', sesionId)
+    await db.from('transcripciones').update({ estado: 'fallida', etapa: 'fallida', detalle: 'Deepgram no devolvió texto (¿audio en silencio?)' }).eq('sesion_id', sesionId)
     return json({ error: 'sin texto en la respuesta' }, 422)
   }
 
@@ -28,6 +31,8 @@ Deno.serve(async (req) => {
     .from('transcripciones')
     .update({
       estado: 'lista',
+      etapa: 'redactando',
+      detalle: null,
       texto,
       proveedor: 'deepgram-nova-3',
       generada_en: new Date().toISOString(),
@@ -50,18 +55,22 @@ Deno.serve(async (req) => {
     metadata: { sesion_id: sesionId, transcripcion_id: transcripcion.id },
   })
 
-  // Redacción en segundo plano: el callback de Deepgram no debe esperarla.
-  const respuesta = await fetch(
-    `${Deno.env.get('SUPABASE_URL')}/functions/v1/redactar-informe`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ sesion_id: sesionId }),
-    },
-  )
+  // Dos redacciones sobre la misma transcripción, en paralelo: el borrador
+  // del psicólogo y el resumen del participante (RF-004-17). Deepgram ya no
+  // vuelve a correr.
+  const llamar = (fn: string) => fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/${fn}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sesion_id: sesionId }),
+  })
+  const [respuesta, resumen] = await Promise.all([
+    llamar('redactar-informe'),
+    llamar('resumen-participante').catch((e) => { console.error('resumen-participante', e); return null }),
+  ])
 
-  return json({ transcrita: true, informe_solicitado: respuesta.ok })
+  if (!respuesta.ok) {
+    const detalle = `No se pudo generar el borrador (${respuesta.status}): ${(await respuesta.text()).slice(0, 200)}`
+    await db.from('transcripciones').update({ etapa: 'fallida', detalle }).eq('sesion_id', sesionId)
+  }
+  return json({ transcrita: true, informe_solicitado: respuesta.ok, resumen_solicitado: !!resumen?.ok })
 })

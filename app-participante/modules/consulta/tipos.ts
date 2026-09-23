@@ -9,10 +9,18 @@ export type PropsLlamada = {
   token: string
   /** Se invoca cuando la llamada termina, por colgado o por desconexión. */
   onSalir: () => void
+  /** Se invoca si no se pudo conectar. Si falta, se usa `onSalir`. */
+  onFallo?: () => void
+  /** Código anónimo y empresa de la persona al otro lado (solo el psicólogo lo pasa). */
+  etiqueta?: string
+  /** Si la sesión se está grabando en audio (doble consentimiento). */
+  grabando?: boolean
 }
 
 export type Credenciales = {
   url: string
   token: string
   sala: string
+  /** Si el servidor logró iniciar la grabación de audio (doble consentimiento + almacenamiento configurado). */
+  grabacion?: boolean
 }

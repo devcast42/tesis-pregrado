@@ -7,7 +7,7 @@
  *  No se usa en la app móvil del participante: el panel del investigador
  *  corre solo en web. Si se llama desde nativo, muestra un placeholder. */
 
-import { createElement } from 'react'
+import { createElement, type ReactNode } from 'react'
 import { Platform, Text, View } from 'react-native'
 import { color, espacio, texto } from '../nucleo/diseno'
 
@@ -20,7 +20,12 @@ export type SerieGrafica = {
   etiqueta: string
   color: string
   puntos: PuntoGrafica[]
+  /** Línea punteada, sin puntos: para referencias (promedio del estudio). */
+  punteada?: boolean
 }
+
+/** Banda horizontal suave entre dos valores (umbrales de empresa). */
+export type BandaGrafica = { desde: number; hasta: number; color: string; etiqueta?: string }
 
 type Props = {
   series: SerieGrafica[]
@@ -34,9 +39,27 @@ type Props = {
   alto?: number
   /** Mostrar etiquetas del eje X (solo primero y último). */
   mostrarEjeX?: boolean
+  /** Bandas de fondo (a vigilar / alto). Se pintan antes que todo. */
+  bandas?: BandaGrafica[]
+  /** Etiquetas del eje X en todos los puntos (semanas). */
+  todasLasEtiquetasX?: boolean
+  /** Texto de cada etiqueta del eje X (por defecto la fecha corta). */
+  etiquetaX?: (x: string, i: number) => string
+  /** Área suave bajo la primera serie. */
+  area?: boolean
+  /** Línea horizontal gris punteada (benchmark), sin etiqueta. */
+  referencia?: number
+  /** Sin cuadrícula ni eje Y (mini gráficas). */
+  desnuda?: boolean
+  /** Sin leyenda. */
+  sinLeyenda?: boolean
+  /** Línea vertical punteada en esta x (semana actual) con su etiqueta. */
+  marcarX?: { x: string; etiqueta?: string }
+  /** Colores de las etiquetas del eje X por posición (p. ej., la semana sin dato). */
+  colorEtiquetaX?: (x: string, i: number) => string | undefined
 }
 
-const MARGEN = { top: 12, right: 12, bottom: 28, left: 36 }
+const MARGEN_BASE = { top: 12, right: 12, bottom: 28, left: 36 }
 
 export function GraficaLinea({
   series,
@@ -46,6 +69,15 @@ export function GraficaLinea({
   umbralEtiqueta,
   alto = 180,
   mostrarEjeX = true,
+  bandas = [],
+  todasLasEtiquetasX = false,
+  etiquetaX,
+  area = false,
+  referencia,
+  desnuda = false,
+  sinLeyenda = false,
+  marcarX,
+  colorEtiquetaX,
 }: Props) {
   // En nativo, degradar a texto. El panel es web.
   if (Platform.OS !== 'web') {
@@ -76,12 +108,15 @@ export function GraficaLinea({
     series.flatMap((s) => s.puntos.map((p) => p.x))
   )].sort()
 
-  const minVal = yMin ?? Math.floor(Math.min(...todosLosValores, umbral ?? Infinity) * 10) / 10
-  const maxVal = yMax ?? Math.ceil(Math.max(...todosLosValores, umbral ?? -Infinity) * 10) / 10
+  const MARGEN = desnuda ? { top: 10, right: 10, bottom: mostrarEjeX ? 22 : 6, left: 10 } : MARGEN_BASE
+  const minVal = yMin ?? Math.floor(Math.min(...todosLosValores, umbral ?? Infinity, referencia ?? Infinity, ...bandas.map((b) => b.desde)) * 10) / 10
+  const maxVal = yMax ?? Math.ceil(Math.max(...todosLosValores, umbral ?? -Infinity, referencia ?? -Infinity, ...bandas.map((b) => b.hasta)) * 10) / 10
   const rango = maxVal - minVal || 1
 
   // Dimensiones del área de trazado
-  const W = 600 // viewBox width (se escala con CSS)
+  // viewBox: las mini gráficas usan uno más angosto para que el texto no
+  // se encoja al escalar al ancho de la tarjeta.
+  const W = desnuda ? 340 : 600
   const H = alto
   const pw = W - MARGEN.left - MARGEN.right
   const ph = H - MARGEN.top - MARGEN.bottom
@@ -96,12 +131,18 @@ export function GraficaLinea({
     return MARGEN.top + ph - ((valor - minVal) / rango) * ph
   }
 
-  // Construir polyline points para cada serie
-  function puntos(serie: SerieGrafica): string {
-    return serie.puntos
-      .filter((p) => p.y != null)
-      .map((p) => `${cx(p.x).toFixed(1)},${cy(p.y!).toFixed(1)}`)
-      .join(' ')
+  // Construir polylines por tramo: un hueco (y nulo) corta la línea en lugar
+  // de interpolarse — la discontinuidad es deliberada (RN-008-11).
+  function tramos(serie: SerieGrafica): string[] {
+    const orden = [...serie.puntos].sort((a, b) => etiquetasX.indexOf(a.x) - etiquetasX.indexOf(b.x))
+    const out: string[] = []
+    let actual: string[] = []
+    for (const p of orden) {
+      if (p.y == null) { if (actual.length) out.push(actual.join(' ')); actual = []; continue }
+      actual.push(`${cx(p.x).toFixed(1)},${cy(p.y).toFixed(1)}`)
+    }
+    if (actual.length) out.push(actual.join(' '))
+    return out
   }
 
   // Líneas de cuadrícula horizontales (4 niveles)
@@ -112,7 +153,7 @@ export function GraficaLinea({
   })
 
   // SVG construido con createElement para compatibilidad con react-native-web
-  const e = (tag: string, props: Record<string, unknown>, ...children: unknown[]) =>
+  const e = (tag: string, props: Record<string, unknown>, ...children: ReactNode[]) =>
     createElement(tag, props, ...children)
 
   const svgContent = e('svg', {
@@ -120,8 +161,46 @@ export function GraficaLinea({
     style: { width: '100%', height: alto, display: 'block', overflow: 'visible' },
     'aria-label': series.map((s) => s.etiqueta).join(' y '),
   },
+    // Bandas de fondo
+    ...bandas.map((b, i) =>
+      e('g', { key: `banda-${i}` },
+        e('rect', {
+          x: MARGEN.left, y: cy(Math.min(b.hasta, maxVal)).toFixed(1),
+          width: pw, height: Math.max(0, cy(Math.max(b.desde, minVal)) - cy(Math.min(b.hasta, maxVal))).toFixed(1),
+          fill: b.color,
+        }),
+        b.etiqueta && e('text', {
+          x: W - MARGEN.right - 4, y: (cy(Math.min(b.hasta, maxVal)) + 11).toFixed(1),
+          textAnchor: 'end', fontSize: 10, fill: '#8A8580',
+          fontFamily: 'Inter, system-ui, sans-serif',
+        }, b.etiqueta),
+      )
+    ),
+
+    // Área bajo la primera serie
+    area && series[0] && series[0].puntos.some((p) => p.y != null) && e('polygon', {
+      key: 'area',
+      points: (() => {
+        const pts = series[0].puntos.filter((p) => p.y != null)
+        const primero = pts[0], ultimo = pts[pts.length - 1]
+        return [
+          `${cx(primero.x).toFixed(1)},${cy(minVal).toFixed(1)}`,
+          ...pts.map((p) => `${cx(p.x).toFixed(1)},${cy(p.y!).toFixed(1)}`),
+          `${cx(ultimo.x).toFixed(1)},${cy(minVal).toFixed(1)}`,
+        ].join(' ')
+      })(),
+      fill: series[0].color, opacity: 0.12,
+    }),
+
+    // Referencia (benchmark)
+    referencia != null && e('line', {
+      key: 'referencia',
+      x1: MARGEN.left, y1: cy(referencia).toFixed(1), x2: W - MARGEN.right, y2: cy(referencia).toFixed(1),
+      stroke: '#BDB8B1', strokeWidth: 1, strokeDasharray: '3 3',
+    }),
+
     // Cuadrícula
-    ...gridLines.map(({ y, label }) =>
+    ...(desnuda ? [] : gridLines).map(({ y, label }) =>
       e('g', { key: `grid-${y}` },
         e('line', {
           x1: MARGEN.left, y1: y.toFixed(1),
@@ -156,16 +235,18 @@ export function GraficaLinea({
     ...series.map((s) =>
       e('g', { key: s.etiqueta },
         // Línea
-        e('polyline', {
-          points: puntos(s),
+        ...tramos(s).map((pts, k) => e('polyline', {
+          key: `tramo-${k}`,
+          points: pts,
           fill: 'none',
           stroke: s.color,
-          strokeWidth: 2,
+          strokeWidth: s.punteada ? 1.5 : 2,
+          strokeDasharray: s.punteada ? '4 4' : undefined,
           strokeLinejoin: 'round',
           strokeLinecap: 'round',
-        }),
+        })),
         // Puntos
-        ...s.puntos
+        ...(s.punteada ? [] : s.puntos)
           .filter((p) => p.y != null)
           .map((p) =>
             e('circle', {
@@ -181,8 +262,34 @@ export function GraficaLinea({
       )
     ),
 
-    // Eje X: solo primera y última etiqueta
-    mostrarEjeX && etiquetasX.length > 0 && e('g', { key: 'ejeX' },
+    // Marca vertical (semana actual)
+    marcarX && etiquetasX.includes(marcarX.x) && e('g', { key: 'marca' },
+      e('line', {
+        x1: cx(marcarX.x).toFixed(1), y1: MARGEN.top, x2: cx(marcarX.x).toFixed(1), y2: (H - MARGEN.bottom).toFixed(1),
+        stroke: '#57534E', strokeWidth: 1, strokeDasharray: '3 3',
+      }),
+      marcarX.etiqueta && e('rect', {
+        x: (cx(marcarX.x) - 28).toFixed(1), y: (MARGEN.top - 2).toFixed(1), width: 56, height: 16, rx: 4, fill: '#3F3A36',
+      }),
+      marcarX.etiqueta && e('text', {
+        x: cx(marcarX.x).toFixed(1), y: (MARGEN.top + 9.5).toFixed(1), textAnchor: 'middle',
+        fontSize: 9, fontWeight: 600, fill: '#FFFFFF', fontFamily: 'Inter, system-ui, sans-serif',
+      }, marcarX.etiqueta),
+    ),
+
+    // Eje X: todas las etiquetas (semanas) …
+    mostrarEjeX && todasLasEtiquetasX && e('g', { key: 'ejeXTodas' },
+      ...etiquetasX.map((x, i) => e('text', {
+        key: x,
+        x: cx(x).toFixed(1), y: (H - 6).toFixed(1),
+        textAnchor: i === 0 && desnuda ? 'start' : i === etiquetasX.length - 1 && desnuda ? 'end' : 'middle',
+        fontSize: 10, fill: colorEtiquetaX?.(x, i) ?? (i === etiquetasX.length - 1 && etiquetaX && desnuda ? '#1C1917' : '#8A8580'),
+        fontWeight: colorEtiquetaX?.(x, i) || (i === etiquetasX.length - 1 && etiquetaX && desnuda) ? 600 : 400,
+        fontFamily: 'Inter, system-ui, sans-serif',
+      }, etiquetaX ? etiquetaX(x, i) : etiquetaFecha(x))),
+    ),
+    // … o solo primera y última
+    mostrarEjeX && !todasLasEtiquetasX && etiquetasX.length > 0 && e('g', { key: 'ejeX' },
       e('text', {
         x: cx(etiquetasX[0]).toFixed(1),
         y: (H - 6).toFixed(1),
@@ -204,10 +311,12 @@ export function GraficaLinea({
     <View>
       {svgContent as React.ReactNode}
       {/* Leyenda */}
-      <View style={{ flexDirection: 'row', gap: espacio.base, paddingTop: espacio.sm, flexWrap: 'wrap' }}>
+      {!sinLeyenda && <View style={{ flexDirection: 'row', gap: espacio.base, paddingTop: espacio.sm, flexWrap: 'wrap' }}>
         {series.map((s) => (
           <View key={s.etiqueta} style={{ flexDirection: 'row', alignItems: 'center', gap: espacio.xs }}>
-            <View style={{ width: 12, height: 3, borderRadius: 2, backgroundColor: s.color }} />
+            <View style={s.punteada
+              ? { width: 12, height: 0, borderTopWidth: 1.5, borderStyle: 'dashed', borderColor: s.color }
+              : { width: 12, height: 3, borderRadius: 2, backgroundColor: s.color }} />
             <Text style={[texto.dato, { color: color.textoSuave }]}>{s.etiqueta}</Text>
           </View>
         ))}
@@ -217,7 +326,7 @@ export function GraficaLinea({
             <Text style={[texto.dato, { color: color.alerta }]}>{umbralEtiqueta ?? 'Umbral'} (provisional)</Text>
           </View>
         )}
-      </View>
+      </View>}
     </View>
   )
 }

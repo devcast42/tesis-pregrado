@@ -1,0 +1,250 @@
+/** Factores de trabajo — implementa ESP-008 rev. 2 (RF-008-15, RF-008-16).
+ *  Diseño: Figma 3fRKKoY8Urkjlh1KQkPC9x «Factores de Trabajo».
+ *
+ *  Seis factores JD-R con su referencia y, con seis semanas de datos, qué
+ *  se mueve junto con el agotamiento en esta empresa. Las correlaciones se
+ *  calculan sobre medias semanales ya agregadas: nunca sobre personas. */
+
+import { useCallback, useState } from 'react'
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { useFocusEffect } from 'expo-router'
+import { Panel } from '../../modules/panel/Sidebar'
+import { miEmpresa, type Empresa } from '../../modules/panel/datos'
+import {
+  FACTORES, factoresEmpresa, fraseRelacion, pulsoEmpresa, relaciones,
+  type FactoresSemana, type PulsoSemana, type Relacion,
+} from '../../modules/panel/empresario'
+import { Caja, NotaAgregacion, Pastilla, Pie, SinReporte, TarjetaFactor } from '../../modules/panel/PiezasEmpresario'
+import { Aviso, Cargando, Pantalla } from '../../modules/nucleo/ui'
+import { ancho, color, espacio, radio, texto } from '../../modules/nucleo/diseno'
+import { IconoCalendario, IconoEquipo, IconoEscudoCheck, IconoInfo, IconoReloj } from '../../modules/nucleo/iconos'
+
+const MINIMO = 10
+
+export default function FactoresEmpresario() {
+  const [empresa, setEmpresa] = useState<Empresa | null>(null)
+  const [factores, setFactores] = useState<FactoresSemana[]>([])
+  const [pulso, setPulso] = useState<PulsoSemana[]>([])
+  const [listo, setListo] = useState(false)
+  const { width } = useWindowDimensions()
+  const columnas = width >= 1180 ? 3 : width >= 800 ? 2 : 1
+
+  const cargar = useCallback(async () => {
+    const em = await miEmpresa()
+    setEmpresa(em)
+    if (em) {
+      const [f, p] = await Promise.all([factoresEmpresa(em.id), pulsoEmpresa(em.id)])
+      setFactores(f); setPulso(p)
+    }
+    setListo(true)
+  }, [])
+
+  useFocusEffect(useCallback(() => { cargar() }, [cargar]))
+
+  if (!listo) return <Panel rol="admin"><Cargando /></Panel>
+  if (!empresa) return <Panel rol="admin"><Pantalla ancho={ancho.panel}><Aviso>Tu cuenta no está asociada a ninguna empresa.</Aviso></Pantalla></Panel>
+
+  const ultima = factores[factores.length - 1]
+  const { listas, semanas } = relaciones(pulso, factores)
+  const principal = listas.find((r) => !r.protector)
+  const apoyo = ultima?.apoyo_lider_media
+
+  return (
+    <Panel rol="admin">
+      <Pantalla ancho={ancho.panel}>
+        <View style={e.encabezado}>
+          <View style={{ flex: 1, gap: 4, minWidth: 280 }}>
+            <View style={e.fila}>
+              <Pastilla fondo="#E8EFEA" tinta={color.primarioProfundo}>ANÁLISIS EMPÍRICO DE COHORTE</Pastilla>
+              <Text style={[texto.dato, { color: color.textoMedio }]}>• {empresa.nombre}</Text>
+            </View>
+            <Text style={[texto.titulo, { color: color.texto }]}>Factores de Trabajo</Text>
+            <Text style={[texto.apoyo, { color: color.textoMedio, maxWidth: 560 }]}>
+              Métricas semanales del entorno operativo asociadas a la carga cognitiva y sostenibilidad del equipo.
+            </Text>
+          </View>
+          {ultima && (
+            <Caja estilo={{ paddingVertical: 12, paddingHorizontal: espacio.base }}>
+              <View style={[e.fila, { gap: espacio.base }]}>
+                <View style={e.fila}>
+                  <IconoCalendario tamano={16} color={color.primarioProfundo} />
+                  <Text style={[texto.apoyoFuerte, { color: color.texto }]}>Semana {factores.length}</Text>
+                </View>
+                <View style={e.fila}>
+                  <IconoEquipo tamano={16} color={color.primarioProfundo} />
+                  <Text style={[texto.apoyoFuerte, { color: color.texto }]}>{ultima.respondientes} participantes activos</Text>
+                </View>
+              </View>
+            </Caja>
+          )}
+        </View>
+
+        {!ultima ? (
+          <SinReporte inscritos={0} minimo={MINIMO} />
+        ) : (
+          <>
+            <View style={e.grid}>
+              {FACTORES.map((f) => (
+                <View key={f.clave} style={{ width: columnas === 1 ? '100%' : columnas === 2 ? '48.5%' : '32%', flexGrow: 1 }}>
+                  <TarjetaFactor clave={f.clave} historial={factores} />
+                </View>
+              ))}
+            </View>
+
+            {/* Qué se mueve con qué (RF-008-16) */}
+            <Caja>
+              <View style={{ gap: espacio.md }}>
+                <View style={[e.fila, { alignItems: 'flex-start' }]}>
+                  <View style={{ flex: 1, gap: 2, minWidth: 260 }}>
+                    <Text style={[texto.etiqueta, { color: color.primarioProfundo, fontSize: 11 }]}>◇ MATRIZ CAUSAL Y DINÁMICA</Text>
+                    <Text style={[texto.seccion, { color: color.texto }]}>Qué se mueve con qué</Text>
+                    <Text style={[texto.apoyo, { color: color.textoMedio }]}>
+                      Identificación de correlaciones empíricas significativas entre prácticas operativas observadas y el agotamiento psicológico de la cohorte.
+                    </Text>
+                  </View>
+                  <View style={e.rigor}>
+                    <IconoEscudoCheck tamano={16} color={color.primarioProfundo} />
+                    <View>
+                      <Text style={[texto.datoFuerte, { color: color.texto }]}>Rigor Metodológico</Text>
+                      <Text style={[texto.dato, { color: color.textoSuave }]}>Pearson ρ sobre medias semanales · |ρ| ≥ 0.4</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {semanas < 6 ? (
+                  <View style={e.espera}>
+                    <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Con seis semanas de datos podremos decirte qué factores pesan más en tu empresa.</Text>
+                    <Text style={[texto.apoyo, { color: color.textoMedio }]}>Van {semanas} de 6 semanas reportables.</Text>
+                    <View style={e.progreso}><View style={[e.progresoLleno, { width: `${Math.round((semanas / 6) * 100)}%` }]} /></View>
+                  </View>
+                ) : listas.length === 0 ? (
+                  <Text style={[texto.apoyo, { color: color.textoMedio }]}>
+                    Con {semanas} semanas, ningún factor muestra todavía una relación clara con el agotamiento (|ρ| ≥ 0.4). Se seguirá evaluando cada semana.
+                  </Text>
+                ) : (
+                  listas.slice(0, 4).map((rel) => <FilaRelacion key={rel.clave} rel={rel} />)
+                )}
+                <View style={[e.fila, { gap: 6 }]}>
+                  <IconoInfo tamano={13} color={color.textoSuave} />
+                  <Text style={[texto.dato, { color: color.textoSuave, flex: 1 }]}>
+                    Basado en las {semanas} semanas de datos continuos de {empresa.nombre} (N={ultima.respondientes}). Mínimo requerido de 6 semanas completadas con representatividad estadística.
+                  </Text>
+                </View>
+              </View>
+            </Caja>
+
+            {/* Tres lecturas */}
+            <View style={e.tres}>
+              <Lectura
+                rotulo="HALLAZGO CLAVE"
+                titulo={principal ? tituloHallazgo(principal.clave) : 'Sin hallazgo dominante'}
+                texto={principal
+                  ? `${fraseRelacion(principal)} (ρ = ${principal.r.toFixed(2)}). Es el factor con mayor peso en la lectura de agotamiento de esta cohorte.`
+                  : 'Cuando haya seis semanas reportables, aquí aparecerá el factor que más se mueve junto con el agotamiento.'}
+                pie={principal ? accionHallazgo(principal.clave) : undefined}
+                tonoPie={color.primarioProfundo}
+              />
+              <Lectura
+                rotulo="SOSTENIBILIDAD"
+                titulo="Reserva de Líderes"
+                texto={apoyo != null
+                  ? apoyo >= 3.5
+                    ? `Aunque el apoyo de los líderes sigue siendo alto (${apoyo.toFixed(1)}/5), sostenerlo con jornadas de ${ultima.horas_dia_media ?? '—'} h exige cuidar también a quien sostiene.`
+                    : `El apoyo percibido del líder está en ${apoyo.toFixed(1)}/5, bajo la referencia de 3.5. Es el recurso con mayor efecto protector en el modelo JD-R.`
+                  : 'Sin lectura de apoyo del líder esta semana.'}
+                pie={apoyo != null && apoyo >= 3.5 ? 'Riesgo de agotamiento en mandos medios' : 'Prioridad: formación de líderes de primera línea'}
+                tonoPie={color.tierra}
+              />
+              <Lectura
+                rotulo="METODOLOGÍA"
+                titulo="Validación de Instrumento"
+                texto="Las mediciones combinan reportes de pulso diario voluntario y registros contextuales de cronograma bajo anonimato de doble capa."
+                pie="Protocolo ético del estudio · ESP-008"
+                tonoPie={color.textoSuave}
+              />
+            </View>
+          </>
+        )}
+
+        <NotaAgregacion respondientes={ultima?.respondientes} minimo={MINIMO} />
+        <Pie />
+      </Pantalla>
+    </Panel>
+  )
+}
+
+function FilaRelacion({ rel }: { rel: Relacion }) {
+  const pct = Math.round(Math.abs(rel.r) * 100)
+  const tinta = rel.protector ? color.primarioProfundo : '#B0532F'
+  return (
+    <View style={[e.relacion, rel.protector && { backgroundColor: '#E8F3EE' }]}>
+      <View style={[e.iconoRelacion, rel.protector && { backgroundColor: '#D3EBE1' }]}>
+        {rel.protector ? <IconoEscudoCheck tamano={18} color={color.primarioProfundo} /> : <IconoReloj tamano={18} color="#B0532F" />}
+      </View>
+      <View style={{ flex: 1, gap: 4, minWidth: 220 }}>
+        <Text style={[texto.cuerpo, { color: color.texto }]}>{fraseRelacion(rel)}.</Text>
+        <Text style={[texto.dato, { color: tinta }]}>
+          <Text style={texto.datoFuerte}>{rel.protector ? 'Factor protector significativo' : `Relación ${rel.fuerza}`} (ρ = {rel.r.toFixed(2)})</Text>
+          {' '}• {rel.protector ? 'Amortiguador psicosocial crítico' : rel.fuerza === 'fuerte' ? 'Impacto de latencia inmediata' : 'Deterioro de la ventana circadiana'}
+        </Text>
+      </View>
+      <View style={{ width: 150, gap: 4 }}>
+        <View style={e.fila}>
+          <Text style={[texto.dato, { color: color.textoMedio, flex: 1 }]}>{rel.protector ? 'Capacidad protectora' : 'Fuerza de relación'}</Text>
+          <Text style={[texto.datoFuerte, { color: color.texto }]}>{pct} %</Text>
+        </View>
+        <View style={e.progreso}><View style={[e.progresoLleno, { width: `${pct}%`, backgroundColor: tinta }]} /></View>
+      </View>
+    </View>
+  )
+}
+
+function Lectura({ rotulo, titulo, texto: t, pie, tonoPie }: { rotulo: string; titulo: string; texto: string; pie?: string; tonoPie: string }) {
+  return (
+    <View style={{ flex: 1, minWidth: 220 }}>
+      <Caja>
+        <View style={{ gap: espacio.sm }}>
+          <Text style={[texto.etiqueta, { color: color.primarioProfundo, fontSize: 11 }]}>{rotulo}</Text>
+          <Text style={[texto.seccion, { color: color.texto, fontSize: 18, lineHeight: 24 }]}>{titulo}</Text>
+          <Text style={[texto.apoyo, { color: color.textoMedio }]}>{t}</Text>
+          {pie && <Text style={[texto.datoFuerte, { color: tonoPie, marginTop: 4 }]}>{pie}</Text>}
+        </View>
+      </Caja>
+    </View>
+  )
+}
+
+function tituloHallazgo(clave: Relacion['clave']): string {
+  return {
+    horas_dia_media: 'Jornadas que no cierran',
+    sueno_media: 'Noches cortas',
+    fin_de_semana_media: 'Fines de semana ocupados',
+    sobretiempo_media: 'Sobretiempo acumulado',
+    guardia_pct: 'Guardias sin descompresión',
+    apoyo_lider_media: 'Liderazgo bajo presión',
+  }[clave]
+}
+
+function accionHallazgo(clave: Relacion['clave']): string {
+  return {
+    horas_dia_media: 'Revisión de carga recomendada',
+    sueno_media: 'Revisión de horarios recomendada',
+    fin_de_semana_media: 'Política de desconexión recomendada',
+    sobretiempo_media: 'Límite de sobretiempo recomendado',
+    guardia_pct: 'Revisión de turnos recomendada',
+    apoyo_lider_media: 'Acompañamiento a líderes recomendado',
+  }[clave]
+}
+
+const e = StyleSheet.create({
+  encabezado: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: espacio.base, flexWrap: 'wrap' },
+  fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: espacio.base },
+  rigor: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, backgroundColor: '#F5F4F1', borderRadius: radio.md, padding: espacio.sm, paddingHorizontal: espacio.md },
+  espera: { gap: espacio.sm, backgroundColor: '#F5F4F1', borderRadius: radio.md, padding: espacio.base },
+  progreso: { height: 6, borderRadius: 3, backgroundColor: '#E4E1DC', overflow: 'hidden' },
+  progresoLleno: { height: 6, borderRadius: 3, backgroundColor: color.primario },
+  relacion: { flexDirection: 'row', alignItems: 'center', gap: espacio.base, backgroundColor: '#F5F4F1', borderRadius: radio.md, padding: espacio.md, flexWrap: 'wrap' },
+  iconoRelacion: { width: 40, height: 40, borderRadius: radio.sm, backgroundColor: '#EDE3DC', alignItems: 'center', justifyContent: 'center' },
+  tres: { flexDirection: 'row', gap: espacio.base, flexWrap: 'wrap' },
+})
