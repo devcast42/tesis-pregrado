@@ -3,9 +3,16 @@
 Guion para presentar el sistema. Cada bloque tiene su tiempo; si uno se alarga,
 el que se sacrifica es el último.
 
-Los datos son de la empresa **Nexa Software**, creada por
-`supabase/semilla_demo_presentacion.py`. No son datos del estudio y conviene
-decirlo en voz alta una vez, al principio.
+Los datos los crea `supabase/semilla_demo_presentacion.py`, que **borra todo y
+deja cuatro empresas** en distintos momentos del estudio. No son datos del
+estudio real y conviene decirlo en voz alta una vez, al principio.
+
+| Empresa | Personas | Semanas | Por qué está |
+|---|---|---|---|
+| Nexa Software | 22 | 6 | la cohorte madura, con historia completa |
+| Andes Data Labs | 16 | 4 | más carga: infraestructura y guardias, más detecciones |
+| Marea Studio | 13 | 6 | buen clima: casi ninguna detección |
+| Kuntur Fintech | 7 | 2 | **por debajo del mínimo de reporte**: el panel no puede mostrarle agregados |
 
 ---
 
@@ -26,8 +33,9 @@ Deja **cuatro pestañas abiertas y con sesión iniciada**, en este orden:
 | 3 | `localhost:8081/investigador` | `test+investigador@tesis.local` | `Test1234!` |
 | 4 | `localhost:8081/admin` | `test+admin@tesis.local` | `Test1234!` |
 
-En la pestaña 3, arriba a la izquierda, **filtra por «Nexa Software»**. Si no,
-se mezclan los datos viejos de prueba.
+En la pestaña 3 el selector de empresa de arriba a la izquierda es tu amigo:
+déjalo en «Todas las empresas» para el panorama y filtra por una cuando quieras
+entrar al detalle.
 
 > Cada rol necesita su propia sesión. Si entras con otra cuenta en la misma
 > pestaña, cierras la anterior. Por eso van cuatro pestañas y no una.

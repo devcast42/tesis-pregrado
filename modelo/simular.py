@@ -127,8 +127,11 @@ def discretizar(x: float, lo: int, hi: int) -> int:
 
 # ------------------------------------------------------------------ persona
 
-def generar_persona(rng: np.random.Generator, idx: int) -> dict:
-    theta = rng.normal(0, 1)
+def generar_persona(rng: np.random.Generator, idx: int, sesgo: float = 0.0) -> dict:
+    """`sesgo` desplaza la propensión de toda una empresa: positivo para una
+    con más carga estructural, negativo para una con mejor clima. Permite que
+    varias cohortes simuladas no salgan idénticas."""
+    theta = rng.normal(sesgo, 1)
     rol = rng.choice(ROLES, p=PESO_ROL)
     modalidad = rng.choice(MODALIDADES, p=PESO_MODALIDAD)
 
