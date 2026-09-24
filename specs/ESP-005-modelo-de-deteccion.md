@@ -233,6 +233,35 @@ cambian; cambia qué se estima con ellas.
 `entrenar.py` imprime los casos por variable de cada versión y marca con `*` la
 principal, para que esto no se pierda de vista.
 
+### 7.7 ¿Alcanza la muestra para medir el bloque objetivo?
+
+Pregunta distinta de «¿el sueño predice el burnout?»: esa es empírica. Esta es
+estadística y se puede contestar antes de reclutar. `modelo/potencia.py` fija
+por construcción un efecto objetivo **real y conocido**, simula muchas cohortes
+y mide cuánto se mueve la estimación. El resultado no dice nada sobre el
+burnout —el efecto lo pusimos nosotros— sino sobre la precisión del instrumento
+de medida.
+
+| Personas | Semanas altas | Bloque ánimo, ROC-AUC | Bloque objetivo, ROC-AUC |
+|---|---|---|---|
+| 40 | 25 | 0.70 (0.59 – 0.85) | 0.61 (0.51 – 0.77) |
+| 60 | 34 | 0.76 (0.71 – 0.83) | 0.60 (0.53 – 0.67) |
+| 80 | 48 | 0.71 (0.66 – 0.80) | 0.59 (**0.48** – 0.68) |
+| 120 | 70 | 0.74 (0.71 – 0.80) | 0.61 (0.54 – 0.68) |
+| 200 | 118 | 0.77 (0.69 – 0.78) | 0.62 (0.58 – 0.68) |
+
+Mediana y rango sobre 12 cohortes por tamaño.
+
+**Consecuencia.** Con la muestra proyectada (60–100), el bloque de ánimo da una
+estimación estable y claramente por encima del azar. El bloque objetivo, aun
+teniendo un efecto real puesto a mano, produce un número que oscila entre 0.48
+y 0.68: una sola corrida **no distingue «funciona» de «no funciona»**. Ni
+siquiera con 200 personas se vuelve concluyente.
+
+Por eso el bloque objetivo se reporta como **pregunta secundaria con su
+intervalo**, no como el resultado principal, y retirar los ítems de ánimo
+dejaría a la tesis sin un resultado medible con esta muestra.
+
 ### 7.5 HE1 — propuesta de reformulación
 
 > El modelo, usando señales diarias de 25 segundos y contexto laboral, anticipa la clasificación del OLBI semanal con recall ≥ *R* y F1 ≥ *F*, y permite señalar riesgo en promedio *N* días antes de la aplicación del instrumento.
