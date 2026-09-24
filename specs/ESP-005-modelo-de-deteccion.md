@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Estado** | **Revisión 2 — parcialmente implementada.** Preentrenamiento (§5), tabla de versiones, cálculo en SQL y registro de predicciones (§8) están hechos y en producción con la versión `preentrenamiento-v1`. El entrenamiento con datos propios (§5.2 pasos 3–4, §7) espera los datos. Pendiente de la conformidad del asesor a §3. |
-| **Módulo** | `modelo/` (nuevo), `supabase/migrations` (vista de semanas), `supabase/functions/evaluar-olbi` (integración) |
+| **Estado** | **Revisión 2 — implementada salvo los datos.** Preentrenamiento (§5), tabla de versiones, cálculo en SQL y registro de predicciones (§8) están en producción con `preentrenamiento-v1`. La vista `semanas_modelo` (§8), el entrenamiento con datos propios (§5.2 pasos 3–4) y la evaluación (§7) están escritos y probados de punta a punta; los siete criterios de aceptación automatizables (§10) pasan. **Lo único que falta es la muestra**: hoy hay 3 personas con datos reales y ninguna aporta una fila entrenable. Pendiente de la conformidad del asesor a §3. |
+| **Módulo** | `modelo/` (`preentrenar.py`, `entrenar.py`, `pruebas.py`), `supabase/migrations` (`semanas_modelo`), `supabase/functions/evaluar-olbi` (integración) |
 | **Depende de** | ESP-002 rev. 2 (calendario semanal), ESP-003 (umbral OLBI), ESP-007 (adherencia) |
 | **Diseño** | [docs/diseno-semanal-con-preentrenamiento.md](../docs/diseno-semanal-con-preentrenamiento.md) |
 
@@ -39,6 +39,7 @@ La etiqueta es *estar por encima del umbral*, no *cruzarlo por primera vez*. La 
 - Los 16 ítems del OLBI de la semana *t* en el nowcast. Es el patrón oro de esa fila.
 - Los ítems del OLBI de *t+1* en el pronóstico.
 - Cualquier dato posterior al viernes de la semana *t*.
+- **En el nowcast, el cuestionario `semanal`** (`horas_sobretiempo`, `guardias`, `apoyo_lider`). Se responde el viernes —en los datos, 73 de 76 veces *después* del OLBI—, y el nowcast existe para avisar el miércoles. Entrenarlo con datos que el miércoles no existen produce métricas que la app no puede reproducir en operación: no es fuga respecto de la etiqueta, pero sí respecto del momento de uso. En el pronóstico sí entran, porque ahí la etiqueta es el viernes siguiente y estos datos ya son pasado. Verificado por CA-005-02b.
 
 Los cuatro ítems diarios `od_*` **sí** son entrada. Son ítems del OLBI en versión diaria, pero no forman el instrumento, no se puntúan y la etiqueta sale de otra aplicación (el OLBI completo del viernes). No hay circularidad: el modelo aprende cómo cuatro señales diarias anticipan un instrumento de 16 ítems aplicado en otro momento.
 
@@ -78,7 +79,8 @@ De los cuatro ítems `od_*` (lunes a jueves, escala 1–5):
 
 | Origen | Rasgos |
 |---|---|
-| `diario` | `horas_media`, `horas_max`, `sueno_media`, `sueno_min`, `horas_fin_de_semana` (lunes) |
+| `diario` (carga) | `horas_media`, `horas_max`, `sueno_media`, `sueno_min`, `horas_fin_de_semana` (lunes) |
+| `diario` v3 (recuperación) | `desconexion_media`, `contacto_fuera_horario`. Hasta v2 el bloque objetivo solo medía **cuánto** se trabajó; la recuperación es lo que distingue a dos personas con la misma jornada, y sin ella la versión F (sin ítems del OLBI) se queda en «horas». `desconexion` pregunta por un comportamiento, no por una valoración del trabajo: no reintroduce la circularidad de §3.3 |
 | `diario` | `dias_respondidos` (0–4): dejar de responder es señal, no solo ruido |
 | `semanal` (viernes) | `horas_sobretiempo`, `guardias`, `apoyo_lider` |
 | `estable` | las 8 variables tal cual; `rol` y `modalidad` en one-hot |
@@ -88,8 +90,12 @@ De los cuatro ítems `od_*` (lunes a jueves, escala 1–5):
 
 | Versión | Entradas | Qué demuestra |
 |---|---|---|
-| **A — solo señales diarias y contexto** | 4.1 + 4.2 sin `E_previo`/`D_previo` | Que las señales baratas tienen valor por sí solas. Sostiene el título |
+| **D — solo ánimo** | 4.1 (los cuatro ítems `od_*`) | Cuánto de la señal viene de preguntar «cómo te sientes». Es el techo de la crítica de circularidad: son ítems del OLBI prediciendo el OLBI |
+| **F — solo objetivo** | 4.2 sin ningún ítem `od_*` | **La versión más interesante de la tesis.** Si predice sin preguntar por el ánimo, la afirmación pasa de «un cuestionario se parece a sí mismo» a «las condiciones laborales anticipan el burnout», que además es accionable para la empresa |
+| **F reducida** | `sueno_media`, `sueno_min`, `horas_media`, `horas_max` | F con cuatro variables fijadas por hipótesis. Existe por potencia: ver §7.6 |
+| **A — MODELO PRINCIPAL** | 4.1 + carga + recuperación + `guardia_previa`. **15 variables** en nowcast, 18 en pronóstico (§7.6) | Que las señales baratas tienen valor por sí solas. Sostiene el título. Es la versión que se publica |
 | **B — A + OLBI previo** | A + `E_previo`, `D_previo` (solo pronóstico) | La versión operativa más fuerte |
+| **A-completo / B-completo** | Todas las variables de §4.2 (~30) | **Exploratoria, no se publica.** Se reporta para mostrar que las variables sobrantes no aportan: en el ensayo dan el mismo ROC-AUC que A con el doble de variables |
 | **A₀ / B₀ — sin preentrenamiento** | Las mismas, con pesos iniciales en cero | El control del experimento de §5 |
 
 ## 5. Preentrenamiento
@@ -149,6 +155,12 @@ Es lo que la app traduce a «confianza baja/media» y a «de cada 10 avisos se c
 
 **Random forest** como comparación, con las mismas particiones. Si no supera claramente a la logística, se reporta y se descarta.
 
+Implementado en `modelo/entrenar.py` (400 árboles, hojas de ≥ 5, `sqrt` rasgos por división, `balanced_subsample`). Recorre las mismas particiones que la logística y elige su umbral igual que ella. No recibe el preentrenamiento: `w₀` es un vector de pesos lineales y no tiene traducción a un bosque.
+
+**Nota de método.** El umbral se elige con predicciones *fuera de muestra* dentro del pliegue de entrenamiento (`GroupKFold` interno de 3), no con las predicciones en muestra. Sin esto la comparación estaría amañada contra el bosque: un bosque ajusta sus datos de entrenamiento casi perfecto, sus probabilidades en muestra son ~0/1 y un umbral elegido sobre ellas no significa nada en datos nuevos. Se aplica igual a los dos modelos.
+
+Sobre la cohorte simulada (80 personas, no son datos del estudio) el bosque **no supera a la logística**: empata en nowcast (ROC-AUC 0.75 ± 0.02 vs. 0.75 ± 0.06, con menos recall: 0.63 vs. 0.82) y pierde en pronóstico (0.62 ± 0.06 vs. 0.73 ± 0.09, por debajo incluso de la línea base del OLBI previo). Es lo esperable con ~300 filas. La decisión se repetirá con la muestra real; si se confirma, la logística queda como modelo principal por interpretable y el bosque se reporta como comparación descartada.
+
 Nada más profundo. No hay muestra.
 
 ## 7. Evaluación
@@ -170,8 +182,55 @@ Prevalencia esperada de semanas sobre el umbral: 10–25 %. `class_weight='balan
 | Línea base | Qué mide | Quién debe superarla |
 |---|---|---|
 | Clase mayoritaria | Trivial | Todas |
-| **«Igual que el viernes pasado»** | Lo que sabe el OLBI solo, sin señales diarias | **A**, en pronóstico |
+| **«Igual que el viernes pasado»** | Regla literal: quien ya estaba alto seguirá alto. **Bajo la censura de §3.5 es degenerada** (nadie en seguimiento supera el umbral, así que nunca dispara y su recall es 0). Se reporta para dejar constancia | — |
+| **Logística solo con el OLBI previo** | Lo que sabe el OLBI solo, sin señales diarias, usando la distancia al umbral en vez de la regla binaria. Es la comparación que decide si las señales diarias aportan | **A**, en pronóstico |
 | **A₀ / B₀** | El mismo modelo sin preentrenamiento | A / B, para que el preentrenamiento demuestre valor |
+
+### 7.6 Potencia: el número de variables es un problema de diseño
+
+Con 6 semanas y 60-100 personas habrá del orden de 350-500 filas y, con una
+prevalencia del 10-25 %, entre **40 y 90 semanas altas**. La regla habitual en
+modelos de riesgo es ~10 casos positivos por variable. Los rasgos de §4 suman
+**29-32 variables**: eso da **1-2 casos por variable**, entre cinco y diez veces
+por debajo de lo admisible. Un modelo así memoriza.
+
+No es teórico. En el ensayo con la cohorte simulada, reducir el bloque objetivo
+de 22 variables a 4 **mejoró** el resultado (ROC-AUC 0.64 → 0.67 en nowcast), y
+la versión de 25 variables en pronóstico cayó a 0.44, por debajo del azar: la
+firma clásica del sobreajuste.
+
+En el mismo ensayo, recortar el modelo completo de 29-32 variables a 14-17
+(colapsar `rol` a «el rol implica guardias» y `modalidad` a «remoto sí/no»,
+y sacar edad, antigüedades, tamaño de equipo y traslado del modelo principal)
+dio **el mismo resultado** (ROC-AUC 0.77 en nowcast, 0.76 en pronóstico) con la
+mitad de variables, y algo mejor F1 en pronóstico (0.36 vs. 0.32). No es un
+salto de precisión: es la misma precisión con un modelo que se puede explicar
+y que aguanta mejor datos reales, más ruidosos que los simulados. Nótese que la
+regularización elegida fue la más fuerte de la rejilla (λ = 10), es decir, el
+propio ajuste ya estaba apagando las variables sobrantes.
+
+**Aplicado.** El modelo principal es el recortado (`rasgos_principales()` en
+`modelo/entrenar.py`):
+
+- los 7 rasgos de §4.1 (ánimo diario), que son el núcleo preentrenable;
+- carga: `sueno_media`, `sueno_min`, `horas_media`, `horas_max`,
+  `horas_fin_de_semana`;
+- recuperación (diario v3): `desconexion_media`, `contacto_fuera_horario`;
+- `guardia_previa`: si estuvo de guardia **la semana anterior**. Es un dato
+  respondido por la persona, no una suposición sobre qué puestos suelen tener
+  guardias, y está disponible desde el lunes, que es cuando el nowcast tiene
+  que poder opinar (el `guardias` de la propia semana se responde el viernes,
+  CA-005-02b);
+- en pronóstico se añaden `horas_sobretiempo`, `guardias`, `apoyo_lider` de la
+  semana t, que ahí ya son pasado.
+
+`rol` y `modalidad` salen del modelo, igual que edad, antigüedades, tamaño de
+equipo, personas a cargo y minutos de traslado: **se siguen recogiendo y se
+describen en la tesis, pero no se estiman**. Las preguntas de la app no
+cambian; cambia qué se estima con ellas.
+
+`entrenar.py` imprime los casos por variable de cada versión y marca con `*` la
+principal, para que esto no se pierda de vista.
 
 ### 7.5 HE1 — propuesta de reformulación
 
@@ -202,6 +261,7 @@ Prevalencia esperada de semanas sobre el umbral: 10–25 %. `class_weight='balan
 |---|---|---|
 | CA-005-01 | Ninguna entrada de la fila (participante, semana *t*) se calcula con datos posteriores al viernes de *t* | Prueba automatizada sobre `semanas_modelo` |
 | CA-005-02 | Ningún ítem `olbi_*` de la semana etiquetada aparece entre las entradas | Prueba automatizada |
+| CA-005-02b | El nowcast no usa el cuestionario `semanal`, que se responde el viernes | Prueba automatizada |
 | CA-005-03 | Cada participante aparece en un solo pliegue | Prueba automatizada |
 | CA-005-04 | Ningún participante aporta semanas posteriores a su primer cruce | Prueba automatizada |
 | CA-005-05 | Los rasgos de §4.1 calculados en SQL y en Python coinciden para el mismo participante-semana | Prueba automatizada |
@@ -216,8 +276,12 @@ Prevalencia esperada de semanas sobre el umbral: 10–25 %. `class_weight='balan
 | §5.1, §5.4 | `modelo/exploracion/` (README, `descargar.py`, `explorar.py`) |
 | §5.2 pasos 1–2 | `modelo/preentrenar.py` → `modelo/versiones/preentrenamiento-v1.json` y `supabase/migrations/20260918130000_modelo_version_preentrenamiento.sql` (generada) |
 | §4.1 en SQL, §8 (`modelo_versiones`, predicción, evento `prediccion_modelo`) | `supabase/migrations/20260918120000_modelo_versiones.sql` (`rasgos_semana`), `20260918150000_modelo_pronostico.sql` (`probabilidad_semana`, `registrar_prediccion` con tarea, `ultima_prediccion_semana`) |
-| CA-005-05, CA-005-06 | Verificado a mano el 2026-09-18: mismos rasgos y misma probabilidad (0.597) en SQL y en Python para el mismo participante-semana. Falta la prueba automatizada |
-| §5.2 pasos 3–4, §7, vista `semanas_modelo` para entrenamiento | **Pendiente** hasta tener datos propios |
+| CA-005-05, CA-005-06 | Automatizadas en `modelo/pruebas.py`: comparan la vista, `rasgos_semana` y `rasgos()` de Python en cada participante-semana, y la sigmoide de Postgres contra la de Python en cada versión cargada |
+| §8, vista `semanas_modelo` | `supabase/migrations/20260923100000_semanas_modelo.sql` — una fila por (participante, semana), rasgos de §4, ambas etiquetas y censura de §3.5 |
+| §5.2 pasos 3–4, §4.3 (A, B, A₀, B₀), §6 (random forest como comparación), §7 (GroupKFold, métricas, líneas base), §12 decisión 5 (λ hacia w₀ elegida en validación) | `modelo/entrenar.py`. Se niega a publicar una versión si el entrenamiento incluye datos sintéticos o si hay menos de 20 personas |
+| CA-005-01 … CA-005-06, CA-005-08 | `modelo/pruebas.py` — los ocho pasan (2026-09-24). CA-005-07 se revisa sobre la salida de `entrenar.py` |
+| Ensayo del pipeline sin datos propios | `modelo/simular.py` — cohorte simulada de 80 personas con proceso generativo de tres niveles y ruido de medición independiente entre el OLBI del viernes y los ítems diarios. Calibrada contra la referencia: prevalencia 0.14, T 2.08 (DE 0.92), ICC 0.59, autocorrelación diaria 0.57 |
+| §7 con datos propios | **Pendiente de la muestra.** Los ensayos (`modelo/resultados/`) usan datos sintéticos: prueban la mecánica, no son resultados del estudio |
 
 ## 12. Decisiones abiertas
 
@@ -227,4 +291,5 @@ Prevalencia esperada de semanas sobre el umbral: 10–25 %. `class_weight='balan
 | 2 | Fijar *R*, *F* y *N* de HE1 (§7.5) | Asesor |
 | 3 | Etiqueta de pronóstico: *estar sobre el umbral* (propuesto) vs. *cruzarlo* | Asesor |
 | 4 | Confirmar la prevalencia esperada con literatura peruana o latinoamericana | Autores |
+| 6 | **Qué variables objetivas entran en el modelo principal** (§7.6). Con la muestra proyectada solo caben unas 4-6; el resto es exploratorio. Fijarlas por hipótesis antes de reclutar, no después de ver los datos | Autores + asesor |
 | 5 | Fuerza de la regularización hacia `w₀` (cuánto se confía en el dominio de referencia); se elige en validación y se reporta | Autores |

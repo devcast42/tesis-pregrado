@@ -1,0 +1,459 @@
+{
+  "nowcast": {
+    "tarea": "nowcast",
+    "n_filas": 56,
+    "n_personas": 12,
+    "positivos": 0.214,
+    "lambda_probadas": [
+      0.1,
+      0.3,
+      1.0,
+      3.0,
+      10.0
+    ],
+    "lineas_base": {
+      "clase_mayoritaria": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "pr_auc": 0.214,
+        "roc_auc": 0.5
+      }
+    },
+    "versiones": {
+      "A": {
+        "lambda_hacia_w0": 0.1,
+        "por_pliegue": [
+          {
+            "precision": 0.6,
+            "recall": 1.0,
+            "f1": 0.75,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          },
+          {
+            "precision": 0.667,
+            "recall": 1.0,
+            "f1": 0.8,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          },
+          {
+            "precision": 0.667,
+            "recall": 1.0,
+            "f1": 0.8,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          },
+          {
+            "precision": 0.5,
+            "recall": 0.5,
+            "f1": 0.5,
+            "pr_auc": 0.833,
+            "roc_auc": 0.938
+          },
+          {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          }
+        ],
+        "resumen": {
+          "precision": {
+            "media": 0.687,
+            "de": 0.168,
+            "pliegues": 5
+          },
+          "recall": {
+            "media": 0.9,
+            "de": 0.2,
+            "pliegues": 5
+          },
+          "f1": {
+            "media": 0.77,
+            "de": 0.16,
+            "pliegues": 5
+          },
+          "pr_auc": {
+            "media": 0.967,
+            "de": 0.067,
+            "pliegues": 5
+          },
+          "roc_auc": {
+            "media": 0.988,
+            "de": 0.025,
+            "pliegues": 5
+          }
+        }
+      },
+      "A0": {
+        "lambda_hacia_w0": null,
+        "por_pliegue": [
+          {
+            "precision": 0.6,
+            "recall": 1.0,
+            "f1": 0.75,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          },
+          {
+            "precision": 0.667,
+            "recall": 1.0,
+            "f1": 0.8,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          },
+          {
+            "precision": 0.667,
+            "recall": 1.0,
+            "f1": 0.8,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          },
+          {
+            "precision": 1.0,
+            "recall": 0.5,
+            "f1": 0.667,
+            "pr_auc": 0.833,
+            "roc_auc": 0.938
+          },
+          {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          }
+        ],
+        "resumen": {
+          "precision": {
+            "media": 0.787,
+            "de": 0.176,
+            "pliegues": 5
+          },
+          "recall": {
+            "media": 0.9,
+            "de": 0.2,
+            "pliegues": 5
+          },
+          "f1": {
+            "media": 0.803,
+            "de": 0.11,
+            "pliegues": 5
+          },
+          "pr_auc": {
+            "media": 0.967,
+            "de": 0.067,
+            "pliegues": 5
+          },
+          "roc_auc": {
+            "media": 0.988,
+            "de": 0.025,
+            "pliegues": 5
+          }
+        }
+      }
+    }
+  },
+  "pronostico": {
+    "tarea": "pronostico",
+    "n_filas": 44,
+    "n_personas": 12,
+    "positivos": 0.273,
+    "lambda_probadas": [
+      0.1,
+      0.3,
+      1.0,
+      3.0,
+      10.0
+    ],
+    "lineas_base": {
+      "clase_mayoritaria": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "pr_auc": 0.273,
+        "roc_auc": 0.5
+      },
+      "igual_que_el_viernes_pasado": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "pr_auc": 0.273,
+        "roc_auc": 0.5
+      }
+    },
+    "versiones": {
+      "A": {
+        "lambda_hacia_w0": 0.1,
+        "por_pliegue": [
+          {
+            "precision": 0.667,
+            "recall": 0.667,
+            "f1": 0.667,
+            "pr_auc": 0.806,
+            "roc_auc": 0.905
+          },
+          {
+            "precision": 0.5,
+            "recall": 1.0,
+            "f1": 0.667,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          },
+          {
+            "precision": 0.4,
+            "recall": 1.0,
+            "f1": 0.571,
+            "pr_auc": 0.833,
+            "roc_auc": 0.917
+          },
+          {
+            "precision": 0.333,
+            "recall": 0.5,
+            "f1": 0.4,
+            "pr_auc": 0.5,
+            "roc_auc": 0.75
+          },
+          {
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1": 0.857,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          }
+        ],
+        "resumen": {
+          "precision": {
+            "media": 0.53,
+            "de": 0.157,
+            "pliegues": 5
+          },
+          "recall": {
+            "media": 0.833,
+            "de": 0.211,
+            "pliegues": 5
+          },
+          "f1": {
+            "media": 0.632,
+            "de": 0.149,
+            "pliegues": 5
+          },
+          "pr_auc": {
+            "media": 0.828,
+            "de": 0.183,
+            "pliegues": 5
+          },
+          "roc_auc": {
+            "media": 0.914,
+            "de": 0.091,
+            "pliegues": 5
+          }
+        }
+      },
+      "A0": {
+        "lambda_hacia_w0": null,
+        "por_pliegue": [
+          {
+            "precision": 0.5,
+            "recall": 0.667,
+            "f1": 0.571,
+            "pr_auc": 0.756,
+            "roc_auc": 0.857
+          },
+          {
+            "precision": 0.5,
+            "recall": 1.0,
+            "f1": 0.667,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          },
+          {
+            "precision": 0.667,
+            "recall": 1.0,
+            "f1": 0.8,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          },
+          {
+            "precision": 0.4,
+            "recall": 1.0,
+            "f1": 0.571,
+            "pr_auc": 0.5,
+            "roc_auc": 0.75
+          },
+          {
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1": 0.857,
+            "pr_auc": 0.917,
+            "roc_auc": 0.952
+          }
+        ],
+        "resumen": {
+          "precision": {
+            "media": 0.563,
+            "de": 0.127,
+            "pliegues": 5
+          },
+          "recall": {
+            "media": 0.933,
+            "de": 0.133,
+            "pliegues": 5
+          },
+          "f1": {
+            "media": 0.693,
+            "de": 0.117,
+            "pliegues": 5
+          },
+          "pr_auc": {
+            "media": 0.835,
+            "de": 0.19,
+            "pliegues": 5
+          },
+          "roc_auc": {
+            "media": 0.912,
+            "de": 0.096,
+            "pliegues": 5
+          }
+        }
+      },
+      "B": {
+        "lambda_hacia_w0": 0.1,
+        "por_pliegue": [
+          {
+            "precision": 0.667,
+            "recall": 0.667,
+            "f1": 0.667,
+            "pr_auc": 0.806,
+            "roc_auc": 0.905
+          },
+          {
+            "precision": 0.5,
+            "recall": 1.0,
+            "f1": 0.667,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          },
+          {
+            "precision": 0.4,
+            "recall": 1.0,
+            "f1": 0.571,
+            "pr_auc": 0.833,
+            "roc_auc": 0.917
+          },
+          {
+            "precision": 0.333,
+            "recall": 0.5,
+            "f1": 0.4,
+            "pr_auc": 0.5,
+            "roc_auc": 0.75
+          },
+          {
+            "precision": 0.6,
+            "recall": 1.0,
+            "f1": 0.75,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          }
+        ],
+        "resumen": {
+          "precision": {
+            "media": 0.5,
+            "de": 0.123,
+            "pliegues": 5
+          },
+          "recall": {
+            "media": 0.833,
+            "de": 0.211,
+            "pliegues": 5
+          },
+          "f1": {
+            "media": 0.611,
+            "de": 0.12,
+            "pliegues": 5
+          },
+          "pr_auc": {
+            "media": 0.828,
+            "de": 0.183,
+            "pliegues": 5
+          },
+          "roc_auc": {
+            "media": 0.914,
+            "de": 0.091,
+            "pliegues": 5
+          }
+        }
+      },
+      "B0": {
+        "lambda_hacia_w0": null,
+        "por_pliegue": [
+          {
+            "precision": 0.667,
+            "recall": 0.667,
+            "f1": 0.667,
+            "pr_auc": 0.756,
+            "roc_auc": 0.857
+          },
+          {
+            "precision": 0.5,
+            "recall": 1.0,
+            "f1": 0.667,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          },
+          {
+            "precision": 0.667,
+            "recall": 1.0,
+            "f1": 0.8,
+            "pr_auc": 1.0,
+            "roc_auc": 1.0
+          },
+          {
+            "precision": 0.4,
+            "recall": 1.0,
+            "f1": 0.571,
+            "pr_auc": 0.5,
+            "roc_auc": 0.75
+          },
+          {
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1": 0.857,
+            "pr_auc": 0.917,
+            "roc_auc": 0.952
+          }
+        ],
+        "resumen": {
+          "precision": {
+            "media": 0.597,
+            "de": 0.128,
+            "pliegues": 5
+          },
+          "recall": {
+            "media": 0.933,
+            "de": 0.133,
+            "pliegues": 5
+          },
+          "f1": {
+            "media": 0.712,
+            "de": 0.103,
+            "pliegues": 5
+          },
+          "pr_auc": {
+            "media": 0.835,
+            "de": 0.19,
+            "pliegues": 5
+          },
+          "roc_auc": {
+            "media": 0.912,
+            "de": 0.096,
+            "pliegues": 5
+          }
+        }
+      }
+    }
+  }
+}
