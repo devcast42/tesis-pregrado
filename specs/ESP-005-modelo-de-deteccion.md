@@ -170,7 +170,8 @@ Prevalencia esperada de semanas sobre el umbral: 10–25 %. `class_weight='balan
 | Línea base | Qué mide | Quién debe superarla |
 |---|---|---|
 | Clase mayoritaria | Trivial | Todas |
-| **«Igual que el viernes pasado»** | Lo que sabe el OLBI solo, sin señales diarias | **A**, en pronóstico |
+| **«Igual que el viernes pasado»** | Regla literal: quien ya estaba alto seguirá alto. **Bajo la censura de §3.5 es degenerada** (nadie en seguimiento supera el umbral, así que nunca dispara y su recall es 0). Se reporta para dejar constancia | — |
+| **Logística solo con el OLBI previo** | Lo que sabe el OLBI solo, sin señales diarias, usando la distancia al umbral en vez de la regla binaria. Es la comparación que decide si las señales diarias aportan | **A**, en pronóstico |
 | **A₀ / B₀** | El mismo modelo sin preentrenamiento | A / B, para que el preentrenamiento demuestre valor |
 
 ### 7.5 HE1 — propuesta de reformulación
@@ -220,7 +221,8 @@ Prevalencia esperada de semanas sobre el umbral: 10–25 %. `class_weight='balan
 | §8, vista `semanas_modelo` | `supabase/migrations/20260923100000_semanas_modelo.sql` — una fila por (participante, semana), rasgos de §4, ambas etiquetas y censura de §3.5 |
 | §5.2 pasos 3–4, §4.3 (A, B, A₀, B₀), §7 (GroupKFold, métricas, líneas base), §12 decisión 5 (λ hacia w₀ elegida en validación) | `modelo/entrenar.py`. Se niega a publicar una versión si el entrenamiento incluye la semilla de demostración o si hay menos de 20 personas |
 | CA-005-01 … CA-005-06, CA-005-08 | `modelo/pruebas.py` — los siete pasan (2026-09-23). CA-005-07 se revisa sobre la salida de `entrenar.py` |
-| §7 con datos propios | **Pendiente de la muestra.** El ensayo con la semilla de demostración (`modelo/resultados/ensayo-con-semilla-demo.json`) solo prueba la mecánica: sus números son de datos sintéticos y no son resultados del estudio |
+| Ensayo del pipeline sin datos propios | `modelo/simular.py` — cohorte simulada de 80 personas con proceso generativo de tres niveles y ruido de medición independiente entre el OLBI del viernes y los ítems diarios. Calibrada contra la referencia: prevalencia 0.14, T 2.08 (DE 0.92), ICC 0.59, autocorrelación diaria 0.57 |
+| §7 con datos propios | **Pendiente de la muestra.** Los ensayos (`modelo/resultados/`) usan datos sintéticos: prueban la mecánica, no son resultados del estudio |
 
 ## 12. Decisiones abiertas
 

@@ -18,8 +18,9 @@ compartidos y hacia cero en los propios, con el intercepto libre (§5.2 paso 3).
 La fuerza hacia w0 se elige en validación y se reporta (§12 decisión 5).
 
 Uso:
-    modelo/exploracion/venv/bin/python modelo/entrenar.py               # ensayo
-    modelo/exploracion/venv/bin/python modelo/entrenar.py --publicar    # + migración
+    modelo/exploracion/venv/bin/python modelo/entrenar.py                      # datos reales
+    modelo/exploracion/venv/bin/python modelo/entrenar.py --origen simulada    # ensayo del pipeline
+    modelo/exploracion/venv/bin/python modelo/entrenar.py --publicar           # + migración
 
 Requiere SUPABASE_DB_PASSWORD en el entorno (`source ~/.zshrc`).
 """
@@ -84,13 +85,24 @@ BETA = 2.0
 
 # --------------------------------------------------------------------- datos
 
-def cargar(incluir_demo: bool) -> pd.DataFrame:
+# Participantes que no son del estudio: la semilla de demostración del panel
+# del empresario y la cohorte simulada de modelo/simular.py. Se excluyen por
+# defecto para que nadie entrene sin darse cuenta con datos inventados.
+SINTETICOS = ("DEMO-%", "SIM-%")
+
+
+def cargar(origen: str) -> pd.DataFrame:
+    """`origen`: 'reales' (por defecto), 'simulada' (solo SIM-*) o 'todo'."""
     clave = os.environ.get('SUPABASE_DB_PASSWORD')
     if not clave:
         sys.exit('falta SUPABASE_DB_PASSWORD en el entorno (source ~/.zshrc)')
+    filtro = {
+        'reales': "where p.codigo_anonimo not like 'DEMO-%' and p.codigo_anonimo not like 'SIM-%'",
+        'simulada': "where p.codigo_anonimo like 'SIM-%'",
+        'todo': '',
+    }[origen]
     with psycopg.connect(DSN.format(clave=clave)) as cx:
         cx.execute('reset role')
-        filtro = '' if incluir_demo else "where p.codigo_anonimo not like 'DEMO-%'"
         cur = cx.execute(f"""
             select s.*, p.codigo_anonimo
             from semanas_modelo s
@@ -243,17 +255,30 @@ def validar(D: pd.DataFrame, rasgos: list[str], y: np.ndarray, grupos: np.ndarra
     return {'por_pliegue': por_pliegue, 'resumen': resumen(por_pliegue)}, p
 
 
-def lineas_base(D: pd.DataFrame, y: np.ndarray, tarea: str) -> dict:
-    """§7.4. La que importa es «igual que el viernes pasado»: lo que ya sabe
-    el OLBI solo, sin ninguna señal diaria."""
+def lineas_base(D: pd.DataFrame, y: np.ndarray, grupos: np.ndarray, tarea: str) -> dict:
+    """§7.4. La que importa es cuánto sabe el OLBI solo, sin señales diarias:
+    si el modelo no la supera, las señales diarias no aportan nada y el título
+    de la tesis no se sostiene."""
     base = {'clase_mayoritaria': metricas(y, np.full(len(y), float(y.mean())), 0.5)}
-    if tarea == 'pronostico' and 'e_previo' in D:
-        # El viernes pasado ya estaba alto -> se predice alto la semana que viene.
-        umbrales = D[['e_previo', 'd_previo']].dropna()
-        if len(umbrales):
-            u_ag, u_dv = umbral_olbi()
-            pred = ((D['e_previo'] >= u_ag) | (D['d_previo'] >= u_dv)).astype(float).to_numpy()
-            base['igual_que_el_viernes_pasado'] = metricas(y, pred, 0.5)
+    if tarea != 'pronostico' or 'e_previo' not in D:
+        return base
+
+    # La regla literal «el viernes pasado ya estaba alto». Bajo la censura de
+    # §3.5 es degenerada: quien sigue en seguimiento está por debajo del
+    # umbral por construcción, así que nunca dispara. Se reporta igual, porque
+    # el 0 es el dato: esta regla no puede anticipar nada.
+    u_ag, u_dv = umbral_olbi()
+    regla = ((D['e_previo'] >= u_ag) | (D['d_previo'] >= u_dv)).astype(float).to_numpy()
+    base['regla_ya_estaba_alto'] = {
+        **metricas(y, regla, 0.5),
+        'nota': 'degenerada bajo censura: nadie en seguimiento supera el umbral',
+    }
+
+    # La comparación que sí mide algo: una logística con el OLBI previo como
+    # valor continuo (cuán cerca del umbral está la persona) y nada más.
+    m, _ = validar(D, OLBI_PREVIO, y, grupos, None, 0.0)
+    if m:
+        base['solo_olbi_previo'] = m['resumen']
     return base
 
 
@@ -294,7 +319,7 @@ def entrenar_tarea(D: pd.DataFrame, tarea: str) -> dict:
         'n_personas': int(len(np.unique(grupos))),
         'positivos': round(float(y.mean()), 3),
         'lambda_probadas': REJILLA_LAMBDA,
-        'lineas_base': lineas_base(d, y, tarea),
+        'lineas_base': lineas_base(d, y, grupos, tarea),
         'versiones': {},
     }
     if len(np.unique(y)) < 2:
@@ -328,7 +353,14 @@ def imprimir(res: dict) -> None:
     print(f"  filas: {res.get('n_filas')}  personas: {res.get('n_personas')}  "
           f"positivos: {res.get('positivos')}")
     for nombre, b in res.get('lineas_base', {}).items():
-        print(f"  base {nombre:28s} recall {b['recall']:.2f}  f1 {b['f1']:.2f}")
+        if isinstance(b.get('recall'), (int, float)):  # métricas planas
+            print(f"  base {nombre:24s} recall {b['recall']:.2f}  f1 {b['f1']:.2f}"
+                  + (f"   ({b['nota']})" if b.get('nota') else ''))
+        else:              # resumen por pliegue
+            def g(k):
+                return f"{b[k]['media']:.2f}±{b[k]['de']:.2f}" if b.get(k) else "  —  "
+            print(f"  base {nombre:24s} recall {g('recall')}  f1 {g('f1')}  "
+                  f"pr_auc {g('pr_auc')}  roc_auc {g('roc_auc')}")
     for nombre, v in res.get('versiones', {}).items():
         r = v['resumen']
         def m(k):
@@ -340,17 +372,18 @@ def imprimir(res: dict) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--incluir-demo', action='store_true',
-                    help='incluye los participantes DEMO-* de la semilla de demostración. '
-                         'Solo para probar la mecánica: sus datos son sintéticos.')
+    ap.add_argument('--origen', choices=('reales', 'simulada', 'todo'), default='reales',
+                    help="'reales' (por defecto) excluye DEMO-* y SIM-*; 'simulada' usa solo la "
+                         'cohorte de modelo/simular.py, para probar el pipeline sin datos propios')
     ap.add_argument('--publicar', action='store_true',
                     help='escribe la migración que carga la versión en modelo_versiones')
     args = ap.parse_args()
 
-    D = cargar(args.incluir_demo)
-    sinteticas = int(D['codigo_anonimo'].str.startswith('DEMO-').sum()) if len(D) else 0
-    print(f"semanas_modelo: {len(D)} filas, {D['participante_id'].nunique()} personas"
-          + (f"  ({sinteticas} filas de la semilla de demostración)" if sinteticas else ""))
+    D = cargar(args.origen)
+    sinteticas = int(D['codigo_anonimo'].str.startswith(('DEMO-', 'SIM-')).sum()) if len(D) else 0
+    print(f"semanas_modelo [{args.origen}]: {len(D)} filas, "
+          f"{D['participante_id'].nunique() if len(D) else 0} personas"
+          + (f"  ({sinteticas} sintéticas)" if sinteticas else ""))
 
     resultados = {t: entrenar_tarea(D, t) for t in TAREAS}
     for r in resultados.values():
@@ -358,12 +391,14 @@ def main() -> None:
 
     destino = RAIZ / 'resultados'
     destino.mkdir(exist_ok=True)
-    informe = destino / ('ensayo-con-semilla-demo.json' if args.incluir_demo else 'datos-propios.json')
+    informe = destino / {'reales': 'datos-propios.json',
+                         'simulada': 'ensayo-cohorte-simulada.json',
+                         'todo': 'ensayo-todo.json'}[args.origen]
     informe.write_text(json.dumps(resultados, indent=2, ensure_ascii=False) + '\n')
     print(f'\nresultados en {informe.relative_to(RAIZ.parent)}')
-    if args.incluir_demo:
-        print('AVISO: estos números salen de la semilla de demostración (datos sintéticos).\n'
-              '       No son resultados del estudio y no pueden ir en la tesis.')
+    if sinteticas:
+        print('AVISO: hay filas sintéticas en este entrenamiento. Sirven para probar el\n'
+              '       pipeline; no son resultados del estudio y no pueden ir en la tesis.')
 
     if args.publicar:
         publicar(resultados, sinteticas)
@@ -374,7 +409,7 @@ def publicar(resultados: dict, sinteticas: int) -> None:
     versión entrenada con la semilla de demostración metería números
     inventados en la app y en la tesis."""
     if sinteticas:
-        sys.exit('NO se publica: hay filas de la semilla de demostración en el entrenamiento.')
+        sys.exit('NO se publica: hay filas sintéticas (DEMO-* o SIM-*) en el entrenamiento.')
     flojas = [t for t, r in resultados.items()
               if r.get('n_personas', 0) < 20 or 'error' in r]
     if flojas:
