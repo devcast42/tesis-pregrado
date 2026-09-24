@@ -149,6 +149,12 @@ Es lo que la app traduce a «confianza baja/media» y a «de cada 10 avisos se c
 
 **Random forest** como comparación, con las mismas particiones. Si no supera claramente a la logística, se reporta y se descarta.
 
+Implementado en `modelo/entrenar.py` (400 árboles, hojas de ≥ 5, `sqrt` rasgos por división, `balanced_subsample`). Recorre las mismas particiones que la logística y elige su umbral igual que ella. No recibe el preentrenamiento: `w₀` es un vector de pesos lineales y no tiene traducción a un bosque.
+
+**Nota de método.** El umbral se elige con predicciones *fuera de muestra* dentro del pliegue de entrenamiento (`GroupKFold` interno de 3), no con las predicciones en muestra. Sin esto la comparación estaría amañada contra el bosque: un bosque ajusta sus datos de entrenamiento casi perfecto, sus probabilidades en muestra son ~0/1 y un umbral elegido sobre ellas no significa nada en datos nuevos. Se aplica igual a los dos modelos.
+
+Sobre la cohorte simulada (80 personas, no son datos del estudio) el bosque **no supera a la logística**: empata en nowcast (ROC-AUC 0.75 ± 0.02 vs. 0.75 ± 0.06, con menos recall: 0.63 vs. 0.82) y pierde en pronóstico (0.62 ± 0.06 vs. 0.73 ± 0.09, por debajo incluso de la línea base del OLBI previo). Es lo esperable con ~300 filas. La decisión se repetirá con la muestra real; si se confirma, la logística queda como modelo principal por interpretable y el bosque se reporta como comparación descartada.
+
 Nada más profundo. No hay muestra.
 
 ## 7. Evaluación
@@ -219,7 +225,7 @@ Prevalencia esperada de semanas sobre el umbral: 10–25 %. `class_weight='balan
 | §4.1 en SQL, §8 (`modelo_versiones`, predicción, evento `prediccion_modelo`) | `supabase/migrations/20260918120000_modelo_versiones.sql` (`rasgos_semana`), `20260918150000_modelo_pronostico.sql` (`probabilidad_semana`, `registrar_prediccion` con tarea, `ultima_prediccion_semana`) |
 | CA-005-05, CA-005-06 | Automatizadas en `modelo/pruebas.py`: comparan la vista, `rasgos_semana` y `rasgos()` de Python en cada participante-semana, y la sigmoide de Postgres contra la de Python en cada versión cargada |
 | §8, vista `semanas_modelo` | `supabase/migrations/20260923100000_semanas_modelo.sql` — una fila por (participante, semana), rasgos de §4, ambas etiquetas y censura de §3.5 |
-| §5.2 pasos 3–4, §4.3 (A, B, A₀, B₀), §7 (GroupKFold, métricas, líneas base), §12 decisión 5 (λ hacia w₀ elegida en validación) | `modelo/entrenar.py`. Se niega a publicar una versión si el entrenamiento incluye la semilla de demostración o si hay menos de 20 personas |
+| §5.2 pasos 3–4, §4.3 (A, B, A₀, B₀), §6 (random forest como comparación), §7 (GroupKFold, métricas, líneas base), §12 decisión 5 (λ hacia w₀ elegida en validación) | `modelo/entrenar.py`. Se niega a publicar una versión si el entrenamiento incluye datos sintéticos o si hay menos de 20 personas |
 | CA-005-01 … CA-005-06, CA-005-08 | `modelo/pruebas.py` — los siete pasan (2026-09-23). CA-005-07 se revisa sobre la salida de `entrenar.py` |
 | Ensayo del pipeline sin datos propios | `modelo/simular.py` — cohorte simulada de 80 personas con proceso generativo de tres niveles y ruido de medición independiente entre el OLBI del viernes y los ítems diarios. Calibrada contra la referencia: prevalencia 0.14, T 2.08 (DE 0.92), ICC 0.59, autocorrelación diaria 0.57 |
 | §7 con datos propios | **Pendiente de la muestra.** Los ensayos (`modelo/resultados/`) usan datos sintéticos: prueban la mecánica, no son resultados del estudio |

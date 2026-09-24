@@ -9,6 +9,9 @@ y las evalúa con GroupKFold por persona.
     B    A + e_previo/d_previo (solo pronóstico): la versión operativa fuerte
     A0   igual que A pero desde cero: el control del experimento de §5
     B0   igual que B pero desde cero
+    *-bosque  random forest sobre los mismos rasgos y las mismas particiones
+              (§6). Si no supera claramente a la logística, se reporta y se
+              descarta: la logística es interpretable y la muestra es corta.
 
 Y tres líneas base (§7.4): clase mayoritaria, «igual que el viernes pasado»
 (solo pronóstico) y el propio modelo preentrenado sin reajustar.
@@ -37,6 +40,7 @@ import pandas as pd
 import psycopg
 from scipy.optimize import minimize
 from scipy.special import expit
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (average_precision_score, f1_score, precision_score,
                              recall_score, roc_auc_score)
 from sklearn.model_selection import GroupKFold
@@ -77,6 +81,15 @@ TAREAS = {
 REJILLA_LAMBDA = [0.1, 0.3, 1.0, 3.0, 10.0]
 LAMBDA_PROPIOS = 1.0
 PLIEGUES = 5
+
+# Random forest como comparación (§6). Con ~300 filas y ~32 rasgos hay que
+# atarlo corto o memoriza: hojas de 5 como mínimo y sqrt(rasgos) por división.
+# No usa el preentrenamiento: w0 es un vector de pesos lineales y no tiene
+# traducción a un bosque, así que el bosque solo compite con A0/B0 en igualdad
+# de información, y con A/B en igualdad de particiones.
+BOSQUE = dict(n_estimators=400, min_samples_leaf=5, max_features='sqrt',
+              class_weight='balanced_subsample', random_state=0, n_jobs=-1)
+PLIEGUES_UMBRAL = 3
 # Un falso negativo es alguien con burnout al que no se llama; un falso
 # positivo, una conversación de más. El umbral se elige maximizando F-beta
 # con beta = 2, que pesa el recall cuatro veces más que la precisión (§7.2).
@@ -229,8 +242,45 @@ def resumen(por_pliegue: list[dict]) -> dict:
     return out
 
 
+def entrenador(bosque: bool, ancla: np.ndarray, lam: np.ndarray):
+    """Devuelve `fit(X, y) -> predecir(Z) -> probabilidades`.
+
+    Envolver el ajuste permite que la logística y el bosque recorran
+    exactamente las mismas particiones (§6: «con las mismas particiones»)."""
+    def fit(X: np.ndarray, y: np.ndarray):
+        if bosque:
+            m = RandomForestClassifier(**BOSQUE).fit(X, y)
+            return lambda Z: m.predict_proba(Z)[:, 1]
+        w, b = ajustar(X, y, ancla, lam, pesos_balanceados(y))
+        return lambda Z: expit(Z @ w + b)
+    return fit
+
+
+def umbral_interno(fit, X: np.ndarray, y: np.ndarray, grupos: np.ndarray) -> float:
+    """Umbral elegido con predicciones fuera de muestra DENTRO del pliegue de
+    entrenamiento.
+
+    No es un refinamiento opcional: un bosque ajusta sus datos casi perfecto,
+    así que sus probabilidades en muestra son ~0/1 y un umbral elegido sobre
+    ellas no significa nada en datos nuevos. Hacerlo así para los dos modelos
+    es lo que vuelve comparable la comparación."""
+    n = min(PLIEGUES_UMBRAL, len(np.unique(grupos)))
+    if n < 2:
+        return 0.5
+    p = np.full(len(y), np.nan)
+    for tr, te in GroupKFold(n_splits=n).split(X, y, grupos):
+        if len(np.unique(y[tr])) < 2:
+            continue
+        p[te] = fit(X[tr], y[tr])(X[te])
+    hay = ~np.isnan(p)
+    if hay.sum() == 0 or len(np.unique(y[hay])) < 2:
+        return 0.5
+    return umbral_por_recall(y[hay], p[hay])
+
+
 def validar(D: pd.DataFrame, rasgos: list[str], y: np.ndarray, grupos: np.ndarray,
-            w0: dict | None, lam_compartidos: float) -> tuple[dict, np.ndarray]:
+            w0: dict | None, lam_compartidos: float,
+            bosque: bool = False) -> tuple[dict, np.ndarray]:
     """GroupKFold por participante (§7.1, CA-005-03). Ninguna persona cae en
     dos pliegues, y la estandarización se aprende solo con el entrenamiento."""
     n_pliegues = min(PLIEGUES, len(np.unique(grupos)))
@@ -242,14 +292,16 @@ def validar(D: pd.DataFrame, rasgos: list[str], y: np.ndarray, grupos: np.ndarra
     lam = np.array([
         (lam_compartidos if (w0 and r in COMPARTIDOS) else LAMBDA_PROPIOS) for r in rasgos
     ])
+    fit = entrenador(bosque, ancla_base, lam)
     p = np.full(len(y), np.nan)
     por_pliegue = []
     for tr, te in GroupKFold(n_splits=n_pliegues).split(D, y, grupos):
+        # El bosque es invariante a la escala; se estandariza igual para que
+        # ambos modelos vean exactamente la misma matriz.
         Xtr, stats = matriz(D.iloc[tr], rasgos, w0)
         Xte, _ = matriz(D.iloc[te], rasgos, w0, stats)
-        w, b = ajustar(Xtr, y[tr], ancla_base, lam, pesos_balanceados(y[tr]))
-        u = umbral_por_recall(y[tr], expit(Xtr @ w + b))
-        p[te] = expit(Xte @ w + b)
+        u = umbral_interno(fit, Xtr, y[tr], grupos[tr])
+        p[te] = fit(Xtr, y[tr])(Xte)
         if len(np.unique(y[te])):
             por_pliegue.append(metricas(y[te], p[te], u))
     return {'por_pliegue': por_pliegue, 'resumen': resumen(por_pliegue)}, p
@@ -343,6 +395,12 @@ def entrenar_tarea(D: pd.DataFrame, tarea: str) -> dict:
         m0, _ = validar(d, rasgos, y, grupos, None, 0.0)
         if m0:
             salida['versiones'][f'{nombre}0'] = {'lambda_hacia_w0': None, **m0}
+        # Random forest sobre los mismos rasgos y las mismas particiones (§6).
+        mb, _ = validar(d, rasgos, y, grupos, None, 0.0, bosque=True)
+        if mb:
+            salida['versiones'][f'{nombre}-bosque'] = {
+                'lambda_hacia_w0': None, 'algoritmo': 'random_forest',
+                'hiperparametros': {k: v for k, v in BOSQUE.items() if k != 'n_jobs'}, **mb}
     return salida
 
 
@@ -366,7 +424,8 @@ def imprimir(res: dict) -> None:
         def m(k):
             return f"{r[k]['media']:.2f}±{r[k]['de']:.2f}" if r.get(k) else "  —  "
         lam = v['lambda_hacia_w0']
-        print(f"  {nombre:3s} lambda={str(lam):5s}  recall {m('recall')}  f1 {m('f1')}  "
+        alg = 'bosque   ' if v.get('algoritmo') == 'random_forest' else f'lambda={str(lam):5s}'
+        print(f"  {nombre:10s} {alg}  recall {m('recall')}  f1 {m('f1')}  "
               f"pr_auc {m('pr_auc')}  roc_auc {m('roc_auc')}")
 
 

@@ -34,10 +34,16 @@ modelo/exploracion/venv/bin/python modelo/entrenar.py
 modelo/exploracion/venv/bin/python modelo/entrenar.py --publicar
 ```
 
-`entrenar.py` compara las cuatro versiones de §4.3 (A, B, A₀, B₀) contra las
-líneas base de §7.4, con `GroupKFold` por persona. El preentrenamiento entra
-como penalización L2 *hacia* `w₀` en los rasgos compartidos y hacia cero en los
-propios; la fuerza se elige en validación y queda reportada.
+`entrenar.py` compara las cuatro versiones de §4.3 (A, B, A₀, B₀) y un random
+forest (§6) contra las líneas base de §7.4, todo con las mismas particiones
+`GroupKFold` por persona. El preentrenamiento entra como penalización L2
+*hacia* `w₀` en los rasgos compartidos y hacia cero en los propios; la fuerza
+se elige en validación y queda reportada.
+
+El umbral de decisión se elige con predicciones fuera de muestra dentro del
+pliegue de entrenamiento, para los dos modelos. Con predicciones en muestra el
+bosque quedaría injustamente mal: las suyas son casi 0/1 y el umbral no
+trasladaría a datos nuevos.
 
 ## Datos sintéticos
 
