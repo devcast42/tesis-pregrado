@@ -6,6 +6,7 @@
 | **Módulo** | `modelo/` (`preentrenar.py`, `entrenar.py`, `pruebas.py`), `supabase/migrations` (`semanas_modelo`), `supabase/functions/evaluar-olbi` (integración) |
 | **Depende de** | ESP-002 rev. 2 (calendario semanal), ESP-003 (umbral OLBI), ESP-007 (adherencia) |
 | **Diseño** | [docs/diseno-semanal-con-preentrenamiento.md](../docs/diseno-semanal-con-preentrenamiento.md) |
+| **Explicación sin jerga** | [docs/como-funciona-el-modelo.md](../docs/como-funciona-el-modelo.md) |
 
 ## 1. Justificación en la tesis
 
