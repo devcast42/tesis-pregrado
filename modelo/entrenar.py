@@ -66,8 +66,11 @@ EN_W0 = {'t_media': 'T_media', 't_ultimo': 'T_ultimo', 't_max': 'T_max',
 
 # ESP-005 §4.2 — rasgos propios, sin equivalente en el estudio de referencia.
 # Del check-in diario de lunes a jueves. Disponibles cualquier día de la semana.
+# Carga (cuánto se trabajó) y recuperación (si se logró desconectar). El
+# bloque de recuperación llega con el diario v3; en respuestas anteriores es
+# nulo y se imputa con la mediana.
 PROPIOS_DIARIOS = ['horas_media', 'horas_max', 'sueno_media', 'sueno_min',
-                   'horas_fin_de_semana']
+                   'horas_fin_de_semana', 'desconexion_media', 'contacto_fuera_horario']
 # De la ficha inicial. No cambian en el tiempo.
 PROPIOS_ESTABLES = [
     'edad', 'antiguedad_empresa', 'antiguedad_sector', 'tamano_equipo',

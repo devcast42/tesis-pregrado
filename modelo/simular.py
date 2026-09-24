@@ -178,10 +178,11 @@ def generar_seguimiento(p: dict, rng: np.random.Generator) -> list[dict]:
         s = AUTOCORR_SEMANA * s + 0.35 * presion + rng.normal(0, de_semana * 0.8)
 
         latente = de_persona * p['theta'] + s
-        dias = generar_dias(p, latente, presion, w, rng)
+        guardias = float(rng.random() < 1 / (1 + np.exp(-(-1.4 + 0.7 * presion + CARGA_ROL[p['rol']] * 2))))
+        dias = generar_dias(p, latente, presion, w, rng, guardias)
         semanal = {
             'horas_sobretiempo': float(np.clip(rng.normal(3.0 + 1.9 * presion, 2.2), 0, 25).round(1)),
-            'guardias': float(rng.random() < 1 / (1 + np.exp(-(-1.4 + 0.7 * presion + CARGA_ROL[p['rol']] * 2)))),
+            'guardias': guardias,
             'apoyo_lider': float(np.clip(rng.normal(p['apoyo_lider'], 0.5), 1, 5).round()),
         }
         olbi, agotamiento, desvinculacion = generar_olbi(latente, rng)
@@ -196,7 +197,7 @@ def generar_seguimiento(p: dict, rng: np.random.Generator) -> list[dict]:
 
 
 def generar_dias(p: dict, latente: float, presion: float, w: int,
-                 rng: np.random.Generator) -> list[dict]:
+                 rng: np.random.Generator, guardias: float = 0.0) -> list[dict]:
     """Lunes a jueves. Devuelve solo los días efectivamente respondidos."""
     u = 0.0
     dias = []
@@ -207,9 +208,16 @@ def generar_dias(p: dict, latente: float, presion: float, w: int,
         u = AUTOCORR_DIA * u + rng.normal(0, 0.55)
         if rng.random() > p_resp:
             continue
+        # Bloque de recuperación (diario v3). La cadena simulada es:
+        # presión y guardias -> te contactan -> desconectas peor -> más
+        # agotamiento. Es una vía causal plausible, NO una medición: si el
+        # modelo la encuentra, encuentra lo que se programó aquí.
+        contacto = int(rng.random() < 1 / (1 + np.exp(-(-1.1 + 0.55 * presion + 1.2 * guardias))))
+        desconexion = float(np.clip(
+            rng.normal(4.0 - 0.40 * presion - 0.85 * contacto, 0.85), 1, 5))
         # Estado del día en la escala 1-5 de los ítems diarios.
         centro = MEDIA_DIARIA + DE_DIARIA * (latente + u)
-        e = centro + 0.25 * presion + rng.normal(0, RUIDO_DIA)
+        e = centro + 0.25 * presion + 0.18 * (3.0 - desconexion) + rng.normal(0, RUIDO_DIA)
         # Desvinculación correlacionada con agotamiento (referencia 0.75-0.83).
         d_lat = COR_E_D * (e - MEDIA_DIARIA) + np.sqrt(1 - COR_E_D ** 2) * rng.normal(0, DE_DIARIA)
         dd = MEDIA_DIARIA + d_lat
@@ -223,6 +231,8 @@ def generar_dias(p: dict, latente: float, presion: float, w: int,
             'horas_trabajadas': round(horas, 1),
             'horas_sueno': round(float(np.clip(rng.normal(p['sueno_base'] - 0.22 * (horas - p['horas_base']), 0.8), 3, 10)), 1),
             # Solo el lunes pregunta por el fin de semana.
+            'desconexion': float(round(desconexion)),
+            'contacto_fuera_horario': float(contacto),
             'horas_fin_de_semana': round(float(np.clip(rng.gamma(1.2, 1.6) + 0.5 * presion, 0, 16)), 1) if d == 0 else None,
         })
     return dias
@@ -372,7 +382,7 @@ def cargar(cx, cohorte: list[tuple[dict, list[dict]]], lunes0: date) -> None:
             for d in s['dias']:
                 cuando = datetime.combine(lunes + timedelta(days=d['dow']),
                                           datetime.min.time(), TZ) + timedelta(hours=19, minutes=int(np.random.default_rng(abs(hash((str(pid), s['semana'], d['dow']))) % 2**32).integers(0, 200)))
-                anotar(pid, 'diario', 2, cuando,
+                anotar(pid, 'diario', 3, cuando,
                        {k: v for k, v in d.items() if k != 'dow'})
             viernes = datetime.combine(lunes + timedelta(days=4), datetime.min.time(), TZ) + timedelta(hours=17)
             anotar(pid, 'semanal', 2, viernes, s['semanal'])
