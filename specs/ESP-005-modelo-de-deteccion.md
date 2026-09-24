@@ -79,7 +79,8 @@ De los cuatro ítems `od_*` (lunes a jueves, escala 1–5):
 
 | Origen | Rasgos |
 |---|---|
-| `diario` | `horas_media`, `horas_max`, `sueno_media`, `sueno_min`, `horas_fin_de_semana` (lunes) |
+| `diario` (carga) | `horas_media`, `horas_max`, `sueno_media`, `sueno_min`, `horas_fin_de_semana` (lunes) |
+| `diario` v3 (recuperación) | `desconexion_media`, `contacto_fuera_horario`. Hasta v2 el bloque objetivo solo medía **cuánto** se trabajó; la recuperación es lo que distingue a dos personas con la misma jornada, y sin ella la versión F (sin ítems del OLBI) se queda en «horas». `desconexion` pregunta por un comportamiento, no por una valoración del trabajo: no reintroduce la circularidad de §3.3 |
 | `diario` | `dias_respondidos` (0–4): dejar de responder es señal, no solo ruido |
 | `semanal` (viernes) | `horas_sobretiempo`, `guardias`, `apoyo_lider` |
 | `estable` | las 8 variables tal cual; `rol` y `modalidad` en one-hot |
