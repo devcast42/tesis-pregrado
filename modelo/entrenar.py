@@ -4,9 +4,12 @@ Lee la vista `semanas_modelo` (una fila por participante-semana, ESP-005 §8),
 entrena las cuatro versiones que el capítulo de resultados tiene que comparar
 y las evalúa con GroupKFold por persona.
 
-    A    rasgos §4.1 + §4.2 sin el OLBI previo, partiendo de los pesos
+    A    MODELO PRINCIPAL: rasgos de ánimo + sueño/horas + dos de ficha,
+         recortado a ~14 variables por potencia (§7.6), partiendo de los pesos
          preentrenados w0 en los rasgos compartidos (ESP-005 §4.3)
     B    A + e_previo/d_previo (solo pronóstico): la versión operativa fuerte
+    A-completo / B-completo   las ~30 variables de §4.2. Exploratorio: se
+         reporta para mostrar que no aportan, no se publica
     A0   igual que A pero desde cero: el control del experimento de §5
     B0   igual que B pero desde cero
     D-animo     solo los rasgos del check-in de ánimo (que son ítems del OLBI)
@@ -97,6 +100,17 @@ OBJETIVO_MINIMO = ['sueno_media', 'sueno_min', 'horas_media', 'horas_max']
 #   - edad, antigüedades, tamaño de equipo y traslado salen del modelo
 #     principal; se describen en la tesis, no se estiman.
 RED_FICHA = ['rol_guardias', 'modalidad_remoto']
+
+
+def rasgos_principales(tarea: str) -> list[str]:
+    """El modelo PRINCIPAL de la tesis (ESP-005 §4.3, §7.6): recortado.
+
+    Son ~14 variables en nowcast y ~17 en pronóstico. El conjunto completo de
+    §4.2 se sigue calculando y se reporta como `A-completo`, pero es
+    exploratorio: con ~50 semanas altas no hay potencia para estimar 30
+    coeficientes."""
+    return (COMPARTIDOS + PROPIOS_DIARIOS + RED_FICHA
+            + (PROPIOS_VIERNES if tarea == 'pronostico' else []))
 
 
 def derivar(d: pd.DataFrame) -> pd.DataFrame:
@@ -412,18 +426,21 @@ def entrenar_tarea(D: pd.DataFrame, tarea: str) -> dict:
     #   A = las dos cosas
     # Si F se acerca a A, la detección no depende de preguntar cómo te
     # sientes, y eso es una afirmación mucho más fuerte y más accionable.
-    reducido = COMPARTIDOS + PROPIOS_DIARIOS + RED_FICHA + (
-        PROPIOS_VIERNES if tarea == 'pronostico' else [])
+    principal = rasgos_principales(tarea)
+    completo = COMPARTIDOS + cfg['propios']
     variantes = {
+        # El modelo principal de la tesis.
+        'A':            (principal, True),
+        # Exploratorio: todas las variables de §4.2. Se reporta, no se publica.
+        'A-completo':   (completo, True),
+        # Ablación: de dónde viene la señal.
         'D-animo':      (COMPARTIDOS, True),
         'F-objetivo':   (cfg['propios'], False),
         'F-reducido':   (OBJETIVO_MINIMO, False),
-        'A':            (COMPARTIDOS + cfg['propios'], True),
-        'A-recortado':  (reducido, True),
     }
     if tarea == 'pronostico':
-        variantes['B'] = (COMPARTIDOS + cfg['propios'] + OLBI_PREVIO, True)
-        variantes['B-recortado'] = (reducido + OLBI_PREVIO, True)
+        variantes['B'] = (principal + OLBI_PREVIO, True)
+        variantes['B-completo'] = (completo + OLBI_PREVIO, True)
 
     salida = {
         'tarea': tarea,
@@ -431,7 +448,8 @@ def entrenar_tarea(D: pd.DataFrame, tarea: str) -> dict:
         'n_personas': int(len(np.unique(grupos))),
         'positivos': round(float(y.mean()), 3),
         'lambda_probadas': REJILLA_LAMBDA,
-        'rasgos_usados': COMPARTIDOS + cfg['propios'],
+        'version_principal': 'B' if tarea == 'pronostico' else 'A',
+        'rasgos_principales': rasgos_principales(tarea),
         'lineas_base': lineas_base(d, y, grupos, tarea),
         'versiones': {},
     }
@@ -478,7 +496,7 @@ def imprimir(res: dict) -> None:
     if 'error' in res:
         print('  ', res['error'])
     print(f"  filas: {res.get('n_filas')}  personas: {res.get('n_personas')}  "
-          f"positivos: {res.get('positivos')}")
+          f"positivos: {res.get('positivos')}   (* = modelo principal)")
     for nombre, b in res.get('lineas_base', {}).items():
         if isinstance(b.get('recall'), (int, float)):  # métricas planas
             print(f"  base {nombre:24s} recall {b['recall']:.2f}  f1 {b['f1']:.2f}"
@@ -488,6 +506,7 @@ def imprimir(res: dict) -> None:
                 return f"{b[k]['media']:.2f}±{b[k]['de']:.2f}" if b.get(k) else "  —  "
             print(f"  base {nombre:24s} recall {g('recall')}  f1 {g('f1')}  "
                   f"pr_auc {g('pr_auc')}  roc_auc {g('roc_auc')}")
+    principal = res.get('version_principal')
     for nombre, v in res.get('versiones', {}).items():
         r = v['resumen']
         def m(k):
@@ -495,7 +514,8 @@ def imprimir(res: dict) -> None:
         lam = v['lambda_hacia_w0']
         alg = 'bosque' if v.get('algoritmo') == 'random_forest' else f'lam={str(lam):4s}'
         pot = f"{v.get('n_rasgos', 0):3d}r {v.get('casos_por_rasgo', 0):4.1f}c/r"
-        print(f"  {nombre:18s} {alg:10s} {pot}  recall {m('recall')}  f1 {m('f1')}  "
+        marca = '*' if nombre == principal else ' '
+        print(f" {marca}{nombre:18s} {alg:10s} {pot}  recall {m('recall')}  f1 {m('f1')}  "
               f"pr_auc {m('pr_auc')}  roc_auc {m('roc_auc')}")
 
 
