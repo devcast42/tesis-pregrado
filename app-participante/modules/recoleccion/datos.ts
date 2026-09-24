@@ -122,6 +122,8 @@ export async function calendarios(): Promise<Calendarios> {
     const def = fila.definicion as Formulario['definicion']
     resultado[clave] = {
       titulo: def.titulo,
+      descripcion: def.descripcion,
+      duracion: def.duracion,
       dias: def.dias,
       gracia_dias: def.gracia_dias,
       despues_de: def.despues_de,

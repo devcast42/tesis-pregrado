@@ -44,6 +44,8 @@ export type CalendarioFormulario = {
 export type DefinicionFormulario = CalendarioFormulario & {
   titulo: string
   descripcion?: string
+  /** Lo que se le anuncia a la persona («35 segundos»), no un cálculo. */
+  duracion?: string
   items: ItemDef[]
   /** Orden aleatorio en cada apertura: todos los ítems, o solo esas claves. */
   barajar?: true | string[]

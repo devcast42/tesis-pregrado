@@ -26,20 +26,36 @@ const CANAL = 'recordatorios'
 const CLAVE_HORA = 'recordatorio.hora'
 const CLAVE_MINUTO = 'recordatorio.minuto'
 
-const RECORDATORIOS = [
-  ...[2, 3, 4, 5].map((weekday) => ({
-    id: `checkin-${weekday}`,
-    weekday,
-    titulo: 'Check-in de hoy',
-    cuerpo: 'Son 35 segundos. Gracias por participar en el estudio.',
-  })),
-  {
-    id: 'checkin-6',
-    weekday: 6,
-    titulo: 'Cuestionario del viernes',
-    cuerpo: 'Cuatro minutos para cerrar tu semana. Gracias por participar en el estudio.',
-  },
-]
+/** Duraciones de respaldo si no se pudo leer la definición (sin red, por
+ *  ejemplo). Lo normal es que `sincronizarRecordatorios` las reciba de la
+ *  base: prometer un tiempo distinto del real es la primera causa de que
+ *  alguien deje de responder. */
+const DURACION_RESPALDO: Record<'diario' | 'olbi', string> = {
+  diario: '35 segundos',
+  olbi: '4 minutos',
+}
+
+function recordatorios(duraciones: Partial<Record<'diario' | 'olbi', string>> = {}) {
+  const diario = duraciones.diario ?? DURACION_RESPALDO.diario
+  const olbi = duraciones.olbi ?? DURACION_RESPALDO.olbi
+  return [
+    ...[2, 3, 4, 5].map((weekday) => ({
+      id: `checkin-${weekday}`,
+      weekday,
+      titulo: 'Check-in de hoy',
+      cuerpo: `Son ${diario}. Gracias por participar en el estudio.`,
+    })),
+    {
+      id: 'checkin-6',
+      weekday: 6,
+      titulo: 'Cuestionario del viernes',
+      cuerpo: `${olbi[0].toUpperCase()}${olbi.slice(1)} para cerrar tu semana. Gracias por participar en el estudio.`,
+    },
+  ]
+}
+
+/** Solo para cancelar: los identificadores no dependen de la duración. */
+const RECORDATORIOS = recordatorios()
 
 export const HORA_POR_DEFECTO = 19
 export const MINUTO_POR_DEFECTO = 0
@@ -107,9 +123,11 @@ export async function guardarHoraRecordatorio(hora: number, minuto: number): Pro
 /** Reprograma con la hora guardada. Se llama al abrir la pantalla principal:
  *  los recordatorios viven en el sistema operativo y se pierden al
  *  reinstalar la app o borrar sus datos; así se recuperan solos. */
-export async function sincronizarRecordatorios(): Promise<boolean> {
+export async function sincronizarRecordatorios(
+  duraciones: Partial<Record<'diario' | 'olbi', string>> = {},
+): Promise<boolean> {
   const { hora, minuto } = await horaRecordatorio()
-  return programarDiario(hora, minuto)
+  return programarDiario(hora, minuto, duraciones)
 }
 
 /** Manda una notificación de prueba en `segundos`, para comprobar que el
@@ -179,6 +197,7 @@ export async function pedirPermiso(): Promise<boolean> {
 export async function programarDiario(
   hora = HORA_POR_DEFECTO,
   minuto = MINUTO_POR_DEFECTO,
+  duraciones: Partial<Record<'diario' | 'olbi', string>> = {},
 ): Promise<boolean> {
   const n = notificaciones()
   if (!n) return false
@@ -195,7 +214,7 @@ export async function programarDiario(
     )
     await n.cancelScheduledNotificationAsync(ID_DIARIO).catch(() => {}) // versión anterior
 
-    for (const r of RECORDATORIOS) {
+    for (const r of recordatorios(duraciones)) {
       await n.scheduleNotificationAsync({
         identifier: r.id,
         content: { title: r.titulo, body: r.cuerpo },

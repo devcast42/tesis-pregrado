@@ -18,20 +18,28 @@ export const CADENCIA_DIAS: Record<ClaveFormulario, number> = {
   olbi: 14,
 }
 
-/** Duración objetivo de cada instrumento (ESP-002 §4). El título sale de la
- *  definición; esto es lo único que la app aporta de su cuenta. */
+/** Respaldo si una definición no trae `duracion`. Lo normal es que la traiga:
+ *  anunciar una duración distinta de la real es la primera causa de abandono
+ *  (ESP-007), así que el texto vive junto a las preguntas que lo determinan. */
 export const DURACION: Record<ClaveFormulario, string> = {
-  estable: '2 min',
-  diario: '25 s',
-  semanal: '30 s',
-  olbi: '4 min',
+  estable: '2 minutos',
+  diario: '35 segundos',
+  semanal: '30 segundos',
+  olbi: '4 minutos',
 }
 
-export type Calendarios = Partial<Record<ClaveFormulario, CalendarioFormulario & { titulo: string }>>
+export type PresentacionFormulario = CalendarioFormulario & {
+  titulo: string
+  descripcion?: string
+  duracion?: string
+}
+
+export type Calendarios = Partial<Record<ClaveFormulario, PresentacionFormulario>>
 
 export type ItemAgenda = {
   clave: ClaveFormulario
   titulo: string
+  descripcion?: string
   duracion: string
   completado: boolean
 }
@@ -95,7 +103,7 @@ export function agendaDeHoy(
     const calendario = calendarios[clave]
 
     if (clave === 'estable') {
-      return ultimo ? [] : [item(clave, false, calendario?.titulo)]
+      return ultimo ? [] : [item(clave, false, calendario)]
     }
 
     if (calendario?.dias) {
@@ -107,12 +115,12 @@ export function agendaDeHoy(
       // Hecho en un día anterior de la gracia (el OLBI del viernes, visto el
       // sábado): ya no es de hoy, no se lista.
       if (hecho && !mismoDia(ultimo, referencia)) return []
-      return [item(clave, hecho, calendario.titulo)]
+      return [item(clave, hecho, calendario)]
     }
 
     // Respaldo: cadencia fija de la revisión 1.
-    if (mismoDia(ultimo, referencia)) return [item(clave, true, calendario?.titulo)]
-    if (diasDesde(ultimo, referencia) >= CADENCIA_DIAS[clave]) return [item(clave, false, calendario?.titulo)]
+    if (mismoDia(ultimo, referencia)) return [item(clave, true, calendario)]
+    if (diasDesde(ultimo, referencia) >= CADENCIA_DIAS[clave]) return [item(clave, false, calendario)]
     return []
   })
 
@@ -126,8 +134,14 @@ const TITULO_RESPALDO: Record<ClaveFormulario, string> = {
   olbi: 'Cuestionario del viernes',
 }
 
-function item(clave: ClaveFormulario, completado: boolean, titulo?: string): ItemAgenda {
-  return { clave, titulo: titulo ?? TITULO_RESPALDO[clave], duracion: DURACION[clave], completado }
+function item(clave: ClaveFormulario, completado: boolean, p?: PresentacionFormulario): ItemAgenda {
+  return {
+    clave,
+    titulo: p?.titulo ?? TITULO_RESPALDO[clave],
+    descripcion: p?.descripcion,
+    duracion: p?.duracion ?? DURACION[clave],
+    completado,
+  }
 }
 
 /** RF-002-07 — días consecutivos con check-in diario, hasta hoy. */

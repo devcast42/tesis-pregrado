@@ -32,7 +32,7 @@ Presentar al participante los instrumentos según el calendario semanal, captura
 | ID | Requisito |
 |---|---|
 | RF-002-01 | La app muestra qué instrumentos están pendientes hoy según su cadencia |
-| RF-002-02 | Los formularios se renderizan desde la definición almacenada en base de datos, no desde el código |
+| RF-002-02 | Los formularios se renderizan desde la definición almacenada en base de datos, no desde el código  La definición incluye además el texto que la anuncia (`titulo`, `descripcion`, `duracion`): la pantalla «Hoy» los lee de ahí y no los copia, para que no pueda prometer una duración distinta de la real. |
 | RF-002-03 | Cada respuesta se guarda **ítem por ítem**; el puntaje agregado no se almacena |
 | RF-002-04 | Se registra `evaluacion_iniciada` al abrir el formulario y `evaluacion_enviada` al enviarlo |
 | RF-002-05 | No se permite enviar un formulario incompleto |

@@ -37,33 +37,38 @@ import { ModalResultado, TarjetaProbabilidad, type ModoModal } from '../../modul
 import { color, espacio } from '../../modules/nucleo/diseno'
 import type { Participante } from '../../modules/nucleo/tipos'
 
-/** Cómo se presenta cada instrumento en la pantalla. Los tiempos y textos son
- *  los reales; el diseño traía ejemplos. */
-const PRESENTACION: Record<string, { insignia: string; titulo: string; descripcion: string; accion: string }> = {
+/** Lo único que la pantalla aporta de su cuenta: la insignia de cadencia y el
+ *  verbo del botón. El título, la descripción y la duración salen de la
+ *  definición del formulario (ESP-002 RF-002-02), porque son lo que cambia
+ *  cuando cambian las preguntas: tenerlos copiados aquí hizo que la tarjeta
+ *  siguiera prometiendo «25 segundos y dos datos» después de pasar el diario
+ *  a nueve preguntas. */
+const PRESENTACION: Record<string, { insignia: string; accion: string; descripcion: string }> = {
   estable: {
     insignia: 'Solo una vez',
-    titulo: 'Datos iniciales · 2 minutos',
     descripcion: 'Ocho preguntas sobre tu contexto de trabajo. Solo las responderás esta vez.',
     accion: 'Responder ahora',
   },
   diario: {
     insignia: 'Lunes a jueves',
-    titulo: 'Check-in de hoy · 35 segundos',
     descripcion: 'Cuatro frases sobre tu día y unos datos. Responde con lo primero que se te venga.',
     accion: 'Comenzar check-in',
   },
   olbi: {
     insignia: 'Cada viernes',
-    titulo: 'Cuestionario del viernes · 4 minutos',
     descripcion: 'Un espacio más profundo para cerrar la semana: dieciséis afirmaciones sobre tu relación con el trabajo.',
     accion: 'Responder ahora',
   },
   semanal: {
     insignia: 'Cierre de la semana',
-    titulo: 'Sobre tu semana · 30 segundos',
     descripcion: 'Tres preguntas más y terminaste por esta semana.',
     accion: 'Responder ahora',
   },
+}
+
+/** «Check-in de hoy · 35 segundos». Ambas mitades salen de la definición. */
+function encabezado(item: ItemAgenda): string {
+  return item.duracion ? `${item.titulo} · ${item.duracion}` : item.titulo
 }
 
 export default function Hoy() {
@@ -138,7 +143,11 @@ export default function Hoy() {
     setRachaActual(rachaHoy)
     // RF-002-06 — los recordatorios viven en el sistema y se pierden al
     // reinstalar; se reprograman en cada apertura, sin bloquear la pantalla.
-    if (p.estado === 'activo') sincronizarRecordatorios().catch(() => {})
+    if (p.estado === 'activo') {
+      // Los recordatorios anuncian la duración: se la pasamos desde la misma
+      // definición que pinta la tarjeta, para que no puedan contradecirla.
+      sincronizarRecordatorios({ diario: cal.diario?.duracion, olbi: cal.olbi?.duracion }).catch(() => {})
+    }
     setParticipante(p)
     setAgenda(agendaDeHoy(envios, cal))
     setDiasRespondidos(dias)
@@ -231,8 +240,8 @@ export default function Hoy() {
 
         {principal && (
           <TarjetaHero
-            titulo={PRESENTACION[principal.clave].titulo}
-            descripcion={PRESENTACION[principal.clave].descripcion}
+            titulo={encabezado(principal)}
+            descripcion={principal.descripcion ?? PRESENTACION[principal.clave].descripcion}
             accion={PRESENTACION[principal.clave].accion}
             onPress={() => router.push(`/formulario/${principal.clave}`)}
           />
@@ -242,8 +251,8 @@ export default function Hoy() {
           <TarjetaSecundaria
             key={item.clave}
             insignia={PRESENTACION[item.clave].insignia}
-            titulo={PRESENTACION[item.clave].titulo}
-            descripcion={PRESENTACION[item.clave].descripcion}
+            titulo={encabezado(item)}
+            descripcion={item.descripcion ?? PRESENTACION[item.clave].descripcion}
             accion={PRESENTACION[item.clave].accion}
             onPress={() => router.push(`/formulario/${item.clave}`)}
           />
