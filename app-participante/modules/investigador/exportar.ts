@@ -15,7 +15,11 @@ export const TABLAS = [
   { clave: 'respuestas', archivo: 'tbl_respuestas.csv', titulo: 'tbl_respuestas', descripcion: 'Un envío por formulario y fecha (diario, OLBI, semanal, estable), con inicio y fin.' },
   { clave: 'respuestas_items', archivo: 'tbl_respuestas_items.csv', titulo: 'tbl_respuestas_items', descripcion: 'Respuesta ítem a ítem de cada envío: clave del ítem, valor numérico o de texto.' },
   { clave: 'puntajes_olbi', archivo: 'tbl_puntajes_olbi.csv', titulo: 'tbl_puntajes_olbi', descripcion: 'Media por dimensión del OLBI de cada aplicación, con la inversión aplicada (fuente única de la fórmula).' },
-  { clave: 'ventanas_modelo', archivo: 'tbl_ventanas_modelo.csv', titulo: 'tbl_ventanas_modelo', descripcion: 'Ventanas de entrenamiento: rasgos de la semana y etiqueta de la siguiente (ESP-005).' },
+  // ESP-005 §8: `semanas_modelo` es el contrato de datos del modelo. Sustituye
+  // a `ventanas_modelo`, que implementaba la formulación de ventanas de 14 días
+  // de la revisión 1 (§3.4) y ya no es con lo que se entrena: exportarla daba
+  // un dataset con el que los resultados de la tesis no se pueden reproducir.
+  { clave: 'semanas_modelo', archivo: 'tbl_semanas_modelo.csv', titulo: 'tbl_semanas_modelo', descripcion: 'Contrato de entrenamiento: una fila por participante y semana con los rasgos de ESP-005 §4 y ambas etiquetas (nowcast y pronóstico), censurada en el primer cruce.' },
   { clave: 'predicciones_participante', archivo: 'tbl_predicciones.csv', titulo: 'tbl_predicciones', descripcion: 'Predicciones registradas en su momento (nowcast y pronóstico) confrontadas con el OLBI objetivo.' },
   { clave: 'eventos', archivo: 'tbl_eventos.csv', titulo: 'tbl_eventos', descripcion: 'Eventos de proceso: inicio, detección, derivación, sesión, informe aprobado, accesos a identidad.' },
 ] as const

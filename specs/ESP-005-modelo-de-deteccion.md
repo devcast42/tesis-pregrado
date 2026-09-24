@@ -49,7 +49,7 @@ Los cuatro ítems diarios `od_*` **sí** son entrada. Son ítems del OLBI en ver
 | Formulación | Problema |
 |---|---|
 | Clasificar el OLBI actual con sus propios ítems | Circular. Precisión ~99 %, valor nulo. |
-| Ventana de 14 días → OLBI quincenal (revisión 1) | 60 días daban 3 ejemplos por persona y ninguna variable existía en datos públicos. Sustituida. |
+| Ventana de 14 días → OLBI quincenal (revisión 1) | 60 días daban 3 ejemplos por persona y ninguna variable existía en datos públicos. Sustituida; su vista `ventanas_modelo` se retiró en `20260924140000_retirar_vistas_sin_uso.sql` y la exportación entrega ahora `semanas_modelo`. |
 | Análisis de supervivencia | Marco limpio para censura, pero no produce precisión/recall/F1 (Anexo 3). Se menciona en métodos como alternativa. |
 | **La propuesta (3.2)** | 5–6 etiquetas por persona en 6 semanas, compatible con el Anexo 3, con el título, y preentrenable. |
 

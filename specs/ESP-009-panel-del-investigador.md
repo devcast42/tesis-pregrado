@@ -110,9 +110,8 @@ investigador lectura sobre todo el esquema de investigación, ESP-006).
 
 - `bandeja_investigador (tipo, participante_id, codigo_anonimo, organizacion_id, empresa, referencia_id, desde, dias)` — una fila por pendiente; `tipo ∈ {inactivo, sin_viernes, deteccion_sin_derivacion, derivacion_sin_sesion, cita_sin_confirmar, informe_pendiente, consentimiento_pendiente}`.
 - `cohorte_semanal (organizacion_id, semana, inscritos, activos, detectados, retirados, finalizados, respondieron_viernes, olbi_agotamiento_media, olbi_desvinculacion_media, pct_alto, horas_dia_media, sueno_media, fin_de_semana_media, sobretiempo_media, guardia_pct, apoyo_lider_media)` — sin mínimo; `organizacion_id` nulo = todo el estudio.
-- `cohorte_segmento (organizacion_id, semana, tipo_segmento, segmento, …)` — igual, por modalidad y rol.
 - `calendario_respuestas (participante_id, dia, formulario_clave, enviado_en)` — una fila por respuesta con día local.
-- `serie_diaria_v2 (participante_id, dia, od_04, od_12, od_03, od_06, horas_trabajadas, horas_sueno, horas_fin_de_semana)` — reemplaza `historial_checkin`.
+- `serie_diaria_v2 (participante_id, dia, od_04, od_12, od_03, od_06, horas_trabajadas, horas_sueno, horas_fin_de_semana)` — reemplaza a `historial_checkin`, ya retirada.
 - `predicciones_participante (participante_id, tarea, version, dia, semana, probabilidad, n_dias, resultado_real, acierto)` — eventos `prediccion_modelo` aplanados y unidos al OLBI de la semana correspondiente (nowcast: viernes de esa semana; pronóstico: viernes de la siguiente).
 - `desempeno_modelo (tarea, version, semana, n, vp, fp, vn, fn, precision, recall, especificidad)` y `calibracion_modelo (tarea, version, decil, n, prob_media, frecuencia_observada)`.
 - `circuito_apoyo (derivacion_id, participante_id, psicologo_id, detectado_en, derivado_en, primera_sesion_en, informe_aprobado_en, dias_a_derivacion, dias_a_sesion, dias_a_informe, estado)`.
@@ -141,8 +140,8 @@ investigador lectura sobre todo el esquema de investigación, ESP-006).
 
 | Requisito | Implementado en |
 |---|---|
-| §6 (vistas y funciones) | `supabase/migrations/20260919120000_panel_investigador.sql`: `serie_diaria_v2`, `calendario_respuestas`, `olbi_semanal_etiquetado`, `predicciones_participante`, `predicciones_evaluables`, `desempeno_modelo`, `calibracion_modelo`, `roc_auc_modelo()`, `cohorte_semanal`, `cohorte_segmento`, `circuito_apoyo`, `bandeja_investigador`, `linea_tiempo_participante`, `ficha_participante()`, `cerrar_seguimiento()`, `reasignar_derivacion()`, `registrar_exportacion()` |
-| RN-009-09 | `serie_diaria_v2` reemplaza a `historial_checkin` (que queda sin uso) |
+| §6 (vistas y funciones) | `supabase/migrations/20260919120000_panel_investigador.sql`: `serie_diaria_v2`, `calendario_respuestas`, `olbi_semanal_etiquetado`, `predicciones_participante`, `predicciones_evaluables`, `desempeno_modelo`, `calibracion_modelo`, `roc_auc_modelo()`, `cohorte_semanal`, `circuito_apoyo`, `bandeja_investigador`, `linea_tiempo_participante`, `ficha_participante()`, `cerrar_seguimiento()`, `reasignar_derivacion()`, `registrar_exportacion()` |
+| RN-009-09 | `serie_diaria_v2` reemplaza a `historial_checkin`, retirada en `20260924140000_retirar_vistas_sin_uso.sql` |
 | §6 (complemento) | `20260919130000_panel_participantes_v2.sql` (`panel_participantes_v2`, `exportaciones_registradas`), `20260919140000_investigador_identidad_y_modelo.sql` (`obtener_identidad` para investigador, RLS de `modelo_versiones`, trigger `solo_activa_y_visibilidad`) |
 | RF-009-01 … 03 (Hoy) | `app/investigador/hoy.tsx`; badge y grupos en `modules/panel/SidebarInvestigador.tsx`; datos en `modules/investigador/panel.ts` (`bandeja`) |
 | RF-009-05 (Cohorte) | `app/investigador/cohorte.tsx` sobre `cohorte_semanal` |
