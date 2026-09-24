@@ -92,7 +92,7 @@ De los cuatro ítems `od_*` (lunes a jueves, escala 1–5):
 | **D — solo ánimo** | 4.1 (los cuatro ítems `od_*`) | Cuánto de la señal viene de preguntar «cómo te sientes». Es el techo de la crítica de circularidad: son ítems del OLBI prediciendo el OLBI |
 | **F — solo objetivo** | 4.2 sin ningún ítem `od_*` | **La versión más interesante de la tesis.** Si predice sin preguntar por el ánimo, la afirmación pasa de «un cuestionario se parece a sí mismo» a «las condiciones laborales anticipan el burnout», que además es accionable para la empresa |
 | **F reducida** | `sueno_media`, `sueno_min`, `horas_media`, `horas_max` | F con cuatro variables fijadas por hipótesis. Existe por potencia: ver §7.6 |
-| **A — MODELO PRINCIPAL** | 4.1 + sueño y horas + `rol_guardias` + `modalidad_remoto`. **~14 variables** en nowcast, ~17 en pronóstico (§7.6) | Que las señales baratas tienen valor por sí solas. Sostiene el título. Es la versión que se publica |
+| **A — MODELO PRINCIPAL** | 4.1 + sueño y horas + `guardia_previa`. **13 variables** en nowcast, 16 en pronóstico (§7.6) | Que las señales baratas tienen valor por sí solas. Sostiene el título. Es la versión que se publica |
 | **B — A + OLBI previo** | A + `E_previo`, `D_previo` (solo pronóstico) | La versión operativa más fuerte |
 | **A-completo / B-completo** | Todas las variables de §4.2 (~30) | **Exploratoria, no se publica.** Se reporta para mostrar que las variables sobrantes no aportan: en el ensayo dan el mismo ROC-AUC que A con el doble de variables |
 | **A₀ / B₀ — sin preentrenamiento** | Las mismas, con pesos iniciales en cero | El control del experimento de §5 |
@@ -214,14 +214,18 @@ propio ajuste ya estaba apagando las variables sobrantes.
 - los 7 rasgos de §4.1 (ánimo diario), que son el núcleo preentrenable;
 - sueño y horas: `sueno_media`, `sueno_min`, `horas_media`, `horas_max`,
   `horas_fin_de_semana`;
-- de la ficha, solo dos: `rol_guardias` (el rol implica guardias, que es la
-  hipótesis, en vez de las 8 columnas del nombre del puesto) y
-  `modalidad_remoto`;
-- en pronóstico se añaden `horas_sobretiempo`, `guardias`, `apoyo_lider`.
+- `guardia_previa`: si estuvo de guardia **la semana anterior**. Es un dato
+  respondido por la persona, no una suposición sobre qué puestos suelen tener
+  guardias, y está disponible desde el lunes, que es cuando el nowcast tiene
+  que poder opinar (el `guardias` de la propia semana se responde el viernes,
+  CA-005-02b);
+- en pronóstico se añaden `horas_sobretiempo`, `guardias`, `apoyo_lider` de la
+  semana t, que ahí ya son pasado.
 
-Edad, antigüedades, tamaño de equipo, personas a cargo y minutos de traslado
-**se siguen recogiendo y se describen en la tesis, pero no entran al modelo**.
-Las preguntas de la app no cambian; cambia qué se estima con ellas.
+`rol` y `modalidad` salen del modelo, igual que edad, antigüedades, tamaño de
+equipo, personas a cargo y minutos de traslado: **se siguen recogiendo y se
+describen en la tesis, pero no se estiman**. Las preguntas de la app no
+cambian; cambia qué se estima con ellas.
 
 `entrenar.py` imprime los casos por variable de cada versión y marca con `*` la
 principal, para que esto no se pierda de vista.

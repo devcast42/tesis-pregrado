@@ -92,32 +92,28 @@ PROPIOS_VIERNES = ['horas_sobretiempo', 'guardias', 'apoyo_lider']
 OBJETIVO_MINIMO = ['sueno_media', 'sueno_min', 'horas_media', 'horas_max']
 
 # Versión recortada del modelo completo (§7.6). Misma app, mismas preguntas:
-# lo que cambia es cuáles entran al modelo. Se recorta donde hay más variables
-# por pregunta y menos hipótesis detrás:
-#   - `rol` pasa de 8 columnas a una: si el rol implica guardias, que es lo
-#     que la literatura asocia a agotamiento, no el nombre del puesto.
-#   - `modalidad` pasa de 3 a una: remoto sí/no.
-#   - edad, antigüedades, tamaño de equipo y traslado salen del modelo
-#     principal; se describen en la tesis, no se estiman.
-RED_FICHA = ['rol_guardias', 'modalidad_remoto']
+# lo que cambia es cuáles entran al modelo.
+#
+# `rol` (8 columnas), `modalidad` (3), edad, antigüedades, tamaño de equipo,
+# personas a cargo y traslado salen del modelo principal: se siguen recogiendo
+# y se describen en la tesis, pero no se estiman.
+#
+# En su lugar entra `guardia_previa`: si la persona estuvo de guardia la semana
+# pasada. Es un dato que ella respondió, no una suposición sobre qué puestos
+# suelen tener guardias, y está disponible desde el lunes, que es cuando el
+# nowcast tiene que poder opinar.
+RED_FICHA = ['guardia_previa']
 
 
 def rasgos_principales(tarea: str) -> list[str]:
     """El modelo PRINCIPAL de la tesis (ESP-005 §4.3, §7.6): recortado.
 
-    Son ~14 variables en nowcast y ~17 en pronóstico. El conjunto completo de
-    §4.2 se sigue calculando y se reporta como `A-completo`, pero es
-    exploratorio: con ~50 semanas altas no hay potencia para estimar 30
-    coeficientes."""
+    13 variables en nowcast y 16 en pronóstico. El conjunto completo de §4.2 se
+    sigue calculando y se reporta como `A-completo`, pero es exploratorio: con
+    ~50 semanas altas no hay potencia para estimar 30 coeficientes."""
     return (COMPARTIDOS + PROPIOS_DIARIOS + RED_FICHA
             + (PROPIOS_VIERNES if tarea == 'pronostico' else []))
 
-
-def derivar(d: pd.DataFrame) -> pd.DataFrame:
-    """Columnas agregadas que no están en la vista: colapsan varias en una."""
-    d = d.copy()
-    d['rol_guardias'] = ((d.get('rol_infraestructura', 0) + d.get('rol_soporte', 0)) > 0).astype(int)
-    return d
 # Solo pronóstico: el OLBI del viernes de t, que en esa tarea ya es pasado.
 OLBI_PREVIO = ['e_previo', 'd_previo']
 
@@ -406,7 +402,7 @@ def umbral_olbi() -> tuple[float, float]:
 
 def entrenar_tarea(D: pd.DataFrame, tarea: str) -> dict:
     cfg = TAREAS[tarea]
-    d = derivar(D.dropna(subset=[cfg['etiqueta']]))
+    d = D.dropna(subset=[cfg['etiqueta']]).copy()
     # Sin señal diaria no hay fila que el modelo pueda puntuar.
     d = d[d['n_dias'] > 0]
     if d.empty:
