@@ -374,6 +374,9 @@ def circuito(cx, c, psi, etapa: str) -> None:
     ses = cx.execute("""insert into sesiones_consulta (derivacion_id, consentimiento_participante, consentimiento_psicologo, sala_livekit, iniciada_en, finalizada_en)
                         values (%s, true, true, %s, %s, %s) returning id""",
                      (deriv, f'demo-{uuid.uuid4().hex[:12]}', inicio, fin)).fetchone()[0]
+    # Los dos hitos que la app registra y de los que vive `circuito_apoyo`.
+    cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'sesion_iniciada', %s, %s)",
+               (pid, inicio, psycopg.types.json.Jsonb({'sesion_id': str(ses)})))
     cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'sesion_realizada', %s, %s)",
                (pid, fin, psycopg.types.json.Jsonb({'sesion_id': str(ses)})))
     cx.execute("update citas set estado = 'atendida' where id = %s", (cita,))
@@ -396,6 +399,11 @@ def circuito(cx, c, psi, etapa: str) -> None:
     cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'informe_generado', %s, %s)",
                (pid, fin + timedelta(minutes=3), psycopg.types.json.Jsonb({'informe_id': str(inf)})))
     if aprobado:
+        # El disparador `informes_evento_aprobado` escucha UPDATE; aquí el
+        # informe nace ya aprobado, así que el hito se registra a mano.
+        cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'informe_aprobado', %s, %s)",
+                   (pid, fin + timedelta(hours=2),
+                    psycopg.types.json.Jsonb({'informe_id': str(inf), 'sesion_id': str(ses)})))
         # Aprobar cierra el acompañamiento: el psicólogo deja de ver a la
         # persona (RF-006-06) y el circuito queda completo de punta a punta.
         cx.execute("update derivaciones set cerrada_en = %s where id = %s",

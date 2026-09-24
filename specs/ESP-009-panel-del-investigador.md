@@ -72,7 +72,7 @@ registrada (RF-006-12).
 
 | ID | Requisito |
 |---|---|
-| RF-009-10 | Derivaciones muestra los tiempos del circuito por caso y por psicólogo: detección → derivación → primera sesión → informe aprobado, con medianas y casos fuera de rango; incluye citas por estado y la carga abierta por psicólogo. |
+| RF-009-10 | Derivaciones muestra los tiempos del circuito por caso y por psicólogo: detección → derivación → primera sesión → informe aprobado, con medianas y casos fuera de rango; incluye citas por estado y la carga abierta por psicólogo.  Las marcas de tiempo salen de `eventos`, no de `sesiones_consulta` ni `informes`: el investigador no lee esas tablas (RN-004-08) y la vista le devolvía todo «sin sesión» con los días en nulo, dejando el indicador OE2 sin medir. Corregido en `20260924150000_circuito_apoyo_desde_eventos.sql`. |
 
 **Modelo**
 
