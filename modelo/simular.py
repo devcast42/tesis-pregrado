@@ -306,15 +306,31 @@ def conectar():
 
 
 def limpiar(cx) -> int:
+    """Borra la cohorte SIM-* y, si queda vacía, también su empresa: una
+    empresa sin participantes solo estorba en el panel del investigador."""
     cur = cx.execute("select id from participantes where codigo_anonimo like %s", (PREFIJO + '%',))
     ids = [r[0] for r in cur.fetchall()]
-    if not ids:
-        return 0
-    cx.execute("delete from respuestas_items where respuesta_id in "
-               "(select id from respuestas where participante_id = any(%s))", (ids,))
-    cx.execute("delete from respuestas where participante_id = any(%s)", (ids,))
-    cx.execute("delete from eventos where participante_id = any(%s)", (ids,))
-    cx.execute("delete from participantes where id = any(%s)", (ids,))
+    if ids:
+        cx.execute("delete from respuestas_items where respuesta_id in "
+                   "(select id from respuestas where participante_id = any(%s))", (ids,))
+        cx.execute("delete from respuestas where participante_id = any(%s)", (ids,))
+        cx.execute("delete from eventos where participante_id = any(%s)", (ids,))
+        cx.execute("delete from participantes where id = any(%s)", (ids,))
+
+    org = cx.execute("select id from organizaciones where nombre = %s", (ORG,)).fetchone()
+    if org:
+        # Solo si de verdad no quedó nada colgando: la empresa se creó para
+        # esta cohorte, pero no se borra a ciegas.
+        resto = (
+            cx.execute("select count(*) from participantes where organizacion_id = %s", (org[0],)).fetchone()[0]
+            + cx.execute("select count(*) from usuarios_rol where organizacion_id = %s", (org[0],)).fetchone()[0]
+            + cx.execute("select count(*) from administradores where organizacion_id = %s", (org[0],)).fetchone()[0]
+        )
+        if resto == 0:
+            cx.execute("delete from organizaciones where id = %s", (org[0],))
+            print(f'borrada la empresa «{ORG}» (quedó vacía)')
+        else:
+            print(f'la empresa «{ORG}» conserva {resto} filas asociadas: no se borra')
     return len(ids)
 
 
