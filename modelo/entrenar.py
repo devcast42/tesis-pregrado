@@ -59,21 +59,38 @@ EN_W0 = {'t_media': 'T_media', 't_ultimo': 'T_ultimo', 't_max': 'T_max',
          'n_dias': 'n_dias'}
 
 # ESP-005 §4.2 — rasgos propios, sin equivalente en el estudio de referencia.
-PROPIOS = [
-    'horas_media', 'horas_max', 'sueno_media', 'sueno_min', 'horas_fin_de_semana',
-    'horas_sobretiempo', 'guardias', 'apoyo_lider',
+# Del check-in diario de lunes a jueves. Disponibles cualquier día de la semana.
+PROPIOS_DIARIOS = ['horas_media', 'horas_max', 'sueno_media', 'sueno_min',
+                   'horas_fin_de_semana']
+# De la ficha inicial. No cambian en el tiempo.
+PROPIOS_ESTABLES = [
     'edad', 'antiguedad_empresa', 'antiguedad_sector', 'tamano_equipo',
     'personas_a_cargo', 'minutos_traslado',
     'rol_desarrollo', 'rol_qa', 'rol_datos', 'rol_infraestructura',
     'rol_soporte', 'rol_diseno', 'rol_gestion', 'rol_otro',
     'modalidad_remoto', 'modalidad_hibrido', 'modalidad_presencial',
 ]
+# Del cuestionario semanal, que se responde EL VIERNES, junto con el OLBI (en
+# los datos, 73 de 76 veces después de él). Para el pronóstico son pasado y
+# entran sin problema. Para el nowcast NO pueden entrar: el aviso que se
+# quiere dar es el miércoles, y el miércoles estos datos todavía no existen.
+# Entrenar el nowcast con ellos daría métricas que la app nunca podría
+# reproducir en operación.
+PROPIOS_VIERNES = ['horas_sobretiempo', 'guardias', 'apoyo_lider']
 # Solo pronóstico: el OLBI del viernes de t, que en esa tarea ya es pasado.
 OLBI_PREVIO = ['e_previo', 'd_previo']
 
+PROPIOS = PROPIOS_DIARIOS + PROPIOS_ESTABLES + PROPIOS_VIERNES
+
 TAREAS = {
-    'nowcast':    {'etiqueta': 'alto_t',  'w0': 'preentrenamiento-v1'},
-    'pronostico': {'etiqueta': 'alto_t1', 'w0': 'preentrenamiento-pronostico-v1'},
+    'nowcast': {
+        'etiqueta': 'alto_t', 'w0': 'preentrenamiento-v1',
+        'propios': PROPIOS_DIARIOS + PROPIOS_ESTABLES,
+    },
+    'pronostico': {
+        'etiqueta': 'alto_t1', 'w0': 'preentrenamiento-pronostico-v1',
+        'propios': PROPIOS_DIARIOS + PROPIOS_ESTABLES + PROPIOS_VIERNES,
+    },
 }
 
 # Fuerzas de regularización a probar hacia w0 (§12 decisión 5). Grande =
@@ -361,9 +378,9 @@ def entrenar_tarea(D: pd.DataFrame, tarea: str) -> dict:
     grupos = d['participante_id'].astype(str).to_numpy()
     w0 = w0_de(cfg['w0'])
 
-    variantes = {'A': COMPARTIDOS + PROPIOS}
+    variantes = {'A': COMPARTIDOS + cfg['propios']}
     if tarea == 'pronostico':
-        variantes['B'] = COMPARTIDOS + PROPIOS + OLBI_PREVIO
+        variantes['B'] = COMPARTIDOS + cfg['propios'] + OLBI_PREVIO
 
     salida = {
         'tarea': tarea,
@@ -371,6 +388,7 @@ def entrenar_tarea(D: pd.DataFrame, tarea: str) -> dict:
         'n_personas': int(len(np.unique(grupos))),
         'positivos': round(float(y.mean()), 3),
         'lambda_probadas': REJILLA_LAMBDA,
+        'rasgos_usados': COMPARTIDOS + cfg['propios'],
         'lineas_base': lineas_base(d, y, grupos, tarea),
         'versiones': {},
     }

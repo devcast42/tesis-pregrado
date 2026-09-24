@@ -39,6 +39,7 @@ La etiqueta es *estar por encima del umbral*, no *cruzarlo por primera vez*. La 
 - Los 16 ítems del OLBI de la semana *t* en el nowcast. Es el patrón oro de esa fila.
 - Los ítems del OLBI de *t+1* en el pronóstico.
 - Cualquier dato posterior al viernes de la semana *t*.
+- **En el nowcast, el cuestionario `semanal`** (`horas_sobretiempo`, `guardias`, `apoyo_lider`). Se responde el viernes —en los datos, 73 de 76 veces *después* del OLBI—, y el nowcast existe para avisar el miércoles. Entrenarlo con datos que el miércoles no existen produce métricas que la app no puede reproducir en operación: no es fuga respecto de la etiqueta, pero sí respecto del momento de uso. En el pronóstico sí entran, porque ahí la etiqueta es el viernes siguiente y estos datos ya son pasado. Verificado por CA-005-02b.
 
 Los cuatro ítems diarios `od_*` **sí** son entrada. Son ítems del OLBI en versión diaria, pero no forman el instrumento, no se puntúan y la etiqueta sale de otra aplicación (el OLBI completo del viernes). No hay circularidad: el modelo aprende cómo cuatro señales diarias anticipan un instrumento de 16 ítems aplicado en otro momento.
 
@@ -209,6 +210,7 @@ Prevalencia esperada de semanas sobre el umbral: 10–25 %. `class_weight='balan
 |---|---|---|
 | CA-005-01 | Ninguna entrada de la fila (participante, semana *t*) se calcula con datos posteriores al viernes de *t* | Prueba automatizada sobre `semanas_modelo` |
 | CA-005-02 | Ningún ítem `olbi_*` de la semana etiquetada aparece entre las entradas | Prueba automatizada |
+| CA-005-02b | El nowcast no usa el cuestionario `semanal`, que se responde el viernes | Prueba automatizada |
 | CA-005-03 | Cada participante aparece en un solo pliegue | Prueba automatizada |
 | CA-005-04 | Ningún participante aporta semanas posteriores a su primer cruce | Prueba automatizada |
 | CA-005-05 | Los rasgos de §4.1 calculados en SQL y en Python coinciden para el mismo participante-semana | Prueba automatizada |
@@ -226,7 +228,7 @@ Prevalencia esperada de semanas sobre el umbral: 10–25 %. `class_weight='balan
 | CA-005-05, CA-005-06 | Automatizadas en `modelo/pruebas.py`: comparan la vista, `rasgos_semana` y `rasgos()` de Python en cada participante-semana, y la sigmoide de Postgres contra la de Python en cada versión cargada |
 | §8, vista `semanas_modelo` | `supabase/migrations/20260923100000_semanas_modelo.sql` — una fila por (participante, semana), rasgos de §4, ambas etiquetas y censura de §3.5 |
 | §5.2 pasos 3–4, §4.3 (A, B, A₀, B₀), §6 (random forest como comparación), §7 (GroupKFold, métricas, líneas base), §12 decisión 5 (λ hacia w₀ elegida en validación) | `modelo/entrenar.py`. Se niega a publicar una versión si el entrenamiento incluye datos sintéticos o si hay menos de 20 personas |
-| CA-005-01 … CA-005-06, CA-005-08 | `modelo/pruebas.py` — los siete pasan (2026-09-23). CA-005-07 se revisa sobre la salida de `entrenar.py` |
+| CA-005-01 … CA-005-06, CA-005-08 | `modelo/pruebas.py` — los ocho pasan (2026-09-24). CA-005-07 se revisa sobre la salida de `entrenar.py` |
 | Ensayo del pipeline sin datos propios | `modelo/simular.py` — cohorte simulada de 80 personas con proceso generativo de tres niveles y ruido de medición independiente entre el OLBI del viernes y los ítems diarios. Calibrada contra la referencia: prevalencia 0.14, T 2.08 (DE 0.92), ICC 0.59, autocorrelación diaria 0.57 |
 | §7 con datos propios | **Pendiente de la muestra.** Los ensayos (`modelo/resultados/`) usan datos sintéticos: prueban la mecánica, no son resultados del estudio |
 

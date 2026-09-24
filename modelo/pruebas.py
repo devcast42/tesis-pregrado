@@ -122,6 +122,34 @@ def ca_02(cx):
     return f'{len(rasgos_nowcast)} rasgos en nowcast, ninguno del OLBI de t'
 
 
+# --------------------------------------------------------------- CA-005-02b
+
+@prueba('CA-005-02b el nowcast no usa el cuestionario del viernes')
+def ca_02b(cx):
+    """El nowcast existe para avisar ANTES del viernes. Si entre sus entradas
+    hay respuestas que solo existen el viernes, las métricas del entrenamiento
+    no se pueden reproducir el miércoles, que es cuando sirve el aviso."""
+    import entrenar
+    del_viernes = set(entrenar.PROPIOS_VIERNES)
+    usados = set(entrenar.COMPARTIDOS + entrenar.TAREAS['nowcast']['propios'])
+    assert not (usados & del_viernes), \
+        f'el nowcast usaría {sorted(usados & del_viernes)}, que se responden el viernes'
+
+    # Y comprobar que de verdad se responden el viernes, no asumirlo.
+    reparto = dict(cx.execute("""
+        select extract(isodow from (enviado_en at time zone tz_estudio())::date)::int, count(*)
+        from respuestas where formulario_clave = 'semanal' group by 1
+    """).fetchall())
+    if reparto:
+        viernes_o_despues = sum(n for d, n in reparto.items() if d >= 5)
+        assert viernes_o_despues / sum(reparto.values()) > 0.5, \
+            'el cuestionario semanal ya no se responde el viernes: revisar esta exclusión'
+    # En pronóstico sí entran: la etiqueta es el viernes siguiente.
+    assert del_viernes <= set(entrenar.TAREAS['pronostico']['propios']), \
+        'el pronóstico debería poder usar el cuestionario semanal de t'
+    return f'{len(del_viernes)} rasgos del viernes fuera del nowcast, dentro del pronóstico'
+
+
 # ---------------------------------------------------------------- CA-005-03
 
 @prueba('CA-005-03 cada participante cae en un solo pliegue')
@@ -291,7 +319,7 @@ def ca_08(cx):
     return f'hash verificado y pesos idénticos a la base'
 
 
-PRUEBAS = [ca_01, ca_02, ca_03, ca_04, ca_05, ca_06, ca_08]
+PRUEBAS = [ca_01, ca_02, ca_02b, ca_03, ca_04, ca_05, ca_06, ca_08]
 
 
 def main() -> None:
