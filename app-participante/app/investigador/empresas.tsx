@@ -10,8 +10,8 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } fr
 import { router, useFocusEffect } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
 import { conFiltro, useFiltro } from '../../modules/investigador/filtro'
-import { actualizarUmbral, pulsoPorEmpresa, umbralesEmpresa, type PulsoEmpresa, type UmbralEmpresa } from '../../modules/investigador/panel'
-import { adherenciaPorEmpresa, type AdherenciaEmpresa } from '../../modules/investigador/datos'
+import { actualizarUmbral, pulsoPorEmpresa, umbralesEmpresa, type PulsoEmpresa, type UmbralEmpresa, adherenciaPorEmpresa, type AdherenciaEmpresa
+} from '../../modules/investigador/panel'
 import { crearEmpresa, listarEmpresasConConteos, type FilaEmpresa } from '../../modules/panel/datos'
 import { BotonChico, Caja, Encabezado, Mono, Pastilla, Rotulo, TONO } from '../../modules/investigador/piezas'
 import { Cargando } from '../../modules/nucleo/ui'

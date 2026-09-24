@@ -377,3 +377,29 @@ export function fechaHoraPET(iso: string): string {
   const d = new Date(iso)
   return `${d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }).replace('.', '')} · ${d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })} PET`
 }
+
+// --------------------------------------------------- Adherencia por empresa
+
+export type AdherenciaEmpresa = {
+  organizacion_id: string
+  nombre: string
+  participantes_activos: number
+  al_dia: number
+  en_riesgo: number
+  inactivos: number
+  nunca_iniciaron: number
+  tasa_promedio: number | null
+}
+
+/** Adherencia agregada por empresa (ESP-007). Se ordena por nombre, nunca por
+ *  tasa de burnout: un panel que ordena empresas por burnout es un ranking de
+ *  empleadores, y en cuanto una lo ve, la siguiente se lo piensa antes de
+ *  entrar al estudio. */
+export async function adherenciaPorEmpresa(): Promise<AdherenciaEmpresa[]> {
+  const { data, error } = await supabase
+    .from('adherencia_por_organizacion')
+    .select('*')
+    .order('nombre')
+  if (error) throw error
+  return (data ?? []) as AdherenciaEmpresa[]
+}

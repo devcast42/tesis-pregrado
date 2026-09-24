@@ -13,9 +13,8 @@ import { Panel } from '../../modules/panel/Sidebar'
 import { conFiltro, useFiltro } from '../../modules/investigador/filtro'
 import {
   adherenciaGlobal, circuito as cargarCircuito, cohorte as cargarCohorte, desempeno as cargarDesempeno, mediana, participantes as cargarParticipantes,
-  versiones as cargarVersiones, type CircuitoApoyo, type CohorteSemana, type Desempeno, type FilaParticipanteV2, type VersionModelo,
+  versiones as cargarVersiones, type CircuitoApoyo, type CohorteSemana, type Desempeno, type FilaParticipanteV2, type VersionModelo, adherenciaPorEmpresa, type AdherenciaEmpresa
 } from '../../modules/investigador/panel'
-import { adherenciaPorEmpresa, type AdherenciaEmpresa } from '../../modules/investigador/datos'
 import { BotonChico, Caja, Encabezado, Mono, Pastilla, Rotulo, TONO } from '../../modules/investigador/piezas'
 import { Cargando } from '../../modules/nucleo/ui'
 import { color, espacio, radio, texto } from '../../modules/nucleo/diseno'
