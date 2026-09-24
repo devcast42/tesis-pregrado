@@ -31,7 +31,7 @@ const RECORDATORIOS = [
     id: `checkin-${weekday}`,
     weekday,
     titulo: 'Check-in de hoy',
-    cuerpo: 'Son 25 segundos. Gracias por participar en el estudio.',
+    cuerpo: 'Son 35 segundos. Gracias por participar en el estudio.',
   })),
   {
     id: 'checkin-6',

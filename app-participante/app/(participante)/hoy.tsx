@@ -48,8 +48,8 @@ const PRESENTACION: Record<string, { insignia: string; titulo: string; descripci
   },
   diario: {
     insignia: 'Lunes a jueves',
-    titulo: 'Check-in de hoy · 25 segundos',
-    descripcion: 'Cuatro frases sobre tu día y dos datos. Responde con lo primero que se te venga.',
+    titulo: 'Check-in de hoy · 35 segundos',
+    descripcion: 'Cuatro frases sobre tu día y unos datos. Responde con lo primero que se te venga.',
     accion: 'Comenzar check-in',
   },
   olbi: {
