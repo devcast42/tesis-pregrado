@@ -53,7 +53,7 @@ Presentar al participante los instrumentos según el calendario semanal, captura
 | Día ISO | Formulario | Contenido | Duración objetivo |
 |---|---|---|---|
 | — | `estable` | Una vez, al inscribirse | ~2 min |
-| 1–4 (lun–jue) | `diario` | 4 ítems OLBI-diario (1–5) + horas trabajadas + horas dormidas; el lunes además horas trabajadas el fin de semana | ~25 s |
+| 1–4 (lun–jue) | `diario` | 4 ítems OLBI-diario (1–5) + horas trabajadas + horas dormidas + **bloque de recuperación** (desconexión 1–5 y si la contactaron fuera de horario); el lunes además horas trabajadas el fin de semana | ~35 s |
 | 5 (viernes) | `olbi` → `semanal` | OLBI completo (16 ítems, 1–4) y a continuación 3 ítems de contexto de la semana | ~4 min |
 | 6–7 | — | Nada. El fin de semana se pregunta el lunes | — |
 
