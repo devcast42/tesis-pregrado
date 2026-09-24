@@ -87,6 +87,23 @@ PROPIOS_VIERNES = ['horas_sobretiempo', 'guardias', 'apoyo_lider']
 # por variable y el modelo memoriza en vez de aprender. Estos cuatro se fijan
 # de antemano por hipótesis: sueño y carga física, nada de ánimo.
 OBJETIVO_MINIMO = ['sueno_media', 'sueno_min', 'horas_media', 'horas_max']
+
+# Versión recortada del modelo completo (§7.6). Misma app, mismas preguntas:
+# lo que cambia es cuáles entran al modelo. Se recorta donde hay más variables
+# por pregunta y menos hipótesis detrás:
+#   - `rol` pasa de 8 columnas a una: si el rol implica guardias, que es lo
+#     que la literatura asocia a agotamiento, no el nombre del puesto.
+#   - `modalidad` pasa de 3 a una: remoto sí/no.
+#   - edad, antigüedades, tamaño de equipo y traslado salen del modelo
+#     principal; se describen en la tesis, no se estiman.
+RED_FICHA = ['rol_guardias', 'modalidad_remoto']
+
+
+def derivar(d: pd.DataFrame) -> pd.DataFrame:
+    """Columnas agregadas que no están en la vista: colapsan varias en una."""
+    d = d.copy()
+    d['rol_guardias'] = ((d.get('rol_infraestructura', 0) + d.get('rol_soporte', 0)) > 0).astype(int)
+    return d
 # Solo pronóstico: el OLBI del viernes de t, que en esa tarea ya es pasado.
 OLBI_PREVIO = ['e_previo', 'd_previo']
 
@@ -375,12 +392,12 @@ def umbral_olbi() -> tuple[float, float]:
 
 def entrenar_tarea(D: pd.DataFrame, tarea: str) -> dict:
     cfg = TAREAS[tarea]
-    d = D.dropna(subset=[cfg['etiqueta']]).copy()
+    d = derivar(D.dropna(subset=[cfg['etiqueta']]))
     # Sin señal diaria no hay fila que el modelo pueda puntuar.
     d = d[d['n_dias'] > 0]
     if d.empty:
         return {'tarea': tarea, 'error': 'sin filas con etiqueta y señal diaria'}
-    for r in COMPARTIDOS + PROPIOS + OLBI_PREVIO:
+    for r in COMPARTIDOS + PROPIOS + OLBI_PREVIO + RED_FICHA:
         if r in d:
             d[r] = d[r].fillna(d[r].median() if d[r].notna().any() else 0.0)
 
@@ -395,14 +412,18 @@ def entrenar_tarea(D: pd.DataFrame, tarea: str) -> dict:
     #   A = las dos cosas
     # Si F se acerca a A, la detección no depende de preguntar cómo te
     # sientes, y eso es una afirmación mucho más fuerte y más accionable.
+    reducido = COMPARTIDOS + PROPIOS_DIARIOS + RED_FICHA + (
+        PROPIOS_VIERNES if tarea == 'pronostico' else [])
     variantes = {
         'D-animo':      (COMPARTIDOS, True),
         'F-objetivo':   (cfg['propios'], False),
         'F-reducido':   (OBJETIVO_MINIMO, False),
         'A':            (COMPARTIDOS + cfg['propios'], True),
+        'A-recortado':  (reducido, True),
     }
     if tarea == 'pronostico':
         variantes['B'] = (COMPARTIDOS + cfg['propios'] + OLBI_PREVIO, True)
+        variantes['B-recortado'] = (reducido + OLBI_PREVIO, True)
 
     salida = {
         'tarea': tarea,

@@ -197,6 +197,16 @@ de 22 variables a 4 **mejoró** el resultado (ROC-AUC 0.64 → 0.67 en nowcast),
 la versión de 25 variables en pronóstico cayó a 0.44, por debajo del azar: la
 firma clásica del sobreajuste.
 
+En el mismo ensayo, recortar el modelo completo de 29-32 variables a 14-17
+(colapsar `rol` a «el rol implica guardias» y `modalidad` a «remoto sí/no»,
+y sacar edad, antigüedades, tamaño de equipo y traslado del modelo principal)
+dio **el mismo resultado** (ROC-AUC 0.77 en nowcast, 0.76 en pronóstico) con la
+mitad de variables, y algo mejor F1 en pronóstico (0.36 vs. 0.32). No es un
+salto de precisión: es la misma precisión con un modelo que se puede explicar
+y que aguanta mejor datos reales, más ruidosos que los simulados. Nótese que la
+regularización elegida fue la más fuerte de la rejilla (λ = 10), es decir, el
+propio ajuste ya estaba apagando las variables sobrantes.
+
 Consecuencia para el diseño, **a decidir antes de reclutar**: el bloque objetivo
 se fija de antemano en unas pocas variables por hipótesis (`OBJETIVO_MINIMO` en
 `modelo/entrenar.py`), y el resto de §4.2 se reporta como exploratorio, no como
