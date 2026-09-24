@@ -89,6 +89,9 @@ De los cuatro ítems `od_*` (lunes a jueves, escala 1–5):
 
 | Versión | Entradas | Qué demuestra |
 |---|---|---|
+| **D — solo ánimo** | 4.1 (los cuatro ítems `od_*`) | Cuánto de la señal viene de preguntar «cómo te sientes». Es el techo de la crítica de circularidad: son ítems del OLBI prediciendo el OLBI |
+| **F — solo objetivo** | 4.2 sin ningún ítem `od_*` | **La versión más interesante de la tesis.** Si predice sin preguntar por el ánimo, la afirmación pasa de «un cuestionario se parece a sí mismo» a «las condiciones laborales anticipan el burnout», que además es accionable para la empresa |
+| **F reducida** | `sueno_media`, `sueno_min`, `horas_media`, `horas_max` | F con cuatro variables fijadas por hipótesis. Existe por potencia: ver §7.6 |
 | **A — solo señales diarias y contexto** | 4.1 + 4.2 sin `E_previo`/`D_previo` | Que las señales baratas tienen valor por sí solas. Sostiene el título |
 | **B — A + OLBI previo** | A + `E_previo`, `D_previo` (solo pronóstico) | La versión operativa más fuerte |
 | **A₀ / B₀ — sin preentrenamiento** | Las mismas, con pesos iniciales en cero | El control del experimento de §5 |
@@ -181,6 +184,25 @@ Prevalencia esperada de semanas sobre el umbral: 10–25 %. `class_weight='balan
 | **Logística solo con el OLBI previo** | Lo que sabe el OLBI solo, sin señales diarias, usando la distancia al umbral en vez de la regla binaria. Es la comparación que decide si las señales diarias aportan | **A**, en pronóstico |
 | **A₀ / B₀** | El mismo modelo sin preentrenamiento | A / B, para que el preentrenamiento demuestre valor |
 
+### 7.6 Potencia: el número de variables es un problema de diseño
+
+Con 6 semanas y 60-100 personas habrá del orden de 350-500 filas y, con una
+prevalencia del 10-25 %, entre **40 y 90 semanas altas**. La regla habitual en
+modelos de riesgo es ~10 casos positivos por variable. Los rasgos de §4 suman
+**29-32 variables**: eso da **1-2 casos por variable**, entre cinco y diez veces
+por debajo de lo admisible. Un modelo así memoriza.
+
+No es teórico. En el ensayo con la cohorte simulada, reducir el bloque objetivo
+de 22 variables a 4 **mejoró** el resultado (ROC-AUC 0.64 → 0.67 en nowcast), y
+la versión de 25 variables en pronóstico cayó a 0.44, por debajo del azar: la
+firma clásica del sobreajuste.
+
+Consecuencia para el diseño, **a decidir antes de reclutar**: el bloque objetivo
+se fija de antemano en unas pocas variables por hipótesis (`OBJETIVO_MINIMO` en
+`modelo/entrenar.py`), y el resto de §4.2 se reporta como exploratorio, no como
+parte del modelo principal. `entrenar.py` imprime los casos por variable de cada
+versión para que esto no se pierda de vista.
+
 ### 7.5 HE1 — propuesta de reformulación
 
 > El modelo, usando señales diarias de 25 segundos y contexto laboral, anticipa la clasificación del OLBI semanal con recall ≥ *R* y F1 ≥ *F*, y permite señalar riesgo en promedio *N* días antes de la aplicación del instrumento.
@@ -240,4 +262,5 @@ Prevalencia esperada de semanas sobre el umbral: 10–25 %. `class_weight='balan
 | 2 | Fijar *R*, *F* y *N* de HE1 (§7.5) | Asesor |
 | 3 | Etiqueta de pronóstico: *estar sobre el umbral* (propuesto) vs. *cruzarlo* | Asesor |
 | 4 | Confirmar la prevalencia esperada con literatura peruana o latinoamericana | Autores |
+| 6 | **Qué variables objetivas entran en el modelo principal** (§7.6). Con la muestra proyectada solo caben unas 4-6; el resto es exploratorio. Fijarlas por hipótesis antes de reclutar, no después de ver los datos | Autores + asesor |
 | 5 | Fuerza de la regularización hacia `w₀` (cuánto se confía en el dominio de referencia); se elige en validación y se reporta | Autores |

@@ -9,6 +9,9 @@ y las evalúa con GroupKFold por persona.
     B    A + e_previo/d_previo (solo pronóstico): la versión operativa fuerte
     A0   igual que A pero desde cero: el control del experimento de §5
     B0   igual que B pero desde cero
+    D-animo     solo los rasgos del check-in de ánimo (que son ítems del OLBI)
+    F-objetivo  solo lo objetivo: sueño, horas, sobrecarga, ficha. Ningún ítem
+                de ánimo. Responde si hace falta preguntar cómo te sientes
     *-bosque  random forest sobre los mismos rasgos y las mismas particiones
               (§6). Si no supera claramente a la logística, se reporta y se
               descarta: la logística es interpretable y la muestra es corta.
@@ -77,6 +80,13 @@ PROPIOS_ESTABLES = [
 # Entrenar el nowcast con ellos daría métricas que la app nunca podría
 # reproducir en operación.
 PROPIOS_VIERNES = ['horas_sobretiempo', 'guardias', 'apoyo_lider']
+
+# Bloque objetivo mínimo. Existe por un problema de potencia, no de gusto: la
+# regla de oro es ~10 casos positivos por variable, y con 6 semanas y 60-100
+# personas habrá ~50 semanas altas. Con 25 rasgos objetivos eso son 2 casos
+# por variable y el modelo memoriza en vez de aprender. Estos cuatro se fijan
+# de antemano por hipótesis: sueño y carga física, nada de ánimo.
+OBJETIVO_MINIMO = ['sueno_media', 'sueno_min', 'horas_media', 'horas_max']
 # Solo pronóstico: el OLBI del viernes de t, que en esa tarea ya es pasado.
 OLBI_PREVIO = ['e_previo', 'd_previo']
 
@@ -378,9 +388,21 @@ def entrenar_tarea(D: pd.DataFrame, tarea: str) -> dict:
     grupos = d['participante_id'].astype(str).to_numpy()
     w0 = w0_de(cfg['w0'])
 
-    variantes = {'A': COMPARTIDOS + cfg['propios']}
+    # Cada variante es (rasgos, si le aplica el preentrenamiento). Las tres
+    # primeras son la ablación que responde de dónde viene la señal:
+    #   D = solo las 4 preguntas diarias (que son ítems del OLBI)
+    #   F = solo lo objetivo: sueño, horas, carga, ficha. Ningún ítem de ánimo
+    #   A = las dos cosas
+    # Si F se acerca a A, la detección no depende de preguntar cómo te
+    # sientes, y eso es una afirmación mucho más fuerte y más accionable.
+    variantes = {
+        'D-animo':      (COMPARTIDOS, True),
+        'F-objetivo':   (cfg['propios'], False),
+        'F-reducido':   (OBJETIVO_MINIMO, False),
+        'A':            (COMPARTIDOS + cfg['propios'], True),
+    }
     if tarea == 'pronostico':
-        variantes['B'] = COMPARTIDOS + cfg['propios'] + OLBI_PREVIO
+        variantes['B'] = (COMPARTIDOS + cfg['propios'] + OLBI_PREVIO, True)
 
     salida = {
         'tarea': tarea,
@@ -396,10 +418,10 @@ def entrenar_tarea(D: pd.DataFrame, tarea: str) -> dict:
         salida['error'] = 'una sola clase en la etiqueta: no hay nada que aprender'
         return salida
 
-    for nombre, rasgos in variantes.items():
+    for nombre, (rasgos, preentrenable) in variantes.items():
         # Con preentrenamiento: se elige la fuerza hacia w0 en validación.
         mejor = None
-        if w0:
+        if w0 and preentrenable:
             for lam in REJILLA_LAMBDA:
                 m, _ = validar(d, rasgos, y, grupos, w0, lam)
                 if not m:
@@ -407,17 +429,25 @@ def entrenar_tarea(D: pd.DataFrame, tarea: str) -> dict:
                 r = (m['resumen'].get('pr_auc') or {}).get('media') or 0
                 if mejor is None or r > mejor[1]:
                     mejor = (lam, r, m)
+        positivos = int(y.sum())
+        potencia = round(positivos / len(rasgos), 2)
         if mejor:
-            salida['versiones'][nombre] = {'lambda_hacia_w0': mejor[0], **mejor[2]}
-        # Sin preentrenamiento (A0 / B0): el control.
+            salida['versiones'][nombre] = {
+                'lambda_hacia_w0': mejor[0], 'n_rasgos': len(rasgos),
+                'casos_por_rasgo': potencia, **mejor[2]}
+        # Sin preentrenamiento: el control. Para F-objetivo es la única
+        # versión posible, porque w0 solo tiene pesos de los rasgos de ánimo.
         m0, _ = validar(d, rasgos, y, grupos, None, 0.0)
         if m0:
-            salida['versiones'][f'{nombre}0'] = {'lambda_hacia_w0': None, **m0}
+            salida['versiones'][f'{nombre}0' if preentrenable else nombre] = {
+                'lambda_hacia_w0': None, 'n_rasgos': len(rasgos),
+                'casos_por_rasgo': potencia, **m0}
         # Random forest sobre los mismos rasgos y las mismas particiones (§6).
         mb, _ = validar(d, rasgos, y, grupos, None, 0.0, bosque=True)
         if mb:
             salida['versiones'][f'{nombre}-bosque'] = {
                 'lambda_hacia_w0': None, 'algoritmo': 'random_forest',
+                'n_rasgos': len(rasgos), 'casos_por_rasgo': potencia,
                 'hiperparametros': {k: v for k, v in BOSQUE.items() if k != 'n_jobs'}, **mb}
     return salida
 
@@ -442,8 +472,9 @@ def imprimir(res: dict) -> None:
         def m(k):
             return f"{r[k]['media']:.2f}±{r[k]['de']:.2f}" if r.get(k) else "  —  "
         lam = v['lambda_hacia_w0']
-        alg = 'bosque   ' if v.get('algoritmo') == 'random_forest' else f'lambda={str(lam):5s}'
-        print(f"  {nombre:10s} {alg}  recall {m('recall')}  f1 {m('f1')}  "
+        alg = 'bosque' if v.get('algoritmo') == 'random_forest' else f'lam={str(lam):4s}'
+        pot = f"{v.get('n_rasgos', 0):3d}r {v.get('casos_por_rasgo', 0):4.1f}c/r"
+        print(f"  {nombre:18s} {alg:10s} {pot}  recall {m('recall')}  f1 {m('f1')}  "
               f"pr_auc {m('pr_auc')}  roc_auc {m('roc_auc')}")
 
 
