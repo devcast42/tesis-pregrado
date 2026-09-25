@@ -111,7 +111,9 @@ export default function Exportacion() {
               <View style={{ gap: 3 }}>
                 <Rotulo>Alcance del corte</Rotulo>
                 <Text style={[texto.datoFuerte, { color: color.texto }]}>{empresa ? empresa.nombre : 'Todas las empresas'}</Text>
-                <Text style={[texto.dato, { color: color.textoMedio }]}>{`Semanas ${filtro.semanaDesde} a ${filtro.semanaHasta}`}</Text>
+                {/* El rango de semanas de la barra lateral no filtra la exportación
+                    (ver el manifiesto en exportar.ts): no se anuncia aquí. */}
+                <Text style={[texto.dato, { color: color.textoMedio }]}>Todo el seguimiento</Text>
               </View>
 
               <View style={e.raya} />
@@ -184,7 +186,9 @@ export default function Exportacion() {
               {registro.map((x) => {
                 const f = x.filtros ?? {}
                 const emp = f.organizacion_id ? empresas.find((y) => y.id === f.organizacion_id)?.nombre ?? 'Una empresa' : 'Todas las empresas'
-                const sem = Array.isArray(f.semanas) ? `Semanas ${f.semanas[0]}–${f.semanas[1]}` : ''
+                // Los manifiestos anteriores guardaban `semanas`, que nunca se
+                // llegó a aplicar; los nuevos guardan `periodo`.
+                const sem = typeof f.periodo === 'string' ? f.periodo : Array.isArray(f.semanas) ? 'todo el seguimiento' : ''
                 const n = Object.values(x.conteos ?? {}).reduce((s: number, v) => s + Number(v), 0)
                 return (
                   <View key={x.id} style={e.tablaFila}>
