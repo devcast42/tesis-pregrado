@@ -26,31 +26,51 @@ export const TABLAS = [
 
 export type ClaveTabla = (typeof TABLAS)[number]['clave']
 
-/** Conteos por tabla con el filtro aplicado, para mostrar antes de exportar.
+/** Cuántas filas entrarían en el paquete, por tabla y con el filtro puesto.
  *
- *  Van en serie a propósito. Cuatro de las seis fuentes son vistas y contarlas
- *  cuesta 2-3 s cada una; lanzadas en paralelo se estorban y alguna pasa el
- *  `statement_timeout` de 8 s. Cuando eso ocurría, PostgREST devolvía 500 y el
- *  `count ?? 0` lo convertía en un cero indistinguible de una tabla vacía: la
- *  pantalla anunciaba 1 913 filas para un paquete de 14 327. Un conteo que
- *  falla vale `null` y se muestra como «?», nunca como 0.
+ *  Un conteo que no se pudo obtener vale `null` y la pantalla lo enseña como
+ *  «?». Nunca 0: cuando esto devolvía 0 al fallar, el resumen anunciaba 1 913
+ *  filas para un paquete de 14 327, y ese número es el que cita la tesis.
+ *
+ *  Van en serie porque cuatro de las seis fuentes son vistas y cada una cuesta
+ *  unos segundos; en paralelo se estorban.
  *  La página no espera este cálculo, así que la demora no se nota. */
 export async function conteos(filtro: FiltroGlobal): Promise<Record<ClaveTabla, number | null>> {
   const ids = await participantesDelFiltro(filtro)
   const out = {} as Record<ClaveTabla, number | null>
-  for (const t of TABLAS) {
-    // respuestas_items no tiene participante_id: se filtra a través de su envío.
-    // Sin filtro de empresa no hace falta esa unión, y contar 11 000 ítems
-    // uniéndolos a sus envíos sí llegaba a agotar el tiempo.
-    const porEnvio = t.clave === 'respuestas_items' && !!ids
-    let q = porEnvio
-      ? supabase.from(t.clave).select('respuesta_id, respuestas!inner(participante_id)', { count: 'exact', head: true })
-      : supabase.from(t.clave).select(t.clave === 'respuestas_items' ? 'respuesta_id' : 'participante_id', { count: 'exact', head: true })
-    if (ids) q = q.in(porEnvio ? 'respuestas.participante_id' : 'participante_id', ids)
-    const { count, error } = await q
-    out[t.clave] = error ? null : count ?? 0
-  }
+  for (const t of TABLAS) out[t.clave] = await contar(t.clave, ids)
   return out
+}
+
+/** Tope del recuento manual. Muy por encima de lo que dan las vistas, que es
+ *  donde hace falta; si alguna vez se alcanza, no se adivina: vale `null`. */
+const TOPE_RECUENTO = 20000
+
+async function contar(tabla: ClaveTabla, ids: string[] | null): Promise<number | null> {
+  // respuestas_items no tiene participante_id: se filtra a través de su envío.
+  // Sin filtro de empresa esa unión no hace falta.
+  const porEnvio = tabla === 'respuestas_items' && !!ids
+  const columna = porEnvio ? 'respuesta_id, respuestas!inner(participante_id)'
+    : tabla === 'respuestas_items' ? 'respuesta_id' : 'participante_id'
+  const clave = porEnvio ? 'respuestas.participante_id' : 'participante_id'
+
+  let q = supabase.from(tabla).select(columna, { count: 'exact', head: true })
+  if (ids) q = q.in(clave, ids)
+  const exacto = await q
+  if (!exacto.error) return exacto.count ?? 0
+
+  // `count=exact` hace que PostgREST evalúe la consulta dos veces, una para la
+  // página y otra para el total. En una vista cara eso dobla el coste y pasa
+  // del `statement_timeout`: `semanas_modelo` tarda 8,4 s contándose y 5,6 s
+  // si solo se piden las filas. Así que cuando el conteo falla se traen las
+  // claves y se cuentan aquí, que evalúa la vista una sola vez.
+  let m = supabase.from(tabla).select(columna).range(0, TOPE_RECUENTO)
+  if (ids) m = m.in(clave, ids)
+  const manual = await m
+  if (manual.error || !manual.data) return null
+  // Si vino justo el tope, la lista está cortada y el número sería menor que
+  // el real: más vale decir que no se sabe.
+  return manual.data.length > TOPE_RECUENTO ? null : manual.data.length
 }
 
 async function participantesDelFiltro(filtro: FiltroGlobal): Promise<string[] | null> {

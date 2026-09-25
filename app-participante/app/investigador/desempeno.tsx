@@ -9,7 +9,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
-import { useFiltro } from '../../modules/investigador/filtro'
+import { useFiltro, useDatosDelFiltro } from '../../modules/investigador/filtro'
 import {
   activarVersion, calibracion as cargarCalibracion, desempeno as cargarDesempeno, evaluables as cargarEvaluables, rocAuc,
   versiones as cargarVersiones, type Calibracion, type Desempeno, type VersionModelo,
@@ -40,8 +40,9 @@ export default function DesempenoModelo() {
   const activa = deTarea.find((v) => v.activa) ?? deTarea[0]
   const elegida = deTarea.find((v) => v.version === version) ?? activa
 
-  const cargar = useCallback(async () => {
+  const cargar = useDatosDelFiltro(() => setVersiones(null), async (vigente) => {
     const [vs, td, emps] = await Promise.all([cargarVersiones(), cargarDesempeno(tarea), listarEmpresas().catch(() => [] as Empresa[])])
+    if (!vigente()) return
     setVersiones(vs); setTodas(td)
     setEmpresa(emps.find((e) => e.id === filtro.organizacion_id) ?? null)
     const v = vs.filter((x) => x.tarea === tarea)
@@ -51,7 +52,6 @@ export default function DesempenoModelo() {
     const [f, c, a, p] = await Promise.all([cargarDesempeno(tarea, ver.version), cargarCalibracion(tarea, ver.version), rocAuc(tarea, ver.version), cargarEvaluables(tarea, ver.version)])
     setFilas(f); setCal(c); setAuc(a); setPares(p)
   }, [tarea, version, filtro.organizacion_id])
-  useFocusEffect(useCallback(() => { cargar() }, [cargar]))
 
   if (!versiones) return <Panel rol="investigador"><Cargando /></Panel>
 
@@ -116,7 +116,7 @@ export default function DesempenoModelo() {
           </View>
           <View style={{ gap: 6 }}>
             <Rotulo>Ventana longitudinal</Rotulo>
-            <View style={e.selector}><Text style={[texto.datoFuerte, { color: color.texto }]}>Semanas {filtro.semanaDesde} a {filtro.semanaHasta}</Text><Mono>{ventana}</Mono></View>
+            <View style={e.selector}><Text style={[texto.datoFuerte, { color: color.texto }]}>Todo el seguimiento</Text><Mono>{ventana}</Mono></View>
           </View>
         </View>
 

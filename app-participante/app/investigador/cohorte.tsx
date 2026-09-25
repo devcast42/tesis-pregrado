@@ -10,7 +10,7 @@ import { useCallback, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
-import { useFiltro } from '../../modules/investigador/filtro'
+import { useFiltro, useDatosDelFiltro } from '../../modules/investigador/filtro'
 import { cohorte as cargarCohorte, fechaCorta, type CohorteSemana } from '../../modules/investigador/panel'
 import { listarEmpresas, type Empresa } from '../../modules/panel/datos'
 import { Caja, Cifra, Encabezado, Mono, Pastilla, Rotulo, TONO } from '../../modules/investigador/piezas'
@@ -26,11 +26,11 @@ export default function Cohorte() {
   const [filas, setFilas] = useState<CohorteSemana[] | null>(null)
   const [empresas, setEmpresas] = useState<Empresa[]>([])
 
-  const cargar = useCallback(async () => {
+  useDatosDelFiltro(() => setFilas(null), async (vigente) => {
     const [c, e] = await Promise.all([cargarCohorte(filtro), listarEmpresas().catch(() => [] as Empresa[])])
+    if (!vigente()) return
     setFilas(c); setEmpresas(e)
   }, [filtro.organizacion_id])
-  useFocusEffect(useCallback(() => { cargar() }, [cargar]))
 
   if (!filas) return <Panel rol="investigador"><Cargando /></Panel>
 

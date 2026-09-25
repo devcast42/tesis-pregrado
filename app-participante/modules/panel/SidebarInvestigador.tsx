@@ -13,7 +13,7 @@ import { router, usePathname } from 'expo-router'
 import { supabase } from '../nucleo/supabase'
 import { color, espacio, fuente, radio, texto } from '../nucleo/diseno'
 import {
-  IconoAjustes, IconoArchivo, IconoBarras, IconoCalendario, IconoChevronAbajo, IconoCredencial, IconoEquipo, IconoEscudoCheck,
+  IconoAjustes, IconoArchivo, IconoBarras, IconoChevronAbajo, IconoCredencial, IconoEquipo, IconoEscudoCheck,
   IconoGrafica, IconoHoja, IconoLupa, IconoMaletin, IconoNota, IconoPersona, IconoReloj, IconoSalir, IconoEnviar, IconoActualizar,
 } from '../nucleo/iconos'
 import { ProveedorFiltro, conFiltro, useFiltro } from '../investigador/filtro'
@@ -64,7 +64,6 @@ function Armazon({ children, sinBarraSuperior }: { children: ReactNode; sinBarra
   const [correo, setCorreo] = useState('')
   const nav = useRef<ScrollView>(null)
   const [menuEmpresa, setMenuEmpresa] = useState(false)
-  const [menuSemanas, setMenuSemanas] = useState(false)
   const [buscador, setBuscador] = useState(false)
 
   useEffect(() => {
@@ -108,9 +107,9 @@ function Armazon({ children, sinBarraSuperior }: { children: ReactNode; sinBarra
 
   const filtros = (
     <View style={e.filtros}>
-      {/* Cada selector lleva su zIndex: en web el menú desplegado debe quedar sobre lo que sigue. */}
+      {/* El menú desplegado debe quedar sobre lo que sigue (web). */}
       <View style={{ zIndex: menuEmpresa ? 30 : 1 }}>
-        <Pressable onPress={() => { setMenuEmpresa((v) => !v); setMenuSemanas(false) }} style={e.selector} accessibilityRole="button">
+        <Pressable onPress={() => { setMenuEmpresa((v) => !v) }} style={e.selector} accessibilityRole="button">
           <Text style={[texto.apoyo, { color: color.texto, flex: 1 }]} numberOfLines={1}>{empresaActual}</Text>
           <IconoChevronAbajo tamano={16} color={color.textoMedio} />
         </Pressable>
@@ -122,23 +121,6 @@ function Armazon({ children, sinBarraSuperior }: { children: ReactNode; sinBarra
             {empresas.map((em) => (
               <Pressable key={em.id} onPress={() => { fijar({ organizacion_id: em.id }); setMenuEmpresa(false) }} style={e.menuItem}>
                 <Text style={[texto.apoyo, { color: filtro.organizacion_id === em.id ? color.primarioProfundo : color.texto }]}>{em.nombre}</Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
-      </View>
-      <View style={{ zIndex: menuSemanas ? 30 : 1 }}>
-        <Pressable onPress={() => { setMenuSemanas((v) => !v); setMenuEmpresa(false) }} style={e.selector} accessibilityRole="button">
-          <Text style={[texto.apoyo, { color: color.texto, flex: 1 }]}>Semanas {filtro.semanaDesde} → {filtro.semanaHasta}</Text>
-          <IconoCalendario tamano={14} color={color.textoMedio} />
-        </Pressable>
-        {menuSemanas && (
-          <View style={e.menu}>
-            {[[1, 6], [1, 3], [4, 6], [5, 6], [6, 6]].map(([a, b]) => (
-              <Pressable key={`${a}-${b}`} onPress={() => { fijar({ semanaDesde: a, semanaHasta: b }); setMenuSemanas(false) }} style={e.menuItem}>
-                <Text style={[texto.apoyo, { color: filtro.semanaDesde === a && filtro.semanaHasta === b ? color.primarioProfundo : color.texto }]}>
-                  {a === b ? `Semana ${a}` : `Semanas ${a} → ${b}`}
-                </Text>
               </Pressable>
             ))}
           </View>

@@ -41,7 +41,7 @@ export default function DetalleEmpresa() {
 
   const cargar = useCallback(async () => {
     const [empresas, p, pa, a, pulso, umbrales] = await Promise.all([
-      listarEmpresas(), cargarParticipantes({ organizacion_id: id, semanaDesde: 1, semanaHasta: 6 }), participacionDeEmpresa(id), listarAdmins(id), pulsoPorEmpresa(), umbralesEmpresa(),
+      listarEmpresas(), cargarParticipantes({ organizacion_id: id }), participacionDeEmpresa(id), listarAdmins(id), pulsoPorEmpresa(), umbralesEmpresa(),
     ])
     setEmpresa(empresas.find((x) => x.id === id) ?? null); setFilas(p); setParticipacion(pa); setAdmins(a)
     const pul = pulso.find((x) => x.organizacion_id === id), u = umbrales.find((x) => x.dimension === 'agotamiento')

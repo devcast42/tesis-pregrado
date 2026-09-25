@@ -9,8 +9,8 @@ import { supabase } from '../nucleo/supabase'
 // ----------------------------------------------------------- Filtro global
 
 /** Empresa y rango de semanas del estudio; persiste en la URL (RF-009-06). */
-export type FiltroGlobal = { organizacion_id: string | null; semanaDesde: number; semanaHasta: number }
-export const FILTRO_POR_DEFECTO: FiltroGlobal = { organizacion_id: null, semanaDesde: 1, semanaHasta: 6 }
+export type FiltroGlobal = { organizacion_id: string | null }
+export const FILTRO_POR_DEFECTO: FiltroGlobal = { organizacion_id: null }
 
 // ----------------------------------------------------------------- Bandeja
 

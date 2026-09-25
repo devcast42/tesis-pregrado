@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
-import { conFiltro, useFiltro } from '../../modules/investigador/filtro'
+import { conFiltro, useFiltro, useDatosDelFiltro } from '../../modules/investigador/filtro'
 import {
   ETIQUETA_ESTADO, calendario, fechaCorta, participantes as listar, type Envio, type FilaParticipanteV2,
 } from '../../modules/investigador/panel'
@@ -43,13 +43,13 @@ export default function Participantes() {
   const [pagina, setPagina] = useState(0)
   const [abierto, setAbierto] = useState<FilaParticipanteV2 | null>(null)
 
-  const cargar = useCallback(async () => {
+  // La ficha abierta se cierra al cambiar de empresa: es de la anterior.
+  useDatosDelFiltro(() => { setFilas(null); setAbierto(null) }, async (vigente) => {
     const [f, em] = await Promise.all([listar(filtro), listarEmpresas().catch(() => [])])
+    if (!vigente()) return
     setFilas(f); setEmpresas(em)
     setAbierto((a) => a ?? f[0] ?? null)
   }, [filtro.organizacion_id])
-  useFocusEffect(useCallback(() => { cargar() }, [cargar]))
-  useEffect(() => { cargar() }, [cargar])
 
   const visibles = useMemo(() => (filas ?? []).filter((x) => {
     if (estado !== 'todos' && x.estado !== estado) return false

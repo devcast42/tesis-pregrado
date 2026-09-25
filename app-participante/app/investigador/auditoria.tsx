@@ -125,10 +125,6 @@ export default function Auditoria() {
               <Rotulo>Código participante</Rotulo>
               <View style={e.buscador}><IconoLupa tamano={13} color={color.textoSuave} /><TextInput value={codigo} onChangeText={setCodigo} placeholder="Ej. P-042, P-019…" placeholderTextColor={color.textoSuave} style={[texto.dato, { flex: 1, color: color.texto, fontFamily: MONO, outlineStyle: 'none' } as any]} /></View>
             </View>
-            <View style={{ gap: 4 }}>
-              <Rotulo>Ventana longitudinal</Rotulo>
-              <View style={e.selector}><Text style={[texto.dato, { color: color.texto }]}>Semanas {filtro.semanaDesde} a {filtro.semanaHasta} · corte de la barra lateral</Text></View>
-            </View>
           </View>
           <View style={[e.fila, { gap: 6 }]}>
             <Rotulo>Vistas rápidas:</Rotulo>

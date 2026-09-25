@@ -6,7 +6,7 @@
  *  consulta plegadas debajo: el historial y el diccionario.
  *  La exportación se registra ANTES de entregar el archivo. */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
@@ -35,10 +35,20 @@ export default function Exportacion() {
   const [historial, setHistorial] = useState(false)
   const [copiado, setCopiado] = useState(false)
 
+  // Un contador por carga. Al cambiar de empresa los conteos vuelven a
+  // «contando…» en vez de quedarse con los de la empresa anterior, y una
+  // respuesta lenta de la empresa que ya se dejó atrás se descarta: tardan
+  // medio minuto, así que dos cambios seguidos llegan desordenados.
+  const vigente = useRef(0)
   const cargar = useCallback(async () => {
-    // Los conteos tardan (count exacto por tabla): la página no los espera.
-    cargarConteos(filtro).then(setConteos).catch(() => setConteos({} as Record<ClaveTabla, number | null>))
+    const turno = ++vigente.current
+    setConteos(null)
+    // Los conteos tardan (un count exacto por tabla): la página no los espera.
+    cargarConteos(filtro)
+      .then((c) => { if (vigente.current === turno) setConteos(c) })
+      .catch(() => { if (vigente.current === turno) setConteos({} as Record<ClaveTabla, number | null>) })
     const [r, e] = await Promise.all([cargarExportaciones(), listarEmpresas().catch(() => [] as Empresa[])])
+    if (vigente.current !== turno) return
     setRegistro(r); setEmpresas(e); setListo(true)
   }, [filtro.organizacion_id])
   useFocusEffect(useCallback(() => { cargar() }, [cargar]))
@@ -97,7 +107,7 @@ export default function Exportacion() {
                     <View style={{ flex: 1, gap: 2 }}>
                       <View style={[e.fila, { justifyContent: 'space-between', gap: 8 }]}>
                         <Mono tono={on ? color.texto : color.textoMedio} tamano={12}>{t.titulo}</Mono>
-                        <Mono>{!conteos ? '…' : conteos[t.clave] === null ? '?' : (conteos[t.clave] as number).toLocaleString('es-PE')}</Mono>
+                        <Mono>{!conteos ? '·' : conteos[t.clave] === null ? '?' : (conteos[t.clave] as number).toLocaleString('es-PE')}</Mono>
                       </View>
                       <Text style={[texto.dato, { color: color.textoMedio }]} numberOfLines={2}>{t.descripcion}</Text>
                     </View>
@@ -119,7 +129,9 @@ export default function Exportacion() {
               <View style={e.raya} />
 
               <View>
-                <Text style={[texto.cifra, { color: color.texto, fontSize: 30, lineHeight: 36 }]}>{`${totalParcial ? '≥ ' : ''}${total.toLocaleString('es-PE')}`}</Text>
+                <Text style={[texto.cifra, { color: conteos ? color.texto : color.textoSuave, fontSize: 30, lineHeight: 36 }]}>
+                  {conteos ? `${totalParcial ? '≥ ' : ''}${total.toLocaleString('es-PE')}` : 'contando…'}
+                </Text>
                 <Text style={[texto.dato, { color: color.textoMedio }]}>{`filas · ${elegidas.size} de ${TABLAS.length} tablas`}</Text>
                 {totalParcial && <Text style={[texto.dato, { color: color.textoMedio }]}>No se pudo contar alguna tabla (marcada «?»); el paquete sí las lleva completas.</Text>}
               </View>
@@ -132,9 +144,9 @@ export default function Exportacion() {
                 ))}
               </View>
 
-              <Pressable onPress={descargar} disabled={ocupado} style={[e.botonZip, ocupado && { opacity: 0.6 }]} accessibilityRole="button">
+              <Pressable onPress={descargar} disabled={ocupado || !conteos} style={[e.botonZip, (ocupado || !conteos) && { opacity: 0.5 }]} accessibilityRole="button">
                 <IconoArchivo tamano={16} color="#FFFFFF" />
-                <Text style={[texto.cuerpoFuerte, { color: '#FFFFFF' }]}>{ocupado ? 'Generando…' : 'Descargar ZIP'}</Text>
+                <Text style={[texto.cuerpoFuerte, { color: '#FFFFFF' }]}>{ocupado ? 'Generando…' : !conteos ? 'Calculando el corte…' : 'Descargar ZIP'}</Text>
               </Pressable>
 
               {ultimo ? (

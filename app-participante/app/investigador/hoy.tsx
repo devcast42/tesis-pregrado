@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
-import { conFiltro, useFiltro } from '../../modules/investigador/filtro'
+import { conFiltro, useFiltro, useDatosDelFiltro } from '../../modules/investigador/filtro'
 import { bandeja, fechaCorta, reasignarDerivacion, type Pendiente, type TipoPendiente } from '../../modules/investigador/panel'
 import { listarPsicologos, type Psicologo } from '../../modules/panel/datos'
 import { BotonChico, Caja, Cifra, Codigo, Encabezado, Mono, Pastilla, Rotulo, TONO } from '../../modules/investigador/piezas'
@@ -48,13 +48,11 @@ export default function Hoy() {
   const [eleccion, setEleccion] = useState<Record<string, string>>({})
   const [menuPsi, setMenuPsi] = useState<string | null>(null)
 
-  const cargar = useCallback(async () => {
+  const cargar = useDatosDelFiltro(() => setItems(null), async (vigente) => {
     const [b, p] = await Promise.all([bandeja(filtro), listarPsicologos().catch(() => [])])
+    if (!vigente()) return
     setItems(b); setPsicologos(p.filter((x) => x.activo))
   }, [filtro.organizacion_id])
-
-  useFocusEffect(useCallback(() => { cargar() }, [cargar]))
-  useEffect(() => { cargar() }, [cargar])
 
   if (!items) return <Panel rol="investigador"><Cargando /></Panel>
 

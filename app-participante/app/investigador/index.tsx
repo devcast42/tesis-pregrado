@@ -10,7 +10,7 @@ import { useCallback, useState } from 'react'
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
-import { conFiltro, useFiltro } from '../../modules/investigador/filtro'
+import { conFiltro, useFiltro, useDatosDelFiltro } from '../../modules/investigador/filtro'
 import {
   adherenciaGlobal, circuito as cargarCircuito, cohorte as cargarCohorte, desempeno as cargarDesempeno, mediana, participantes as cargarParticipantes,
   versiones as cargarVersiones, type CircuitoApoyo, type CohorteSemana, type Desempeno, type FilaParticipanteV2, type VersionModelo, adherenciaPorEmpresa, type AdherenciaEmpresa
@@ -31,14 +31,14 @@ export default function Resumen() {
     circuito: CircuitoApoyo[]; participantes: FilaParticipanteV2[]; versiones: VersionModelo[]; desempeno: Desempeno[]
   } | null>(null)
 
-  const cargar = useCallback(async () => {
+  useDatosDelFiltro(() => setDatos(null), async (vigente) => {
     const [cohorte, adherencia, empresas, circuito, participantes, versiones, dNow, dPro] = await Promise.all([
       cargarCohorte(filtro), adherenciaGlobal(filtro), adherenciaPorEmpresa().catch(() => [] as AdherenciaEmpresa[]), cargarCircuito(filtro),
       cargarParticipantes(filtro), cargarVersiones(), cargarDesempeno('nowcast'), cargarDesempeno('pronostico'),
     ])
+    if (!vigente()) return
     setDatos({ cohorte, adherencia, empresas: filtro.organizacion_id ? empresas.filter((e) => e.organizacion_id === filtro.organizacion_id) : empresas, circuito, participantes, versiones, desempeno: [...dNow, ...dPro] })
   }, [filtro.organizacion_id])
-  useFocusEffect(useCallback(() => { cargar() }, [cargar]))
 
   if (!datos) return <Panel rol="investigador"><Cargando /></Panel>
   const { cohorte, adherencia, empresas, circuito, participantes, versiones, desempeno } = datos
@@ -87,7 +87,7 @@ export default function Resumen() {
           <Indicador rotulo="Adherencia longitudinal" valor={pct(tasaAdh)} etiqueta={`Meta ≥ ${META_ADHERENCIA * 100}%`} tonoEtiqueta={tasaAdh != null && tasaAdh >= META_ADHERENCIA ? TONO.gris : TONO.ambar}
             n={`n = ${adherencia.n} en seguimiento`}
             formula={<Text style={e.formula}><Text style={{ color: color.primarioProfundo }}>Σ días con check-in: {adherencia.cumplidos.toLocaleString('es-PE')}</Text> / días hábiles esperados: {adherencia.esperados.toLocaleString('es-PE')}</Text>}
-            pie={`Ventana consolidada: semanas ${filtro.semanaDesde} → ${filtro.semanaHasta}`} />
+            pie="Todo el seguimiento acumulado" />
           <Indicador rotulo="Tasa de detección semanal" valor={pct(tasaDeteccion)} etiqueta={`${detectadosSemana} casos S${nSemana || '—'}`} tonoEtiqueta={detectadosSemana ? TONO.tierraSuave : TONO.gris} tinta={detectadosSemana ? '#8C4A2B' : color.texto}
             n={`n = ${detectadosSemana} detectados`}
             formula={<Text style={e.formula}><Text style={{ color: '#8C4A2B' }}>Participantes con OLBI sobre el umbral: {detectadosSemana}</Text> / cuestionarios del viernes: {ultima?.respondieron_viernes ?? 0}</Text>}

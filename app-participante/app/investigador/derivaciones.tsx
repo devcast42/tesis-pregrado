@@ -9,7 +9,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
-import { conFiltro, useFiltro } from '../../modules/investigador/filtro'
+import { conFiltro, useFiltro, useDatosDelFiltro } from '../../modules/investigador/filtro'
 import {
   circuito as cargarCircuito, citasEstudio, mediana, type CircuitoApoyo, type CitaEstudio,
 } from '../../modules/investigador/panel'
@@ -44,11 +44,11 @@ export default function Derivaciones() {
   const [pagina, setPagina] = useState(0)
   const [menu, setMenu] = useState<PedidoReasignacion | null>(null)
 
-  const cargar = useCallback(async () => {
+  const cargar = useDatosDelFiltro(() => setCasos(null), async (vigente) => {
     const [c, ci, ps, em] = await Promise.all([cargarCircuito(filtro), citasEstudio(filtro), listarPsicologos().catch(() => [] as Psicologo[]), listarEmpresas().catch(() => [] as Empresa[])])
+    if (!vigente()) return
     setCasos(c); setCitas(ci); setPsicologos(ps); setEmpresas(em)
   }, [filtro.organizacion_id])
-  useFocusEffect(useCallback(() => { cargar() }, [cargar]))
 
 
   const nombreEmpresa = (id: string) => empresas.find((e) => e.id === id)?.nombre ?? '—'
@@ -220,7 +220,7 @@ export default function Derivaciones() {
             <Caja estilo={{ gap: espacio.sm }}>
               <View style={[e.fila, { justifyContent: 'space-between', alignItems: 'flex-start' }]}>
                 <View style={{ flex: 1 }}><Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Control de Citas Agendadas</Text><Text style={[texto.dato, { color: color.textoMedio }]}>Tasa de ausentismo y efectividad en cohortes</Text></View>
-                <Pastilla tono={TONO.gris} mono>{`Semana ${filtro.semanaDesde} → ${filtro.semanaHasta}`}</Pastilla>
+                <Pastilla tono={TONO.gris} mono>Todo el seguimiento</Pastilla>
               </View>
               <View style={[e.panelGris, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
                 <View>
