@@ -26,19 +26,30 @@ export const TABLAS = [
 
 export type ClaveTabla = (typeof TABLAS)[number]['clave']
 
-/** Conteos por tabla con el filtro aplicado, para mostrar antes de exportar. */
-export async function conteos(filtro: FiltroGlobal): Promise<Record<ClaveTabla, number>> {
+/** Conteos por tabla con el filtro aplicado, para mostrar antes de exportar.
+ *
+ *  Van en serie a propósito. Cuatro de las seis fuentes son vistas y contarlas
+ *  cuesta 2-3 s cada una; lanzadas en paralelo se estorban y alguna pasa el
+ *  `statement_timeout` de 8 s. Cuando eso ocurría, PostgREST devolvía 500 y el
+ *  `count ?? 0` lo convertía en un cero indistinguible de una tabla vacía: la
+ *  pantalla anunciaba 1 913 filas para un paquete de 14 327. Un conteo que
+ *  falla vale `null` y se muestra como «?», nunca como 0.
+ *  La página no espera este cálculo, así que la demora no se nota. */
+export async function conteos(filtro: FiltroGlobal): Promise<Record<ClaveTabla, number | null>> {
   const ids = await participantesDelFiltro(filtro)
-  const out = {} as Record<ClaveTabla, number>
-  await Promise.all(TABLAS.map(async (t) => {
+  const out = {} as Record<ClaveTabla, number | null>
+  for (const t of TABLAS) {
     // respuestas_items no tiene participante_id: se filtra a través de su envío.
-    let q = t.clave === 'respuestas_items'
+    // Sin filtro de empresa no hace falta esa unión, y contar 11 000 ítems
+    // uniéndolos a sus envíos sí llegaba a agotar el tiempo.
+    const porEnvio = t.clave === 'respuestas_items' && !!ids
+    let q = porEnvio
       ? supabase.from(t.clave).select('respuesta_id, respuestas!inner(participante_id)', { count: 'exact', head: true })
-      : supabase.from(t.clave).select('participante_id', { count: 'exact', head: true })
-    if (ids) q = q.in(t.clave === 'respuestas_items' ? 'respuestas.participante_id' : 'participante_id', ids)
-    const { count } = await q
-    out[t.clave] = count ?? 0
-  }))
+      : supabase.from(t.clave).select(t.clave === 'respuestas_items' ? 'respuesta_id' : 'participante_id', { count: 'exact', head: true })
+    if (ids) q = q.in(porEnvio ? 'respuestas.participante_id' : 'participante_id', ids)
+    const { count, error } = await q
+    out[t.clave] = error ? null : count ?? 0
+  }
   return out
 }
 
