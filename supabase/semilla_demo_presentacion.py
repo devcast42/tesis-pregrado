@@ -242,7 +242,8 @@ def main() -> None:
             codigo = f"{emp['prefijo']}-{k:02d}"
             cruza = any(s['alto'] for s in ss)
             auth = cuenta_viva[0] if (emp['admin'] and k == 1 and cuenta_viva) else None
-            pid = escribir_participante(cx, org, codigo, auth, lunes0, p, ss, cruza)
+            pid = escribir_participante(cx, org, codigo, auth, lunes0, p, ss, cruza,
+                                        en_vivo=auth is not None)
             creados.append({'pid': pid, 'codigo': codigo, 'cruza': cruza,
                             'empresa': emp['nombre'], 'lunes0': lunes0, 'semanas': emp['semanas'],
                             'etapa': None})
@@ -274,7 +275,8 @@ def main() -> None:
     print(f"  admin {ADMIN} -> {EMPRESAS[0]['nombre']}")
 
 
-def escribir_participante(cx, org, codigo, auth_user_id, lunes0, persona, semanas, cruza) -> str:
+def escribir_participante(cx, org, codigo, auth_user_id, lunes0, persona, semanas, cruza,
+                          en_vivo: bool = False) -> str:
     estado = 'detectado' if cruza else 'activo'
     # La inscripción es el lunes de la primera semana, no antes: si cayera en
     # un viernes previo, el panel contaría ese viernes como un OLBI omitido.
@@ -293,6 +295,10 @@ def escribir_participante(cx, org, codigo, auth_user_id, lunes0, persona, semana
              {**persona['estable'], 'rol': persona['rol'], 'modalidad': persona['modalidad']})
 
     ahora = datetime.now(TZ)
+    # A quien presta su cuenta para la demostración se le deja el check-in de
+    # hoy sin responder: es lo primero que se enseña en vivo, y con la
+    # respuesta ya escrita la app dice «registrado» y no hay nada que mostrar.
+    hoy = ahora.date()
     for s in semanas:
         lunes = lunes0 + timedelta(weeks=s['semana'])
         for d in s['dias']:
@@ -301,6 +307,8 @@ def escribir_participante(cx, org, codigo, auth_user_id, lunes0, persona, semana
             # que en el estudio real. Si no, el panel marca a todo el mundo
             # como «sin viernes» por un OLBI que todavía no toca responder.
             if cuando > ahora:
+                continue
+            if en_vivo and cuando.date() == hoy:
                 continue
             insertar(cx, pid, 'diario', 3, cuando, {k: v for k, v in d.items() if k != 'dow'})
         viernes = datetime.combine(lunes + timedelta(days=4), datetime.min.time(), TZ) + timedelta(hours=17)
