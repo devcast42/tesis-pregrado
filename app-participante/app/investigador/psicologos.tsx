@@ -139,12 +139,17 @@ export default function Psicologos() {
                 <Mono>{/^cpsp/i.test(p.colegiatura) ? p.colegiatura : `CPsP ${p.colegiatura}`}</Mono>
                 {!p.activo && <Text style={[texto.dato, { color: color.textoMedio }]}>No recibe derivaciones nuevas.</Text>}
               </View>
-              <View style={[e.datos, !p.activo && { backgroundColor: '#EDEBE7' }]}>
-                <Dato rotulo="Casos abiertos" valor={String(abiertos.length)} unidad={abiertos.length === 1 ? 'caso' : 'casos'} tinta={abiertos.length > CARGA_ALTA ? TIERRA : color.texto} />
-                <Dato rotulo="Citas semana" valor={String(semana)} unidad={semana === 1 ? 'cita' : 'citas'} />
-                <Dato rotulo="A primera sesión" valor={med == null ? '—' : med.toFixed(1)} unidad={med == null ? '' : 'días'} tinta={med == null ? color.texto : med <= LIMITE_DIAS ? color.primarioProfundo : TIERRA} />
-              </View>
-              <View style={[e.fila, { gap: 6, justifyContent: 'flex-end', minWidth: 172, flexWrap: 'nowrap', marginLeft: espacio.xs }]}>
+              {/* Sin caja gris: tres columnas sueltas, igual que en la lista de
+                  Empresas. Un recuadro dentro de la tarjeta compite con la
+                  tarjeta y amontona las cifras contra los botones. */}
+              <Dato rotulo="Casos abiertos" valor={String(abiertos.length)}
+                apoyo={abiertos.length === 0 ? 'ninguno' : abiertos.length > CARGA_ALTA ? 'repartir' : 'en curso'}
+                tinta={abiertos.length > CARGA_ALTA ? TIERRA : color.texto} />
+              <Dato rotulo="Citas" valor={String(semana)} apoyo="esta semana" />
+              <Dato rotulo="1ª sesión" valor={med == null ? '—' : `${med.toFixed(1)} d`}
+                apoyo={med == null ? 'sin sesiones' : med <= LIMITE_DIAS ? 'en plazo' : 'fuera de plazo'}
+                tinta={med == null ? color.textoMedio : med <= LIMITE_DIAS ? color.primarioProfundo : TIERRA} />
+              <View style={[e.fila, { gap: 6, justifyContent: 'flex-end', minWidth: 172, flexWrap: 'nowrap' }]}>
                 {p.activo ? (
                   <>
                     <BotonChico onPress={() => restablecer(p)} icono={<IconoHistorial tamano={13} color={color.texto} />}>Restablecer</BotonChico>
@@ -234,8 +239,14 @@ function iniciales(n: string) { return n.replace(/^(Lic\.|Mg\.|Dr\.|Dra\.|Ps\.)\
 function Tarjeta({ rotulo, icono, children }: { rotulo: string; icono: React.ReactNode; children: React.ReactNode }) {
   return <View style={e.tarjeta}><View style={[e.fila, { justifyContent: 'space-between' }]}><Rotulo>{rotulo}</Rotulo><View style={e.cuadroIcono}>{icono}</View></View>{children}</View>
 }
-function Dato({ rotulo, valor, unidad, tinta = color.texto }: { rotulo: string; valor: string; unidad: string; tinta?: string }) {
-  return <View style={{ minWidth: 70 }}><Rotulo>{rotulo}</Rotulo><View style={[e.fila, { alignItems: 'baseline', gap: 4 }]}><Text style={[texto.cifra, { color: tinta, fontFamily: MONO, fontSize: 18 }]}>{valor}</Text><Text style={[texto.dato, { color: color.textoMedio }]}>{unidad}</Text></View></View>
+function Dato({ rotulo, valor, apoyo, tinta = color.texto }: { rotulo: string; valor: string; apoyo: string; tinta?: string }) {
+  return (
+    <View style={{ flex: 0.7, minWidth: 78, gap: 1 }}>
+      <Rotulo>{rotulo}</Rotulo>
+      <Text style={[texto.cuerpoFuerte, { color: tinta }]}>{valor}</Text>
+      <Text style={[texto.dato, { color: color.textoMedio, fontSize: 12 }]}>{apoyo}</Text>
+    </View>
+  )
 }
 
 const e = StyleSheet.create({
@@ -249,9 +260,6 @@ const e = StyleSheet.create({
   cifra: { ...texto.cifra, color: color.texto, fontFamily: MONO, fontSize: 28 },
   tarjetaPs: { flexDirection: 'row', alignItems: 'center', gap: espacio.md, backgroundColor: color.superficie, borderRadius: radio.md, borderWidth: 1, borderColor: '#EEECE8', padding: espacio.md, flexWrap: 'wrap' },
   avatar: { width: 44, height: 44, borderRadius: 10, backgroundColor: '#F1EFEB', alignItems: 'center', justifyContent: 'center' },
-  // En una sola línea: con `wrap` la tercera cifra caía abajo y esa fila
-  // quedaba más alta que las demás.
-  datos: { flexDirection: 'row', flexWrap: 'nowrap', gap: espacio.sm, backgroundColor: '#F5F4F1', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12 },
   botonBaja: { height: 34, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: color.borde, backgroundColor: color.superficie, justifyContent: 'center' },
   velo: { ...veloModal, backgroundColor: 'rgba(28,25,23,0.35)', alignItems: 'center', justifyContent: 'center' },
   opcion: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: color.borde },
