@@ -15,7 +15,8 @@ import { Panel } from '../../modules/panel/Sidebar'
 import { conFiltro, useFiltro } from '../../modules/investigador/filtro'
 import { actualizarUmbral, pulsoPorEmpresa, umbralesEmpresa, type PulsoEmpresa, type UmbralEmpresa, adherenciaPorEmpresa, type AdherenciaEmpresa
 } from '../../modules/investigador/panel'
-import { crearEmpresa, listarEmpresasConConteos, type FilaEmpresa } from '../../modules/panel/datos'
+import { listarEmpresasConConteos, type FilaEmpresa } from '../../modules/panel/datos'
+import { DialogoEmpresa } from '../../modules/investigador/DialogoEmpresa'
 import { BotonChico, Caja, Mono, Pastilla, Rotulo, TONO } from '../../modules/investigador/piezas'
 import { Cargando } from '../../modules/nucleo/ui'
 import { color, espacio, radio, texto } from '../../modules/nucleo/diseno'
@@ -35,7 +36,6 @@ export default function Empresas() {
   const [umbrales, setUmbrales] = useState<UmbralEmpresa[]>([])
   const [pulso, setPulso] = useState<PulsoEmpresa[]>([])
   const [borrador, setBorrador] = useState<Record<string, Borrador>>({})
-  const [nombre, setNombre] = useState('')
   const [formulario, setFormulario] = useState(false)
   const [cortes, setCortes] = useState(false)
   const [ocupado, setOcupado] = useState(false)
@@ -49,11 +49,6 @@ export default function Empresas() {
   useFocusEffect(useCallback(() => { cargar() }, [cargar]))
   useEffect(() => { if (mensaje?.tono === 'ok') { const t = setTimeout(() => setMensaje(null), 4000); return () => clearTimeout(t) } }, [mensaje])
 
-  async function crear() {
-    if (!nombre.trim()) return
-    setOcupado(true)
-    try { await crearEmpresa(nombre.trim()); setNombre(''); setFormulario(false); await cargar() } catch (ex) { setMensaje({ tono: 'error', texto: ex instanceof Error ? ex.message : 'No se pudo crear la empresa.' }) } finally { setOcupado(false) }
-  }
   async function guardarUmbrales() {
     setOcupado(true); setMensaje(null)
     try {
@@ -103,13 +98,10 @@ export default function Empresas() {
           <BotonChico onPress={() => setFormulario((v) => !v)} icono={<IconoAgregar tamano={13} color={color.texto} />}>Nueva empresa</BotonChico>
         </View>
 
-        {formulario && (
-          <Caja estilo={{ flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap' }}>
-            <TextInput value={nombre} onChangeText={setNombre} placeholder="Nombre de la empresa" placeholderTextColor={color.textoSuave} onSubmitEditing={crear} style={[texto.dato, e.entrada, { flex: 1, minWidth: 220, outlineStyle: 'none' } as any]} />
-            <BotonChico onPress={crear} tono="verde">{ocupado ? 'Creando…' : 'Agregar'}</BotonChico>
-            <BotonChico onPress={() => setFormulario(false)} tono="suave">Cancelar</BotonChico>
-          </Caja>
-        )}
+
+        {/* Vale para el alta de una empresa y para el guardado de los cortes,
+            que está plegado: si viviera dentro, no se vería al guardar. */}
+        {mensaje && <View style={[e.mensaje, mensaje.tono === 'error' && { backgroundColor: '#FBEDE6' }]}><Text style={[texto.dato, { color: mensaje.tono === 'error' ? TIERRA : color.primarioProfundo }]}>{mensaje.texto}</Text></View>}
 
         {/* La lista: es a lo que se entra a esta pantalla. */}
         {[...filas].sort((a, b) => (a.creado_en < b.creado_en ? -1 : 1)).map((f) => {
@@ -133,8 +125,11 @@ export default function Empresas() {
 
               <Dato rotulo="Personas" valor={String(f.en_seguimiento)}
                 apoyo={f.participantes !== f.en_seguimiento ? `de ${f.participantes} inscritas` : 'inscritas'} />
+              {/* Sin dato no se dice «cumple la meta»: una empresa recién dada
+                  de alta no cumple nada todavía. */}
               <Dato rotulo="Adherencia" valor={adh?.tasa_promedio != null ? `${Math.round(adh.tasa_promedio * 100)}%` : '—'}
-                apoyo={baja ? 'bajo la meta' : 'cumple la meta'} tinta={baja ? TIERRA : color.texto} />
+                apoyo={adh?.tasa_promedio == null ? 'sin check-ins aún' : baja ? 'bajo la meta' : 'cumple la meta'}
+                tinta={baja ? TIERRA : color.texto} />
               <Dato rotulo="Pulso" valor={nivel === 'alto' ? 'Alto' : nivel === 'a_vigilar' ? 'A vigilar' : nivel ? 'Bajo' : '—'}
                 apoyo={nivel ? 'agotamiento' : 'sin OLBI aún'} tinta={tintaNivel} punto={!!nivel} />
 
@@ -208,10 +203,15 @@ export default function Empresas() {
             <Text style={[texto.dato, { color: color.textoMedio }]}>
               Cambiarlos reetiqueta lo que ve cada empresa en su panel, hacia atrás también. No toca ninguna respuesta ni ningún informe ya escrito.
             </Text>
-            {mensaje && <View style={[e.mensaje, mensaje.tono === 'error' && { backgroundColor: '#FBEDE6' }]}><Text style={[texto.dato, { color: mensaje.tono === 'error' ? TIERRA : color.primarioProfundo }]}>{mensaje.texto}</Text></View>}
           </Caja>
         )}
       </ScrollView>
+
+      {formulario && (
+        <DialogoEmpresa
+          onCerrar={() => setFormulario(false)}
+          onCreada={(nueva) => { setFormulario(false); setMensaje({ tono: 'ok', texto: `${nueva.nombre} registrada. Ya se le pueden crear administradores e inscribir participantes.` }); cargar() }} />
+      )}
     </Panel>
   )
 }
