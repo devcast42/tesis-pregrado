@@ -13,9 +13,10 @@ import { Panel } from '../../../modules/panel/Sidebar'
 import { conFiltro, useFiltro } from '../../../modules/investigador/filtro'
 import { cerrarSeguimiento, participantes as cargarParticipantes, pulsoPorEmpresa, umbralesEmpresa, type FilaParticipanteV2 } from '../../../modules/investigador/panel'
 import {
-  crearAdmin, inscribirParticipante, listarAdmins, listarEmpresas, participacionDeEmpresa, restablecerParticipante,
+  listarAdmins, listarEmpresas, participacionDeEmpresa, restablecerParticipante,
   type Administrador, type Empresa, type FilaParticipacion,
 } from '../../../modules/panel/datos'
+import { DialogoPersona } from '../../../modules/investigador/DialogoPersona'
 import { BarraPct, BotonChico, Caja, Codigo, Encabezado, Mono, Pastilla, PastillaEstado, PastillaNivel, Rotulo, TONO } from '../../../modules/investigador/piezas'
 import { Cargando } from '../../../modules/nucleo/ui'
 import { color, espacio, radio, texto } from '../../../modules/nucleo/diseno'
@@ -34,8 +35,6 @@ export default function DetalleEmpresa() {
   const [admins, setAdmins] = useState<Administrador[]>([])
   const [nivel, setNivel] = useState<'bajo' | 'a_vigilar' | 'alto' | null>(null)
   const [formulario, setFormulario] = useState<Pestana | null>(null)
-  const [nombre, setNombre] = useState(''); const [correo, setCorreo] = useState('')
-  const [ocupado, setOcupado] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [credencial, setCredencial] = useState<{ titulo: string; correo?: string; contrasena: string; nota: string } | null>(null)
   const [falloCarga, setFalloCarga] = useState<string | null>(null)
@@ -62,22 +61,6 @@ export default function DetalleEmpresa() {
   useFocusEffect(useCallback(() => { cargar() }, [cargar]))
 
   const aviso = (t: string, m: string) => Platform.OS === 'web' ? window.alert(`${t}\n\n${m}`) : Alert.alert(t, m)
-  async function inscribir() {
-    setOcupado(true); setError(null)
-    try {
-      const r = await inscribirParticipante({ organizacion_id: id, correo, nombre })
-      setCredencial({ titulo: `Participante inscrito · ${r.codigo_anonimo}`, correo, contrasena: r.contrasena, nota: 'Entrégala junto con el consentimiento informado. No se vuelve a mostrar.' })
-      setNombre(''); setCorreo(''); setFormulario(null); await cargar()
-    } catch (ex) { setError(ex instanceof Error ? ex.message : 'No se pudo inscribir.') } finally { setOcupado(false) }
-  }
-  async function crearAdministrador() {
-    setOcupado(true); setError(null)
-    try {
-      const r = await crearAdmin({ organizacion_id: id, correo, nombre })
-      setCredencial({ titulo: `Administrador creado · ${nombre}`, correo: r.correo, contrasena: r.contrasena, nota: 'Contraseña temporal; la cambia al entrar. No se vuelve a mostrar.' })
-      setNombre(''); setCorreo(''); setFormulario(null); await cargar()
-    } catch (ex) { setError(ex instanceof Error ? ex.message : 'No se pudo crear el administrador.') } finally { setOcupado(false) }
-  }
   async function restablecer(p: FilaParticipanteV2) {
     setError(null)
     try { const r = await restablecerParticipante(p.id); setCredencial({ titulo: `Nueva contraseña de ${p.codigo_anonimo}`, contrasena: r.contrasena, nota: 'No se vuelve a mostrar.' }) }
@@ -159,34 +142,19 @@ export default function DetalleEmpresa() {
               </Pressable>
             ))}
           </View>
-          <Pressable onPress={() => { setFormulario(formulario === pestana ? null : pestana); setError(null) }} style={e.botonLleno}>
+          <Pressable onPress={() => { setFormulario(pestana); setError(null) }} style={e.botonLleno}>
             <IconoAgregar tamano={13} color="#FFFFFF" /><Text style={[texto.datoFuerte, { color: '#FFFFFF' }]}>{pestana === 'participantes' ? 'Inscribir participante' : 'Crear administrador'}</Text>
           </Pressable>
         </View>
 
-        {formulario && (
-          <Caja estilo={{ gap: espacio.sm }}>
-            <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{formulario === 'participantes' ? 'Nuevo participante' : 'Nuevo administrador de empresa'}</Text>
-            <View style={[e.fila, { gap: espacio.sm }]}>
-              <Campo rotulo="Nombre y apellido" valor={nombre} onChange={setNombre} placeholder="Nombre Apellido" />
-              <Campo rotulo="Correo" valor={correo} onChange={setCorreo} placeholder="nombre@empresa.pe" />
-            </View>
-            <Text style={[texto.dato, { color: color.textoMedio }]}>
-              {formulario === 'participantes' ? 'Se genera un código anónimo y una contraseña inicial. El nombre queda en la tabla de identidad, separada de las respuestas; este panel solo verá el código.' : 'Un administrador gestiona las cuentas de su empresa y ve el pulso agregado. No accede a respuestas, puntajes ni derivaciones.'}
-            </Text>
-            <View style={[e.fila, { gap: 8 }]}>
-              <BotonChico onPress={formulario === 'participantes' ? inscribir : crearAdministrador} tono={!nombre.trim() || !correo.includes('@') ? 'suave' : 'verde'}>{ocupado ? 'Creando…' : formulario === 'participantes' ? 'Inscribir' : 'Crear acceso'}</BotonChico>
-              <BotonChico onPress={() => setFormulario(null)} tono="suave">Cancelar</BotonChico>
-            </View>
-          </Caja>
-        )}
         {error && <View style={e.error}><Text style={[texto.dato, { color: '#8C4A2B' }]}>{error}</Text></View>}
+        {/* El alta enseña su credencial dentro del diálogo; esto es para
+            «Restablecer», que no pasa por él y también la muestra una vez. */}
         {credencial && (
           <View style={e.credencial}>
-            <View style={{ flex: 1, gap: 2 }}>
+            <View style={{ flex: 1, gap: 2, minWidth: 220 }}>
               <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{credencial.titulo}</Text>
-              {credencial.correo && <Text style={[texto.dato, { color: color.textoMedio }]}>Usuario: <Mono tono={color.texto}>{credencial.correo}</Mono></Text>}
-              <Text style={[texto.dato, { color: color.textoMedio }]}>Contraseña: <Mono tono={color.texto} tamano={13}>{credencial.contrasena}</Mono></Text>
+              <Text style={[texto.dato, { color: color.textoMedio }]}>Contraseña: <Mono tono={color.texto} tamano={14}>{credencial.contrasena}</Mono></Text>
               <Text style={[texto.dato, { color: '#8C4A2B' }]}>{credencial.nota}</Text>
             </View>
             <BotonChico onPress={async () => { try { await navigator.clipboard.writeText(credencial.contrasena) } catch {} }} tono="suave">Copiar</BotonChico>
@@ -262,6 +230,15 @@ export default function DetalleEmpresa() {
           </Caja>
         )}
       </ScrollView>
+
+      {formulario && (
+        <DialogoPersona
+          modo={formulario === 'participantes' ? 'participante' : 'admin'}
+          organizacionId={id}
+          empresa={empresa.nombre}
+          onCerrar={() => setFormulario(null)}
+          onCreada={cargar} />
+      )}
     </Panel>
   )
 }
