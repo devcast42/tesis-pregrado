@@ -48,7 +48,11 @@ export default function DetalleEmpresa() {
       const [empresas, p, pa, a, pulso, umbrales] = await Promise.all([
         listarEmpresas(), cargarParticipantes({ organizacion_id: id }), participacionDeEmpresa(id), listarAdmins(id), pulsoPorEmpresa(), umbralesEmpresa(),
       ])
-      setEmpresa(empresas.find((x) => x.id === id) ?? null); setFilas(p); setParticipacion(pa); setAdmins(a)
+      // Una empresa que no está no es un error de red: hay que decirlo, o la
+      // pantalla se queda girando para siempre con un enlace viejo.
+      const laEmpresa = empresas.find((x) => x.id === id) ?? null
+      if (!laEmpresa) { setFalloCarga('Esta empresa ya no existe. Puede que la hayan retirado del estudio.'); return }
+      setEmpresa(laEmpresa); setFilas(p); setParticipacion(pa); setAdmins(a)
       const pul = pulso.find((x) => x.organizacion_id === id), u = umbrales.find((x) => x.dimension === 'agotamiento')
       setNivel(pul?.agotamiento != null && u ? (pul.agotamiento >= Number(u.alto) ? 'alto' : pul.agotamiento >= Number(u.a_vigilar) ? 'a_vigilar' : 'bajo') : null)
     } catch (ex) {
@@ -73,7 +77,7 @@ export default function DetalleEmpresa() {
     cerrarSeguimiento(p.id, 'salida_empresa').then(cargar).catch((ex) => setError(ex instanceof Error ? ex.message : 'No se pudo dar de baja.'))
   }
 
-  if (falloCarga && (!filas || !empresa)) return (
+  if (falloCarga) return (
     <Panel rol="investigador">
       <View style={e.fallo}>
         <Text style={[texto.seccion, { color: color.texto }]}>No se pudo abrir la empresa</Text>
