@@ -86,10 +86,10 @@ def identidad_inventada(rng, codigo: str) -> tuple[str, str]:
 ETAPAS = ['informe_por_aprobar', 'cita_solicitada', 'sin_cita', 'cita_confirmada', 'completo']
 
 EMPRESAS = [
-    {'nombre': 'Nexa Software',   'prefijo': 'NX', 'n': 22, 'semanas': 6, 'sesgo':  0.00, 'det': 2, 'admin': True},
-    {'nombre': 'Andes Data Labs', 'prefijo': 'AD', 'n': 16, 'semanas': 4, 'sesgo':  0.45, 'det': 3, 'admin': False},
-    {'nombre': 'Marea Studio',    'prefijo': 'MS', 'n': 13, 'semanas': 6, 'sesgo': -0.40, 'det': 0, 'admin': False},
-    {'nombre': 'Kuntur Fintech',  'prefijo': 'KF', 'n':  7, 'semanas': 2, 'sesgo':  0.15, 'det': 0, 'admin': False},
+    {'nombre': 'Nexa Software',   'prefijo': 'NEX', 'n': 22, 'semanas': 6, 'sesgo':  0.00, 'det': 2, 'admin': True},
+    {'nombre': 'Andes Data Labs', 'prefijo': 'AND', 'n': 16, 'semanas': 4, 'sesgo':  0.45, 'det': 3, 'admin': False},
+    {'nombre': 'Marea Studio',    'prefijo': 'MAR', 'n': 13, 'semanas': 6, 'sesgo': -0.40, 'det': 0, 'admin': False},
+    {'nombre': 'Kuntur Fintech',  'prefijo': 'KUN', 'n':  7, 'semanas': 2, 'sesgo':  0.15, 'det': 0, 'admin': False},
 ]
 
 TRANSCRIPCION = """Psicólogo: Cuéntame cómo han sido estas últimas semanas.
@@ -179,6 +179,14 @@ def limpiar(cx, borrar_empresas: bool) -> tuple[int, list]:
 
     viejas = [r[0] for r in cx.execute("select id from organizaciones").fetchall()]
     cx.execute("delete from administradores")
+    if not borrar_empresas and viejas:
+        # El nombre y el prefijo son únicos, y las empresas nuevas se llaman
+        # igual que las viejas. Como estas se van en cuanto el admin cambie de
+        # sitio, se les suelta el nombre y las letras antes de crear las otras.
+        cx.execute("""update organizaciones
+                      set nombre = 'zz-retirada-' || left(id::text, 8),
+                          prefijo = upper('Z' || left(replace(id::text, '-', ''), 2))
+                      where id = any(%s)""", (viejas,))
     if borrar_empresas:
         # Un admin sin empresa viola el check, así que en el borrado total su
         # rol también se va: hay que volver a darlo de alta con la empresa nueva.
@@ -248,8 +256,10 @@ def main() -> None:
     todos = []
 
     for emp in EMPRESAS:
-        org = cx.execute("insert into organizaciones (nombre) values (%s) returning id",
-                         (emp['nombre'],)).fetchone()[0]
+        # El prefijo se fija aquí, igual que en el alta real: forma parte de la
+        # empresa, no del bucle que numera a su gente.
+        org = cx.execute("insert into organizaciones (nombre, prefijo) values (%s, %s) returning id",
+                         (emp['nombre'], emp['prefijo'])).fetchone()[0]
         if emp['admin'] and admin_uid:
             cx.execute("""insert into administradores (auth_user_id, organizacion_id, nombre, activo)
                           values (%s, %s, 'Admin Institucional', true)""", (admin_uid[0], org))
@@ -262,7 +272,7 @@ def main() -> None:
 
         creados = []
         for k, (p, ss) in enumerate(sin + con, start=1):
-            codigo = f"{emp['prefijo']}-{k:02d}"
+            codigo = f"{emp['prefijo']}-{k:03d}"
             cruza = any(s['alto'] for s in ss)
             auth = cuenta_viva[0] if (emp['admin'] and k == 1 and cuenta_viva) else None
             pid = escribir_participante(cx, org, codigo, auth, lunes0, p, ss, cruza,
@@ -293,7 +303,7 @@ def main() -> None:
         if c['etapa']:
             print(f"  {c['codigo']:7s} {c['empresa']:18s} detectado -> {c['etapa']}")
     if cuenta_viva:
-        print(f"\n  {EMPRESAS[0]['prefijo']}-01 usa la cuenta {PARTICIPANTE_EN_VIVO}: se puede entrar en vivo.")
+        print(f"\n  {EMPRESAS[0]['prefijo']}-001 usa la cuenta {PARTICIPANTE_EN_VIVO}: se puede entrar en vivo.")
     print(f"  {n_pred} predicciones retrospectivas registradas.")
     print(f"  admin {ADMIN} -> {EMPRESAS[0]['nombre']}")
 

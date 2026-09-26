@@ -160,7 +160,7 @@ export default function Participantes() {
                   <Text style={[texto.apoyo, { color: color.texto, flex: 1.5 }]} numberOfLines={1}>{x.organizacion}</Text>
                   <Text style={[texto.dato, { color: color.textoMedio, flex: 0.6 }]}>S{Math.min(x.semana, 6)} / 6</Text>
                   <View style={{ flex: 1, flexDirection: 'row' }}><PastillaEstado estado={x.estado} /></View>
-                  <View style={{ flex: 1.4 }}><BarraPct pct={x.tasa_adherencia} /></View>
+                  <View style={{ flex: 1.4 }}><BarraPct tasa={x.tasa_adherencia} /></View>
                   <View style={{ flex: 0.6 }}>{x.dias_sin_checkin != null && x.dias_sin_checkin >= 4
                     ? <View style={[e.inact]}><Text style={[texto.datoFuerte, { color: '#8C4A2B', fontSize: 11 }]}>{x.dias_sin_checkin}</Text></View>
                     : <Mono>{x.dias_sin_checkin ?? '—'}</Mono>}</View>

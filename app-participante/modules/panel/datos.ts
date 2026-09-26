@@ -13,6 +13,8 @@ export type ModalidadEmpresa = 'remoto' | 'hibrido' | 'presencial'
  *  el día que firma, no el día que se tienen todos sus datos. */
 export type DatosEmpresa = {
   nombre: string
+  /** Tres letras del código de su gente (AND -> AND-001). Vacío = lo sugiere la base. */
+  prefijo?: string | null
   sector?: string | null
   tamano?: TamanoEmpresa | null
   ciudad?: string | null
@@ -160,6 +162,8 @@ export async function crearEmpresa(datos: DatosEmpresa): Promise<Empresa> {
     .from('organizaciones')
     .insert({
       nombre: datos.nombre.trim(),
+      // Vacío deja que el disparador ponga el sugerido y lo desambigüe.
+      prefijo: limpio(datos.prefijo)?.toUpperCase() ?? null,
       sector: limpio(datos.sector),
       tamano: datos.tamano ?? null,
       ciudad: limpio(datos.ciudad),
@@ -168,11 +172,18 @@ export async function crearEmpresa(datos: DatosEmpresa): Promise<Empresa> {
       contacto_correo: limpio(datos.contacto_correo)?.toLowerCase() ?? null,
       notas: limpio(datos.notas),
     })
-    .select('id, nombre, creado_en, sector, tamano, ciudad, modalidad, contacto_nombre, contacto_correo, notas')
+    .select('id, nombre, prefijo, creado_en, sector, tamano, ciudad, modalidad, contacto_nombre, contacto_correo, notas')
     .single()
   if (error) {
     // 23505 es el índice único sobre lower(nombre).
-    if ((error as { code?: string }).code === '23505') throw new Error(`Ya hay una empresa llamada «${datos.nombre.trim()}».`)
+    const codigo = (error as { code?: string; message?: string }).code
+    const msg = (error as { message?: string }).message ?? ''
+    if (codigo === '23505') {
+      throw new Error(msg.includes('prefijo')
+        ? `Las letras «${(datos.prefijo ?? '').toUpperCase()}» ya son de otra empresa.`
+        : `Ya hay una empresa llamada «${datos.nombre.trim()}».`)
+    }
+    if (codigo === '23514' && msg.includes('prefijo')) throw new Error('Las letras deben ser tres, empezando por letra.')
     throw error
   }
   return data as Empresa

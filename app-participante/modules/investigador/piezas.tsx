@@ -111,7 +111,15 @@ export function BotonChico({ children, onPress, tono = 'borde', icono }: {
 }
 
 /** Barra de adherencia (tabla de participantes). */
-export function BarraPct({ pct, tinta = color.primarioProfundo }: { pct: number | null; tinta?: string }) {
+/** Barra de adherencia. Recibe la TASA tal como la da la base: una fracción
+ *  de 0 a 1, no un porcentaje.
+ *
+ *  Antes recibía «pct» y cada pantalla decidía si convertir. La lista de
+ *  Participantes pasaba el 0.95 de la vista sin tocarlo y `Math.round` lo
+ *  dejaba en «1%», con la barra vacía, para los 53 participantes. Con el
+ *  nombre del parámetro diciendo qué espera, no hay dónde equivocarse. */
+export function BarraPct({ tasa, tinta = color.primarioProfundo }: { tasa: number | null; tinta?: string }) {
+  const pct = tasa == null ? null : Number(tasa) * 100
   return (
     <View style={[e.fila, { gap: 6 }]}>
       {/* 34 px no dan para «100%» y se partía en dos líneas, dejando esa fila

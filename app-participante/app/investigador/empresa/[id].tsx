@@ -98,7 +98,7 @@ export default function DetalleEmpresa() {
   // con `?? 0` un hueco entraba como cero y hundía la media.
   const conAdh = activos.filter((p) => p.tasa_adherencia != null)
   const adhMedia = conAdh.length ? conAdh.reduce((s, p) => s + Number(p.tasa_adherencia), 0) / conAdh.length : null
-  const pct = (x: number) => Math.round(x * (x <= 1 ? 100 : 1))
+  const pct = (x: number) => Math.round(x * 100)
   const detectados = filas.filter((p) => p.estado === 'detectado').length
   const fueraCount = filas.filter((p) => p.estado === 'finalizado' || p.estado === 'retirado').length
   const sinConsent = filas.filter((p) => consent.get(p.id) !== true).length
@@ -192,7 +192,7 @@ export default function DetalleEmpresa() {
                   <View style={{ flex: 1.3 }}>
                     {p.tasa_adherencia == null
                       ? <Text style={[texto.dato, { color: color.textoSuave }]}>sin dato</Text>
-                      : <BarraPct pct={Number(p.tasa_adherencia) * (Number(p.tasa_adherencia) <= 1 ? 100 : 1)} />}
+                      : <BarraPct tasa={Number(p.tasa_adherencia)} />}
                   </View>
                   <View style={{ flex: 0.9 }}><PastillaNivel nivel={p.olbi_nivel} /></View>
                   <Text style={[texto.dato, { color: color.textoMedio, flex: 1.6 }]}>{p.estado_derivacion ? `${p.estado_derivacion === 'cerrada' ? 'Cerrada' : 'Abierta'} · ${p.psicologo ?? 'sin asignar'}` : '—'}</Text>

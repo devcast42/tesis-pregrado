@@ -27,19 +27,41 @@ const MODALIDADES: { valor: ModalidadEmpresa; etiqueta: string }[] = [
   { valor: 'presencial', etiqueta: 'Presencial' },
 ]
 
+/** Las mismas tres letras que calcula `prefijo_sugerido` en la base: si aquí
+ *  se enseñara otra cosa, el investigador vería una sigla y le quedaría otra.
+ *  Se toman letras de la primera palabra y, si no dan para tres, se sigue por
+ *  la siguiente: «BI Partners» -> BIP. */
+function siglaDe(nombre: string): string {
+  const limpio = nombre.toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z0-9 ]/g, ' ')
+  const enlaces = ['DE', 'DEL', 'LA', 'EL', 'LOS', 'LAS', 'Y', 'E', 'SAC', 'SA', 'SRL', 'EIRL']
+  const palabras = limpio.split(/\s+/).filter((p) => p && !enlaces.includes(p))
+  let sigla = ''
+  for (const p of palabras) {
+    sigla += p.slice(0, 3 - sigla.length)
+    if (sigla.length >= 3) break
+  }
+  return sigla ? sigla.padEnd(3, 'X') : ''
+}
+
 export function DialogoEmpresa({ onCerrar, onCreada }: { onCerrar: () => void; onCreada: (e: Empresa) => void }) {
   const [d, setD] = useState<DatosEmpresa>({ nombre: '' })
+  // Mientras no se toque a mano, el prefijo sigue al nombre.
+  const [prefijoAMano, setPrefijoAMano] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const set = <K extends keyof DatosEmpresa>(k: K, v: DatosEmpresa[K]) => setD((s) => ({ ...s, [k]: v }))
+  const prefijo = prefijoAMano ? (d.prefijo ?? '') : siglaDe(d.nombre)
+  const prefijoRaro = !!prefijo && !/^[A-Z][A-Z0-9]{2}$/.test(prefijo)
   const correoRaro = !!d.contacto_correo?.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.contacto_correo.trim())
-  const puede = !!d.nombre.trim() && !correoRaro && !ocupado
+  const puede = !!d.nombre.trim() && !correoRaro && !prefijoRaro && !ocupado
 
   async function guardar() {
     if (!puede) return
     setOcupado(true); setError(null)
-    try { onCreada(await crearEmpresa(d)) }
+    try { onCreada(await crearEmpresa({ ...d, prefijo })) }
     catch (ex) { setError(ex instanceof Error ? ex.message : 'No se pudo crear la empresa.') }
     finally { setOcupado(false) }
   }
@@ -61,6 +83,22 @@ export function DialogoEmpresa({ onCerrar, onCreada }: { onCerrar: () => void; o
           <ScrollView style={{ maxHeight: 440 }} contentContainerStyle={{ gap: espacio.base, padding: espacio.base }}>
             <Campo icono={<IconoMaletin tamano={15} color={color.primarioProfundo} />} rotulo="Nombre" obligatorio
               valor={d.nombre} onChange={(v) => set('nombre', v)} placeholder="Nexa Software" />
+
+            <View style={{ gap: 5 }}>
+              <View style={e.filaRotulo}>
+                <View style={e.cuadroIcono}><IconoCodigo tamano={15} color={color.primarioProfundo} /></View>
+                <Rotulo>Letras de sus códigos</Rotulo>
+              </View>
+              <View style={[e.filaRotulo, { gap: 10 }]}>
+                <TextInput value={prefijo} onChangeText={(v) => { setPrefijoAMano(true); set('prefijo', v.toUpperCase().slice(0, 3)) }}
+                  placeholder="NEX" maxLength={3} placeholderTextColor={color.textoSuave} autoCapitalize="characters" autoCorrect={false}
+                  style={[texto.datoFuerte, e.entrada, e.entradaPrefijo, prefijoRaro && { borderColor: '#8C4A2B' }, { outlineStyle: 'none' } as any]} />
+                <Text style={[texto.dato, { color: color.textoMedio, flex: 1, minWidth: 140 }]}>
+                  {prefijo ? `Su gente será ${prefijo}-001, ${prefijo}-002…` : 'Se sacan del nombre; se pueden cambiar.'}
+                </Text>
+              </View>
+              {prefijoRaro && <Text style={[texto.dato, { color: '#8C4A2B' }]}>Tres caracteres, empezando por letra.</Text>}
+            </View>
 
             <Campo icono={<IconoCodigo tamano={15} color={color.primarioProfundo} />} rotulo="A qué se dedica"
               valor={d.sector ?? ''} onChange={(v) => set('sector', v)} placeholder="Desarrollo de software a medida"
@@ -160,6 +198,7 @@ const e = StyleSheet.create({
   cerrar: { width: 30, height: 30, borderRadius: 8, backgroundColor: '#F1EFEB', alignItems: 'center', justifyContent: 'center' },
   filaRotulo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cuadroIcono: { width: 26, height: 26, borderRadius: 7, backgroundColor: '#EAF4EF', alignItems: 'center', justifyContent: 'center' },
+  entradaPrefijo: { width: 92, textAlign: 'center', letterSpacing: 2 },
   entrada: { minHeight: 38, borderRadius: 8, borderWidth: 1, borderColor: color.borde, paddingHorizontal: 10, color: color.texto, backgroundColor: color.superficie },
   opciones: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   opcion: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, backgroundColor: '#F1EFEB' },

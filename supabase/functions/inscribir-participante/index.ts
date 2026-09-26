@@ -58,12 +58,20 @@ Deno.serve(async (req) => {
 
   const idCuenta = creado.user.id
 
-  // 2. Código anónimo correlativo dentro del estudio
-  const { count } = await db
-    .from('participantes')
-    .select('id', { count: 'exact', head: true })
+  // 2. Código anónimo: las letras de su empresa y un correlativo dentro de
+  //    ella (AD-001). Lo calcula la base, que es la única que puede mirar el
+  //    máximo en uso sin condiciones de carrera.
+  //
+  //    Antes se numeraba `P-NNN` con `count(*) + 1` sobre toda la tabla: al
+  //    borrar a alguien el siguiente repetía un código ya usado y chocaba
+  //    contra el índice único con un mensaje que no decía nada.
+  const { data: codigo, error: errorCodigo } = await db
+    .rpc('siguiente_codigo_participante', { p_organizacion: organizacion_id })
 
-  const codigo = `P-${String((count ?? 0) + 1).padStart(3, '0')}`
+  if (errorCodigo || !codigo) {
+    await db.auth.admin.deleteUser(idCuenta)
+    return json({ error: errorCodigo?.message ?? 'no se pudo asignar el código' }, 500)
+  }
 
   const { data: participante, error: errorParticipante } = await db
     .from('participantes')
