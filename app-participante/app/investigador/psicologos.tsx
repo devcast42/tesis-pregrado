@@ -124,8 +124,14 @@ export default function Psicologos() {
           return (
             <View key={p.id} style={[e.tarjetaPs, !p.activo && { backgroundColor: '#F5F4F1', opacity: 0.85 }]}>
               <View style={e.avatar}><Text style={[texto.cuerpoFuerte, { color: p.activo ? color.primarioProfundo : color.textoMedio }]}>{iniciales(p.nombre)}</Text></View>
-              <View style={{ flex: 1.4, minWidth: 200, gap: 3 }}>
-                <View style={[e.fila, { gap: 8 }]}><Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{p.nombre}</Text>{p.activo ? <Pastilla tono={TONO.verde}>Activo</Pastilla> : <Pastilla tono={TONO.gris}>Inactivo</Pastilla>}</View>
+              <View style={{ flex: 1, minWidth: 170, gap: 3 }}>
+                {/* «Activo» en los tres no dice nada y, con un nombre largo, la
+                    pastilla se partía y dejaba esa fila más alta. Solo se
+                    señala la excepción. */}
+                <View style={[e.fila, { gap: 8 }]}>
+                  <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{p.nombre}</Text>
+                  {!p.activo && <Pastilla tono={TONO.gris}>Inactivo</Pastilla>}
+                </View>
                 {/* La pastilla de «capacidad» decía «Capacidad disponible (0%)» a
                     quien no tenía ni un caso, que se lee como que está lleno; y
                     calculaba el porcentaje sobre 6 mientras la leyenda hablaba de
@@ -135,10 +141,10 @@ export default function Psicologos() {
               </View>
               <View style={[e.datos, !p.activo && { backgroundColor: '#EDEBE7' }]}>
                 <Dato rotulo="Casos abiertos" valor={String(abiertos.length)} unidad={abiertos.length === 1 ? 'caso' : 'casos'} tinta={abiertos.length > CARGA_ALTA ? TIERRA : color.texto} />
-                <Dato rotulo="Citas esta semana" valor={String(semana)} unidad={semana === 1 ? 'cita' : 'citas'} />
+                <Dato rotulo="Citas semana" valor={String(semana)} unidad={semana === 1 ? 'cita' : 'citas'} />
                 <Dato rotulo="A primera sesión" valor={med == null ? '—' : med.toFixed(1)} unidad={med == null ? '' : 'días'} tinta={med == null ? color.texto : med <= LIMITE_DIAS ? color.primarioProfundo : TIERRA} />
               </View>
-              <View style={[e.fila, { gap: 6, justifyContent: 'flex-end', flex: 0.8, minWidth: 180, flexWrap: 'nowrap' }]}>
+              <View style={[e.fila, { gap: 6, justifyContent: 'flex-end', minWidth: 172, flexWrap: 'nowrap', marginLeft: espacio.xs }]}>
                 {p.activo ? (
                   <>
                     <BotonChico onPress={() => restablecer(p)} icono={<IconoHistorial tamano={13} color={color.texto} />}>Restablecer</BotonChico>
@@ -229,7 +235,7 @@ function Tarjeta({ rotulo, icono, children }: { rotulo: string; icono: React.Rea
   return <View style={e.tarjeta}><View style={[e.fila, { justifyContent: 'space-between' }]}><Rotulo>{rotulo}</Rotulo><View style={e.cuadroIcono}>{icono}</View></View>{children}</View>
 }
 function Dato({ rotulo, valor, unidad, tinta = color.texto }: { rotulo: string; valor: string; unidad: string; tinta?: string }) {
-  return <View style={{ minWidth: 78 }}><Rotulo>{rotulo}</Rotulo><View style={[e.fila, { alignItems: 'baseline', gap: 4 }]}><Text style={[texto.cifra, { color: tinta, fontFamily: MONO, fontSize: 18 }]}>{valor}</Text><Text style={[texto.dato, { color: color.textoMedio }]}>{unidad}</Text></View></View>
+  return <View style={{ minWidth: 70 }}><Rotulo>{rotulo}</Rotulo><View style={[e.fila, { alignItems: 'baseline', gap: 4 }]}><Text style={[texto.cifra, { color: tinta, fontFamily: MONO, fontSize: 18 }]}>{valor}</Text><Text style={[texto.dato, { color: color.textoMedio }]}>{unidad}</Text></View></View>
 }
 
 const e = StyleSheet.create({
@@ -243,7 +249,9 @@ const e = StyleSheet.create({
   cifra: { ...texto.cifra, color: color.texto, fontFamily: MONO, fontSize: 28 },
   tarjetaPs: { flexDirection: 'row', alignItems: 'center', gap: espacio.md, backgroundColor: color.superficie, borderRadius: radio.md, borderWidth: 1, borderColor: '#EEECE8', padding: espacio.md, flexWrap: 'wrap' },
   avatar: { width: 44, height: 44, borderRadius: 10, backgroundColor: '#F1EFEB', alignItems: 'center', justifyContent: 'center' },
-  datos: { flexDirection: 'row', gap: espacio.sm, backgroundColor: '#F5F4F1', borderRadius: 8, padding: 10, flexWrap: 'wrap' },
+  // En una sola línea: con `wrap` la tercera cifra caía abajo y esa fila
+  // quedaba más alta que las demás.
+  datos: { flexDirection: 'row', flexWrap: 'nowrap', gap: espacio.sm, backgroundColor: '#F5F4F1', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12 },
   botonBaja: { height: 34, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: color.borde, backgroundColor: color.superficie, justifyContent: 'center' },
   velo: { ...veloModal, backgroundColor: 'rgba(28,25,23,0.35)', alignItems: 'center', justifyContent: 'center' },
   opcion: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: color.borde },
