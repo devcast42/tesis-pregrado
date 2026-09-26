@@ -11,12 +11,12 @@
 
 import { useState } from 'react'
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
-import { crearAdmin, inscribirParticipante } from '../panel/datos'
+import { crearAdmin, crearPsicologo, inscribirParticipante } from '../panel/datos'
 import { BotonChico, Codigo, Mono, Rotulo } from './piezas'
 import { color, espacio, radio, texto, veloModal } from '../nucleo/diseno'
-import { IconoCandado, IconoCerrar, IconoCorreo, IconoEscudoCheck, IconoPersona } from '../nucleo/iconos'
+import { IconoCandado, IconoCerrar, IconoCorreo, IconoCredencial, IconoEscudoCheck, IconoPersona } from '../nucleo/iconos'
 
-export type ModoPersona = 'participante' | 'admin'
+export type ModoPersona = 'participante' | 'admin' | 'psicologo'
 
 type Credencial = { titulo: string; codigo?: string; correo?: string; contrasena: string; nota: string }
 
@@ -31,29 +31,42 @@ const COPIA = {
     boton: 'Crear acceso',
     nota: 'Contraseña temporal: la cambia al entrar. No se vuelve a mostrar.',
   },
+  psicologo: {
+    titulo: 'Nuevo psicólogo',
+    boton: 'Crear acceso',
+    nota: 'Contraseña temporal: la cambia al entrar. No se vuelve a mostrar.',
+  },
 } as const
 
 export function DialogoPersona({ modo, organizacionId, empresa, onCerrar, onCreada }: {
-  modo: ModoPersona; organizacionId: string; empresa: string
+  modo: ModoPersona
+  /** Solo para participante y admin: el psicólogo es del estudio, no de una empresa. */
+  organizacionId?: string
+  empresa: string
   onCerrar: () => void; onCreada: () => void
 }) {
   const t = COPIA[modo]
   const [nombre, setNombre] = useState('')
   const [correo, setCorreo] = useState('')
+  const [colegiatura, setColegiatura] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [credencial, setCredencial] = useState<Credencial | null>(null)
   const [copiado, setCopiado] = useState(false)
 
   const correoRaro = !!correo.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo.trim())
-  const puede = !!nombre.trim() && !!correo.trim() && !correoRaro && !ocupado
+  const faltaColegiatura = modo === 'psicologo' && !colegiatura.trim()
+  const puede = !!nombre.trim() && !!correo.trim() && !correoRaro && !faltaColegiatura && !ocupado
 
   async function crear() {
     if (!puede) return
     setOcupado(true); setError(null)
     try {
-      const datos = { organizacion_id: organizacionId, correo: correo.trim().toLowerCase(), nombre: nombre.trim() }
-      if (modo === 'participante') {
+      const datos = { organizacion_id: organizacionId as string, correo: correo.trim().toLowerCase(), nombre: nombre.trim() }
+      if (modo === 'psicologo') {
+        const r = await crearPsicologo({ correo: datos.correo, nombre: datos.nombre, colegiatura: colegiatura.trim() })
+        setCredencial({ titulo: `Acceso creado para ${nombre.trim()}`, correo: r.correo ?? datos.correo, contrasena: r.contrasena, nota: t.nota })
+      } else if (modo === 'participante') {
         const r = await inscribirParticipante(datos)
         setCredencial({ titulo: `${nombre.trim()} queda como ${r.codigo_anonimo}`, codigo: r.codigo_anonimo, correo: datos.correo, contrasena: r.contrasena, nota: t.nota })
       } else {
@@ -117,8 +130,12 @@ export function DialogoPersona({ modo, organizacionId, empresa, onCerrar, onCrea
               <View style={{ padding: espacio.base, gap: espacio.base }}>
                 <Campo icono={<IconoPersona tamano={15} color={color.primarioProfundo} />} rotulo="Nombre y apellido"
                   valor={nombre} onChange={setNombre} placeholder="Nombre Apellido" />
+                {modo === 'psicologo' && (
+                  <Campo icono={<IconoCredencial tamano={15} color={color.primarioProfundo} />} rotulo="Colegiatura (CPsP)"
+                    valor={colegiatura} onChange={setColegiatura} placeholder="28419" />
+                )}
                 <Campo icono={<IconoCorreo tamano={15} color={color.primarioProfundo} />} rotulo="Correo de acceso"
-                  valor={correo} onChange={setCorreo} placeholder="nombre@empresa.pe" correo
+                  valor={correo} onChange={setCorreo} placeholder={modo === 'psicologo' ? 'nombre@institucion.pe' : 'nombre@empresa.pe'} correo
                   invalido={correoRaro} aviso={correoRaro ? 'Ese correo no parece válido.' : undefined} />
                 {/* Lo único que hay que saber antes de pulsar: la contraseña
                     sale una vez y no se puede volver a ver. */}

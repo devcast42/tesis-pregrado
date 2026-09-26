@@ -6,11 +6,12 @@
  *  esos casos; no se puede dejar una derivación sin psicólogo. */
 
 import { useCallback, useState } from 'react'
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
 import { circuito as cargarCircuito, citasEstudio, desactivarPsicologo, mediana, reactivarPsicologo, type CircuitoApoyo, type CitaEstudio } from '../../modules/investigador/panel'
-import { crearPsicologo, listarEmpresas, listarPsicologos, restablecerContrasena, type Empresa, type Psicologo } from '../../modules/panel/datos'
+import { listarEmpresas, listarPsicologos, restablecerContrasena, type Empresa, type Psicologo } from '../../modules/panel/datos'
+import { DialogoPersona } from '../../modules/investigador/DialogoPersona'
 import { BotonChico, Caja, Codigo, Encabezado, Mono, Pastilla, Rotulo, TONO } from '../../modules/investigador/piezas'
 import { Cargando } from '../../modules/nucleo/ui'
 import { color, espacio, radio, texto, veloModal } from '../../modules/nucleo/diseno'
@@ -29,7 +30,6 @@ export default function Psicologos() {
   const [citas, setCitas] = useState<CitaEstudio[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [formulario, setFormulario] = useState(false)
-  const [nombre, setNombre] = useState(''); const [correo, setCorreo] = useState(''); const [colegiatura, setColegiatura] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [credencial, setCredencial] = useState<{ titulo: string; correo?: string; contrasena: string } | null>(null)
@@ -41,15 +41,6 @@ export default function Psicologos() {
   }, [])
   useFocusEffect(useCallback(() => { cargar() }, [cargar]))
 
-  async function crear() {
-    setOcupado(true); setError(null)
-    try {
-      const r = await crearPsicologo({ correo, nombre, colegiatura })
-      setCredencial({ titulo: `Acceso creado para ${nombre}`, correo: r.correo, contrasena: r.contrasena })
-      setNombre(''); setCorreo(''); setColegiatura(''); setFormulario(false)
-      await cargar()
-    } catch (ex) { setError(ex instanceof Error ? ex.message : 'No se pudo crear el psicólogo.') } finally { setOcupado(false) }
-  }
   async function restablecer(p: Psicologo) {
     setError(null)
     try { const r = await restablecerContrasena(p.auth_user_id); setCredencial({ titulo: `Contraseña temporal de ${p.nombre}`, contrasena: r.contrasena }) }
@@ -86,21 +77,6 @@ export default function Psicologos() {
           subtitulo={`${filas.length} ${filas.length === 1 ? 'psicólogo' : 'psicólogos'}${filas.length !== activos.length ? `, ${activos.length} ${activos.length === 1 ? 'activo' : 'activos'}` : ''}. Atienden a todo el estudio, no a una empresa.`}
           derecha={<Pressable onPress={() => setFormulario((v) => !v)} style={e.botonLleno}><IconoAgregar tamano={14} color="#FFFFFF" /><Text style={[texto.datoFuerte, { color: '#FFFFFF' }]}>Nuevo psicólogo</Text></Pressable>} />
 
-        {formulario && (
-          <Caja estilo={{ gap: espacio.sm }}>
-            <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Nuevo psicólogo del estudio</Text>
-            <View style={[e.fila, { gap: espacio.sm }]}>
-              <Campo rotulo="Nombre profesional" valor={nombre} onChange={setNombre} placeholder="Lic. Nombre Apellido" />
-              <Campo rotulo="Colegiatura (CPsP)" valor={colegiatura} onChange={setColegiatura} placeholder="28419" />
-              <Campo rotulo="Correo de acceso" valor={correo} onChange={setCorreo} placeholder="nombre@institucion.pe" />
-            </View>
-            <Text style={[texto.dato, { color: color.textoMedio }]}>Se crea la cuenta con una contraseña temporal que verás una sola vez; el psicólogo la cambia al entrar.</Text>
-            <View style={[e.fila, { gap: 8 }]}>
-              <BotonChico onPress={crear} tono="verde">{ocupado ? 'Creando…' : 'Crear acceso'}</BotonChico>
-              <BotonChico onPress={() => setFormulario(false)} tono="suave">Cancelar</BotonChico>
-            </View>
-          </Caja>
-        )}
         {error && <View style={e.error}><Text style={[texto.dato, { color: '#8C4A2B' }]}>{error}</Text></View>}
         {credencial && (
           <View style={e.credencial}>
@@ -176,6 +152,11 @@ export default function Psicologos() {
         {filas.length === 0 && <Caja><Text style={[texto.apoyo, { color: color.textoMedio }]}>Todavía no hay psicólogos. Sin uno activo, las detecciones quedan sin derivar.</Text></Caja>}
       </ScrollView>
 
+      {formulario && (
+        <DialogoPersona modo="psicologo" empresa="Equipo clínico del estudio"
+          onCerrar={() => setFormulario(false)} onCreada={cargar} />
+      )}
+
       {/* Salida ordenada: dos pasos */}
       <Modal transparent visible={!!baja} animationType="fade" onRequestClose={() => setBaja(null)}>
         {baja && (() => {
@@ -244,14 +225,6 @@ function sinTrato(n: string) { return n.replace(/^(Lic\.|Mg\.|Dr\.|Dra\.|Ps\.)\s
 
 function iniciales(n: string) { return n.replace(/^(Lic\.|Mg\.|Dr\.|Dra\.|Ps\.)\s*/i, '').split(/\s+/).slice(0, 2).map((x) => x[0]?.toUpperCase() ?? '').join('') }
 
-function Campo({ rotulo, valor, onChange, placeholder }: { rotulo: string; valor: string; onChange: (t: string) => void; placeholder: string }) {
-  return (
-    <View style={{ flex: 1, minWidth: 180, gap: 4 }}>
-      <Rotulo>{rotulo}</Rotulo>
-      <TextInput value={valor} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={color.textoSuave} autoCapitalize="none" style={[texto.dato, e.entrada, { outlineStyle: 'none' } as any]} />
-    </View>
-  )
-}
 function Tarjeta({ rotulo, icono, children }: { rotulo: string; icono: React.ReactNode; children: React.ReactNode }) {
   return <View style={e.tarjeta}><View style={[e.fila, { justifyContent: 'space-between' }]}><Rotulo>{rotulo}</Rotulo><View style={e.cuadroIcono}>{icono}</View></View>{children}</View>
 }
@@ -263,7 +236,6 @@ const e = StyleSheet.create({
   contenido: { padding: espacio.lg, gap: espacio.md, width: '100%', maxWidth: 1100, alignSelf: 'center' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap' },
   botonLleno: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: color.primarioProfundo, borderRadius: 8, paddingHorizontal: 14, height: 40 },
-  entrada: { height: 38, borderRadius: 8, borderWidth: 1, borderColor: color.borde, paddingHorizontal: 10, color: color.texto, backgroundColor: color.superficie },
   error: { backgroundColor: '#FBEDE6', borderRadius: 8, padding: 10 },
   credencial: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#EAF4EF', borderRadius: radio.md, padding: 12, flexWrap: 'wrap' },
   tarjeta: { flex: 1, minWidth: 190, backgroundColor: color.superficie, borderRadius: radio.md, borderWidth: 1, borderColor: '#EEECE8', padding: espacio.md, gap: 6 },
