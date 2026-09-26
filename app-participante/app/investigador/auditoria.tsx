@@ -147,12 +147,7 @@ export default function Auditoria() {
         {/* El registro, con sus filtros dentro. */}
         <Caja estilo={{ gap: espacio.sm }}>
           <View style={[e.fila, { justifyContent: 'space-between', alignItems: 'flex-start' }]}>
-            <View style={{ flex: 1, minWidth: 260 }}>
-              <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Registro de aperturas</Text>
-              <Text style={[texto.dato, { color: color.textoMedio }]}>
-                Cada apertura de nombre y correo queda escrita por <Mono tono={color.textoMedio} tamano={12}>obtener_identidad</Mono>. No se puede editar ni borrar desde la aplicación.
-              </Text>
-            </View>
+            <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1, minWidth: 200 }]}>Registro de aperturas</Text>
             {delAlcance.length > 0 && (
               <Mono>{`${filtrados.length} ${filtrados.length === 1 ? 'apertura' : 'aperturas'} · ${personas} ${personas === 1 ? 'persona' : 'personas'}`}</Mono>
             )}
