@@ -366,6 +366,16 @@ def circuito(cx, c, psi, etapa: str) -> None:
     if etapa == 'sin_cita':
         return
 
+    # Antes de escribirle hay que saber a quién: el psicólogo abre la identidad
+    # y `obtener_identidad` lo deja anotado. Es la única forma de que existan
+    # datos personales a la vista, y lo que llena la pantalla de Auditoría.
+    # Solo desde `cita_solicitada`: quien sigue «sin cita» aún no ha contactado.
+    cx.execute("""insert into eventos (participante_id, tipo, ocurrido_en, metadata)
+                  values (%s, 'acceso_identidad', %s, %s)""",
+               (pid, detectado_en + timedelta(hours=2),
+                psycopg.types.json.Jsonb({'psicologo_id': str(psi), 'por': 'psicologo',
+                                          'motivo': 'Obtener el correo para proponer la primera cita.'})))
+
     para = (detectado_en + timedelta(days=3)).replace(hour=16, minute=0, second=0, microsecond=0)
     estado_cita = 'solicitada' if etapa == 'cita_solicitada' else 'confirmada'
     cita = cx.execute("""insert into citas (participante_id, derivacion_id, psicologo_id, propuesta_para, motivo, estado, creada_en)
