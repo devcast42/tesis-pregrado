@@ -10,7 +10,7 @@ import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native
 import { reasignarDerivacion } from './panel'
 import { cargaDePsicologos, listarPsicologos, type Psicologo } from '../panel/datos'
 import { Mono, Pastilla, TONO } from './piezas'
-import { color, espacio, radio, texto } from '../nucleo/diseno'
+import { color, espacio, radio, texto, veloModal } from '../nucleo/diseno'
 import { IconoCandado, IconoCheck, IconoCerrar, IconoChevronAbajo } from '../nucleo/iconos'
 
 const MONO = Platform.OS === 'web' ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : undefined
@@ -127,7 +127,7 @@ export function DialogoReasignar({ pedido, onCerrar, onHecho }: { pedido: Pedido
 }
 
 const e = StyleSheet.create({
-  velo: { flex: 1, backgroundColor: 'rgba(28,25,23,0.35)', alignItems: 'center', justifyContent: 'center', padding: espacio.base },
+  velo: { ...veloModal, backgroundColor: 'rgba(28,25,23,0.35)', alignItems: 'center', justifyContent: 'center', padding: espacio.base },
   dialogo: { width: 440, maxWidth: '100%', backgroundColor: color.superficie, borderRadius: radio.lg, padding: espacio.lg, gap: espacio.sm },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm },
   opcion: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: color.borde, backgroundColor: color.superficie },

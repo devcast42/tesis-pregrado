@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native'
 import { router, usePathname } from 'expo-router'
 import { supabase } from '../nucleo/supabase'
-import { color, espacio, fuente, radio, texto } from '../nucleo/diseno'
+import { color, espacio, fuente, radio, texto, veloModal } from '../nucleo/diseno'
 import {
   IconoAjustes, IconoArchivo, IconoBarras, IconoChevronAbajo, IconoCredencial, IconoEquipo, IconoEscudoCheck,
   IconoGrafica, IconoHoja, IconoLupa, IconoMaletin, IconoNota, IconoPersona, IconoReloj, IconoSalir, IconoEnviar, IconoActualizar,
@@ -313,7 +313,7 @@ const e = StyleSheet.create({
   botonBorde: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: color.borde, borderRadius: radio.sm, paddingHorizontal: 12, height: 32, backgroundColor: color.superficie },
   botonLleno: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radio.sm, paddingHorizontal: 12, height: 32, backgroundColor: color.primarioProfundo },
   avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: color.primarioProfundo, alignItems: 'center', justifyContent: 'center' },
-  velo: { flex: 1, backgroundColor: 'rgba(28,25,23,0.35)', alignItems: 'center', paddingTop: 120 },
+  velo: { ...veloModal, backgroundColor: 'rgba(28,25,23,0.35)', alignItems: 'center', paddingTop: 120 },
   buscador: { width: 560, maxWidth: '92%', backgroundColor: color.superficie, borderRadius: radio.lg, padding: espacio.base, gap: 4, borderWidth: 1, borderColor: color.borde },
   resultado: { flexDirection: 'row', alignItems: 'center', gap: espacio.md, paddingVertical: 10, paddingHorizontal: 8, borderRadius: radio.sm },
 })
