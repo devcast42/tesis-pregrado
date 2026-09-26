@@ -19,7 +19,7 @@ import {
 import { BarraPct, BotonChico, Caja, Codigo, Encabezado, Mono, Pastilla, PastillaEstado, PastillaNivel, Rotulo, TONO } from '../../../modules/investigador/piezas'
 import { Cargando } from '../../../modules/nucleo/ui'
 import { color, espacio, radio, texto } from '../../../modules/nucleo/diseno'
-import { IconoAgregar, IconoEquipo, IconoEscudoCheck, IconoHistorial, IconoMaletin, IconoPersona, IconoVolver } from '../../../modules/nucleo/iconos'
+import { IconoAgregar, IconoEquipo, IconoEscudoCheck, IconoHistorial, IconoPersona, IconoVolver } from '../../../modules/nucleo/iconos'
 
 const MONO = Platform.OS === 'web' ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : undefined
 type Pestana = 'participantes' | 'admins'
@@ -106,15 +106,26 @@ export default function DetalleEmpresa() {
 
   const consent = new Map(participacion.map((x) => [x.participante_id, x.consentimiento]))
   const activos = filas.filter((p) => p.estado === 'activo' || p.estado === 'detectado')
-  const adhMedia = activos.length ? activos.reduce((s, p) => s + Number(p.tasa_adherencia ?? 0), 0) / activos.length : null
+  // Solo promedia a quien tiene dato. Con `?? 0` los detectados —que salen del
+  // seguimiento y por eso no tienen adherencia actual— entraban como cero y
+  // hundían la media: Andes Data Labs salía al 67 % teniendo 77 %, y cuantas
+  // más detecciones, peor parecía la empresa. Es además la cifra que la lista
+  // de Empresas saca de `adherencia_por_organizacion`, así que las dos
+  // pantallas se contradecían.
+  const conAdh = activos.filter((p) => p.tasa_adherencia != null)
+  const adhMedia = conAdh.length ? conAdh.reduce((s, p) => s + Number(p.tasa_adherencia), 0) / conAdh.length : null
+  const pct = (x: number) => Math.round(x * (x <= 1 ? 100 : 1))
+  const detectados = filas.filter((p) => p.estado === 'detectado').length
+  const fueraCount = filas.filter((p) => p.estado === 'finalizado' || p.estado === 'retirado').length
+  const sinConsent = filas.filter((p) => consent.get(p.id) !== true).length
   const orden = [...filas].sort((a, b) => a.codigo_anonimo.localeCompare(b.codigo_anonimo))
 
   return (
     <Panel rol="investigador">
       <ScrollView style={{ flex: 1 }} contentContainerStyle={e.contenido}>
         <Pressable onPress={() => router.push(conFiltro('/investigador/empresas', filtro) as never)} style={[e.fila, { gap: 4 }]}><IconoVolver tamano={12} color={color.textoMedio} /><Text style={[texto.dato, { color: color.textoMedio }]}>Empresas participantes</Text></Pressable>
-        <Encabezado eyebrow="Maestro de cohortes · ficha de empresa" titulo={empresa.nombre}
-          subtitulo={`Convenio activo desde el ${new Date(empresa.creado_en).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })}. Participantes por código anónimo; los nombres solo los ve el administrador de la empresa (RN-006-01).`}
+        <Encabezado eyebrow="Ficha de empresa" titulo={empresa.nombre}
+          subtitulo={`En el estudio desde el ${new Date(empresa.creado_en).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })}.`}
           derecha={(
             <View style={[e.fila, { gap: 8 }]}>
               <Pastilla tono={nivel === 'alto' ? TONO.tierra : nivel === 'a_vigilar' ? TONO.ambar : nivel ? TONO.verde : TONO.gris} punto>{nivel === 'alto' ? 'Pulso: Nivel Alto' : nivel === 'a_vigilar' ? 'Pulso: A vigilar' : nivel ? 'Pulso: Estable' : 'Pulso: sin OLBI aún'}</Pastilla>
@@ -123,10 +134,17 @@ export default function DetalleEmpresa() {
           )} />
 
         <View style={[e.fila, { gap: espacio.sm, alignItems: 'stretch' }]}>
-          <Tarjeta rotulo="Inscritos" icono={<IconoPersona tamano={16} color={color.primarioProfundo} />}><Cifra v={String(filas.length)} nota={`${filas.filter((p) => consent.get(p.id) === true).length} con consentimiento`} /></Tarjeta>
-          <Tarjeta rotulo="En seguimiento" icono={<IconoEquipo tamano={16} color={color.primarioProfundo} />}><Cifra v={String(activos.length)} nota={`${filas.filter((p) => p.estado === 'detectado').length} detectados · ${filas.filter((p) => p.estado === 'finalizado' || p.estado === 'retirado').length} fuera`} /></Tarjeta>
-          <Tarjeta rotulo="Adherencia media" icono={<IconoHistorial tamano={16} color={color.primarioProfundo} />}><Cifra v={adhMedia == null ? '—' : `${Math.round(adhMedia * (adhMedia <= 1 ? 100 : 1))}%`} nota="check-ins diarios de los activos" tinta={adhMedia != null && adhMedia * (adhMedia <= 1 ? 100 : 1) < 80 ? '#B45309' : color.texto} /></Tarjeta>
-          <Tarjeta rotulo="Administradores" icono={<IconoMaletin tamano={16} color={color.primarioProfundo} />}><Cifra v={String(admins.filter((a) => a.activo).length)} nota="gestionan cuentas; no ven respuestas" /></Tarjeta>
+          <Tarjeta rotulo="Inscritos" icono={<IconoPersona tamano={16} color={color.primarioProfundo} />}>
+            <Cifra v={String(filas.length)} nota={sinConsent ? `${sinConsent} sin consentimiento` : 'todos consintieron'} />
+          </Tarjeta>
+          <Tarjeta rotulo="En seguimiento" icono={<IconoEquipo tamano={16} color={color.primarioProfundo} />}>
+            <Cifra v={String(activos.length)} nota={`${detectados} ${detectados === 1 ? 'detectado' : 'detectados'} · ${fueraCount} fuera`} />
+          </Tarjeta>
+          <Tarjeta rotulo="Adherencia media" icono={<IconoHistorial tamano={16} color={color.primarioProfundo} />}>
+            <Cifra v={adhMedia == null ? '—' : `${pct(adhMedia)}%`}
+              nota={adhMedia == null ? 'sin check-ins todavía' : `sobre ${conAdh.length} de ${activos.length} con dato`}
+              tinta={adhMedia != null && pct(adhMedia) < 80 ? '#B45309' : color.texto} />
+          </Tarjeta>
         </View>
 
         {/* Pestañas */}
@@ -176,7 +194,7 @@ export default function DetalleEmpresa() {
         {pestana === 'participantes' ? (
           <Caja estilo={{ gap: 4 }}>
             <View style={e.tablaCab}>
-              {[['Código', 0.9], ['Consent.', 0.9], ['Estado', 0.9], ['Semana', 0.7], ['Adherencia', 1.3], ['Último OLBI', 0.9], ['Derivación', 1], ['', 2]].map(([h, f]) => (
+              {[['Participante', 1], ['Estado', 0.9], ['Adherencia', 1.3], ['Último OLBI', 0.9], ['Derivación', 1.6], ['', 1.5]].map(([h, f]) => (
                 <Text key={String(h)} style={[texto.etiqueta, { color: color.textoMedio, fontSize: 9.5, flex: Number(f) }]}>{String(h).toUpperCase()}</Text>
               ))}
             </View>
@@ -186,16 +204,30 @@ export default function DetalleEmpresa() {
               const fuera = p.estado === 'finalizado' || p.estado === 'retirado'
               return (
                 <View key={p.id} style={[e.tablaFila, fuera && { opacity: 0.6 }]}>
-                  <Pressable style={{ flex: 0.9 }} onPress={() => router.push(conFiltro(`/investigador/participante/${p.id}`, filtro) as never)}><Codigo>{p.codigo_anonimo}</Codigo></Pressable>
-                  <View style={{ flex: 0.9 }}><Pastilla tono={c === true ? TONO.verdeSuave : c === false ? TONO.tierraSuave : TONO.gris}>{c === true ? 'Aceptado' : c === false ? 'Rechazado' : 'Pendiente'}</Pastilla></View>
-                  <View style={{ flex: 0.9 }}><PastillaEstado estado={p.estado} /></View>
-                  <Mono tono={color.texto}>S{Math.min(p.semana, 6)}</Mono>
-                  <View style={{ flex: 1.3 }}><BarraPct pct={p.tasa_adherencia == null ? null : Number(p.tasa_adherencia) * (Number(p.tasa_adherencia) <= 1 ? 100 : 1)} /></View>
+                  {/* El código es el enlace a la ficha: sobraba un botón «Ficha» que hacía lo mismo. */}
+                  <Pressable style={{ flex: 1 }} onPress={() => router.push(conFiltro(`/investigador/participante/${p.id}`, filtro) as never)}>
+                    <Codigo>{p.codigo_anonimo}</Codigo>
+                    <Mono>{`Semana ${Math.min(p.semana, 6)}`}</Mono>
+                  </Pressable>
+
+                  {/* El consentimiento solo se enseña cuando falta: una columna
+                      entera de «Aceptado» no dice nada, y lo que hay que ver es
+                      la excepción. */}
+                  <View style={{ flex: 0.9, gap: 3 }}>
+                    <PastillaEstado estado={p.estado} />
+                    {c !== true && <Text style={[texto.dato, { color: '#8C4A2B' }]}>{c === false ? 'Rechazó el consentimiento' : 'Consentimiento pendiente'}</Text>}
+                  </View>
+
+                  <View style={{ flex: 1.3 }}>
+                    {p.tasa_adherencia == null
+                      ? <Text style={[texto.dato, { color: color.textoSuave }]}>sin dato</Text>
+                      : <BarraPct pct={Number(p.tasa_adherencia) * (Number(p.tasa_adherencia) <= 1 ? 100 : 1)} />}
+                  </View>
                   <View style={{ flex: 0.9 }}><PastillaNivel nivel={p.olbi_nivel} /></View>
-                  <Text style={[texto.dato, { color: color.textoMedio, flex: 1 }]}>{p.estado_derivacion ? `${p.estado_derivacion === 'cerrada' ? 'Cerrada' : 'Abierta'} · ${p.psicologo ?? 'sin asignar'}` : '—'}</Text>
-                  <View style={[e.fila, { flex: 2, gap: 6, justifyContent: 'flex-end', flexWrap: 'nowrap' }]}>
-                    <BotonChico onPress={() => router.push(conFiltro(`/investigador/participante/${p.id}`, filtro) as never)} tono="suave">Ficha</BotonChico>
-                    {!fuera && <BotonChico onPress={() => restablecer(p)}>Restablecer</BotonChico>}
+                  <Text style={[texto.dato, { color: color.textoMedio, flex: 1.6 }]}>{p.estado_derivacion ? `${p.estado_derivacion === 'cerrada' ? 'Cerrada' : 'Abierta'} · ${p.psicologo ?? 'sin asignar'}` : '—'}</Text>
+
+                  <View style={[e.fila, { flex: 1.5, gap: 6, justifyContent: 'flex-end', flexWrap: 'nowrap' }]}>
+                    {!fuera && <BotonChico onPress={() => restablecer(p)} tono="suave">Restablecer</BotonChico>}
                     {!fuera && <Pressable onPress={() => darDeBaja(p)} style={e.botonBaja}><Text style={[texto.datoFuerte, { color: '#8C4A2B' }]}>Dar de baja</Text></Pressable>}
                   </View>
                 </View>
@@ -203,13 +235,16 @@ export default function DetalleEmpresa() {
             })}
             <View style={[e.nota, { marginTop: 8 }]}>
               <IconoEscudoCheck tamano={13} color={color.primarioProfundo} />
-              <Text style={[texto.dato, { color: color.textoMedio, flex: 1 }]}>Sin nombres: el investigador trabaja con códigos (RN-006-01). «Dar de baja» cierra el seguimiento por salida de la empresa; las respuestas se conservan (RN-001-03) y una derivación abierta sigue su curso (RN-008-16).</Text>
+              <Text style={[texto.dato, { color: color.textoMedio, flex: 1 }]}>«Dar de baja» cierra el seguimiento por salida de la empresa. Las respuestas se conservan y una derivación abierta sigue su curso.</Text>
             </View>
           </Caja>
         ) : (
           <Caja estilo={{ gap: 4 }}>
+            <Text style={[texto.dato, { color: color.textoMedio }]}>
+              {`Gestionan las cuentas de ${empresa.nombre} y ven su pulso agregado. Nunca respuestas, puntajes ni derivaciones.`}
+            </Text>
             <View style={e.tablaCab}>
-              {[['Administrador', 2], ['Estado', 1], ['Alcance', 2]].map(([h, f]) => <Text key={String(h)} style={[texto.etiqueta, { color: color.textoMedio, fontSize: 9.5, flex: Number(f) }]}>{String(h).toUpperCase()}</Text>)}
+              {[['Administrador', 2], ['Estado', 1]].map(([h, f]) => <Text key={String(h)} style={[texto.etiqueta, { color: color.textoMedio, fontSize: 9.5, flex: Number(f) }]}>{String(h).toUpperCase()}</Text>)}
             </View>
             {admins.length === 0 && <Text style={[texto.apoyo, { color: color.textoMedio, paddingVertical: 12 }]}>Esta empresa no tiene administradores: nadie puede ver su pulso agregado ni gestionar sus cuentas.</Text>}
             {admins.map((a) => (
@@ -219,7 +254,6 @@ export default function DetalleEmpresa() {
                   <Text style={[texto.datoFuerte, { color: color.texto }]}>{a.nombre}</Text>
                 </View>
                 <View style={{ flex: 1 }}>{a.activo ? <Pastilla tono={TONO.verde}>Activo</Pastilla> : <Pastilla tono={TONO.gris}>Inactivo</Pastilla>}</View>
-                <Text style={[texto.dato, { color: color.textoMedio, flex: 2 }]}>Pulso agregado y cuentas de {empresa.nombre}. Nunca respuestas, puntajes ni derivaciones.</Text>
               </View>
             ))}
           </Caja>
