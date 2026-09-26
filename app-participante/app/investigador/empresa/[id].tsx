@@ -105,13 +105,14 @@ export default function DetalleEmpresa() {
   if (!filas || !empresa) return <Panel rol="investigador"><Cargando /></Panel>
 
   const consent = new Map(participacion.map((x) => [x.participante_id, x.consentimiento]))
-  const activos = filas.filter((p) => p.estado === 'activo' || p.estado === 'detectado')
-  // Solo promedia a quien tiene dato. Con `?? 0` los detectados —que salen del
-  // seguimiento y por eso no tienen adherencia actual— entraban como cero y
-  // hundían la media: Andes Data Labs salía al 67 % teniendo 77 %, y cuantas
-  // más detecciones, peor parecía la empresa. Es además la cifra que la lista
-  // de Empresas saca de `adherencia_por_organizacion`, así que las dos
-  // pantallas se contradecían.
+  // «En seguimiento» es `estado = 'activo'`, y nada más: RF-007-06 deja fuera
+  // del monitoreo a todo estado distinto, y RN-007-04 explica por qué al
+  // detectado —su seguimiento diario terminó por diseño, no por incumplir—.
+  // Esta pantalla contaba también a los detectados y decía 15 donde la lista
+  // de Empresas, la vista `adherencia` y la barra superior decían 13.
+  const activos = filas.filter((p) => p.estado === 'activo')
+  // Y solo promedia a quien tiene dato, por si alguna fila llegara sin él:
+  // con `?? 0` un hueco entraba como cero y hundía la media.
   const conAdh = activos.filter((p) => p.tasa_adherencia != null)
   const adhMedia = conAdh.length ? conAdh.reduce((s, p) => s + Number(p.tasa_adherencia), 0) / conAdh.length : null
   const pct = (x: number) => Math.round(x * (x <= 1 ? 100 : 1))
@@ -138,11 +139,13 @@ export default function DetalleEmpresa() {
             <Cifra v={String(filas.length)} nota={sinConsent ? `${sinConsent} sin consentimiento` : 'todos consintieron'} />
           </Tarjeta>
           <Tarjeta rotulo="En seguimiento" icono={<IconoEquipo tamano={16} color={color.primarioProfundo} />}>
-            <Cifra v={String(activos.length)} nota={`${detectados} ${detectados === 1 ? 'detectado' : 'detectados'} · ${fueraCount} fuera`} />
+            <Cifra v={String(activos.length)} nota={detectados || fueraCount ? `${detectados} ${detectados === 1 ? 'detectado' : 'detectados'} · ${fueraCount} fuera` : 'todos los inscritos'} />
           </Tarjeta>
           <Tarjeta rotulo="Adherencia media" icono={<IconoHistorial tamano={16} color={color.primarioProfundo} />}>
             <Cifra v={adhMedia == null ? '—' : `${pct(adhMedia)}%`}
-              nota={adhMedia == null ? 'sin check-ins todavía' : `sobre ${conAdh.length} de ${activos.length} con dato`}
+              nota={adhMedia == null ? 'sin check-ins todavía'
+                : conAdh.length < activos.length ? `sobre ${conAdh.length} de ${activos.length} con dato`
+                : 'días cumplidos de los esperados'}
               tinta={adhMedia != null && pct(adhMedia) < 80 ? '#B45309' : color.texto} />
           </Tarjeta>
         </View>

@@ -55,7 +55,10 @@ export default function Resumen() {
   const ordenados = tiempos.filter((t): t is number => t != null).sort((a, b) => a - b)
   const q = (p: number) => (ordenados.length ? ordenados[Math.min(ordenados.length - 1, Math.floor(p * ordenados.length))] : null)
   const mediaEmpresas = empresas.length ? empresas.reduce((s, e) => s + Number(e.tasa_promedio ?? 0), 0) / empresas.length : null
-  const activos = participantes.filter((p) => p.estado === 'activo' || p.estado === 'detectado')
+  // Quien está detectado ya no responde el diario: su seguimiento terminó por
+  // diseño (RN-007-04) y la vista `adherencia` tampoco lo incluye. Contarlo
+  // aquí hacía decir «57 activos completando EMA» habiendo 53.
+  const activos = participantes.filter((p) => p.estado === 'activo')
   const detectados = participantes.filter((p) => p.detectado_en).length
   const embudo = [
     { n: 1, titulo: 'Detectados por Modelo / OLBI', nota: 'Puntaje sostenido de agotamiento', valor: detectados },
