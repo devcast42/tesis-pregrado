@@ -59,6 +59,29 @@ ADMIN = 'test+admin@tesis.local'
 # esa misma persona en el panel del investigador.
 PARTICIPANTE_EN_VIVO = 'user.prueba2@gmail.com'
 
+# Nombres inventados para la tabla `identidades`. Sin ellos «Ver identidad»
+# no tiene nada que devolver y el botón falla: es la única tabla con datos
+# personales y la semilla la dejaba vacía.
+#
+# El correo va a `ejemplo.test`. `.test` está reservado por la RFC 2606 y no
+# resuelve en ningún sitio, así que ni por accidente se le escribe a nadie.
+NOMBRES = ['Ana', 'Luis', 'Carmen', 'Jorge', 'Rocío', 'Diego', 'Patricia', 'Miguel',
+           'Elena', 'Andrés', 'Lucía', 'Fernando', 'Sofía', 'Ricardo', 'Valeria',
+           'Gonzalo', 'Isabel', 'Rodrigo', 'Daniela', 'Sebastián', 'Mariana', 'Álvaro']
+APELLIDOS = ['Quispe', 'Ramírez', 'Torres', 'Salazar', 'Mendoza', 'Vargas', 'Castillo',
+             'Huamán', 'Rojas', 'Ponce', 'Delgado', 'Chávez', 'Núñez', 'Aguilar',
+             'Bustamante', 'Espinoza', 'Cárdenas', 'Paredes', 'Ibáñez', 'Zavala']
+
+
+def identidad_inventada(rng, codigo: str) -> tuple[str, str]:
+    """Un nombre y un correo de mentira, estables para un mismo código."""
+    nombre = f"{NOMBRES[rng.integers(len(NOMBRES))]} {APELLIDOS[rng.integers(len(APELLIDOS))]}"
+    usuario = (nombre.lower()
+               .replace(' ', '.')
+               .translate(str.maketrans('áéíóúñ', 'aeioun')))
+    return nombre, f"{usuario}.{codigo.lower()}@ejemplo.test"
+
+
 # Etapas del circuito, repartidas entre los detectados en este orden.
 ETAPAS = ['informe_por_aprobar', 'cita_solicitada', 'sin_cita', 'cita_confirmada', 'completo']
 
@@ -243,7 +266,7 @@ def main() -> None:
             cruza = any(s['alto'] for s in ss)
             auth = cuenta_viva[0] if (emp['admin'] and k == 1 and cuenta_viva) else None
             pid = escribir_participante(cx, org, codigo, auth, lunes0, p, ss, cruza,
-                                        en_vivo=auth is not None)
+                                        rng, en_vivo=auth is not None)
             creados.append({'pid': pid, 'codigo': codigo, 'cruza': cruza,
                             'empresa': emp['nombre'], 'lunes0': lunes0, 'semanas': emp['semanas'],
                             'etapa': None})
@@ -276,7 +299,7 @@ def main() -> None:
 
 
 def escribir_participante(cx, org, codigo, auth_user_id, lunes0, persona, semanas, cruza,
-                          en_vivo: bool = False) -> str:
+                          rng, en_vivo: bool = False) -> str:
     estado = 'detectado' if cruza else 'activo'
     # La inscripción es el lunes de la primera semana, no antes: si cayera en
     # un viernes previo, el panel contaría ese viernes como un OLBI omitido.
@@ -284,6 +307,18 @@ def escribir_participante(cx, org, codigo, auth_user_id, lunes0, persona, semana
     pid = cx.execute("""insert into participantes (organizacion_id, auth_user_id, codigo_anonimo, estado, inscrito_en)
                         values (%s, %s, %s, %s, %s) returning id""",
                      (org, auth_user_id, codigo, estado, inscrito)).fetchone()[0]
+
+    # RN-006-03: los datos personales viven aquí y solo aquí. El panel del
+    # investigador nunca los lee; se abren uno a uno por `obtener_identidad`,
+    # que deja el acceso anotado.
+    nombre, correo = identidad_inventada(rng, codigo)
+    # Quien presta su cuenta para entrar en vivo lleva su correo de verdad: si
+    # no, el psicólogo abriría la identidad y vería un contacto que no es el de
+    # la persona que está delante.
+    if en_vivo:
+        correo = PARTICIPANTE_EN_VIVO
+    cx.execute("""insert into identidades (participante_id, nombre, correo_contacto, registrado_en)
+                  values (%s, %s, %s, %s)""", (pid, nombre, correo, inscrito))
 
     cx.execute("insert into eventos (participante_id, tipo, ocurrido_en) values (%s, 'inicio_seguimiento', %s)",
                (pid, inscrito))

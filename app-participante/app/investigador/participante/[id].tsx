@@ -86,7 +86,18 @@ export default function FichaParticipante() {
 
   async function abrirIdentidad() {
     confirmar('Ver identidad · Auditado', 'Este acceso queda registrado en la línea de tiempo del participante y en la auditoría del estudio. ¿Continuar?', async () => {
-      try { setIdentidad(await verIdentidad(f!.participante_id)); cargar() } catch (e) { aviso('No disponible', e instanceof Error ? e.message : 'No se pudo abrir la identidad.') }
+      try {
+        const id = await verIdentidad(f!.participante_id)
+        // Sin fila en `identidades` no hay error: la consulta responde vacío.
+        // Decirlo tal cual, que es distinto de «no se pudo».
+        if (!id) return aviso('Sin identidad registrada', `${f!.codigo_anonimo} no tiene nombre ni correo guardados. El acceso quedó registrado igualmente.`)
+        setIdentidad(id)
+      } catch (e) {
+        // Los errores de Supabase son objetos planos, no instancias de Error:
+        // con `instanceof` se perdía el motivo y salía siempre el genérico.
+        aviso('No disponible', mensajeDe(e) || 'No se pudo abrir la identidad.')
+      }
+      cargar()
     })
   }
   function exportarFicha() {
@@ -640,3 +651,11 @@ const e = StyleSheet.create({
   hitoPunto: { width: 12, height: 12, borderRadius: 6, marginTop: 4 },
   hitoLinea: { flex: 1, width: 2, backgroundColor: '#E4E1DC', marginTop: 2 },
 })
+
+/** El motivo de un fallo, venga como Error o como el objeto plano que
+ *  devuelve Supabase. Con `e instanceof Error` a secas se perdía siempre. */
+function mensajeDe(e: unknown): string {
+  if (e instanceof Error) return e.message
+  if (e && typeof e === 'object' && 'message' in e) return String((e as { message: unknown }).message ?? '')
+  return ''
+}
