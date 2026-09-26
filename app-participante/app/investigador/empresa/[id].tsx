@@ -38,14 +38,26 @@ export default function DetalleEmpresa() {
   const [ocupado, setOcupado] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [credencial, setCredencial] = useState<{ titulo: string; correo?: string; contrasena: string; nota: string } | null>(null)
+  const [falloCarga, setFalloCarga] = useState<string | null>(null)
 
+  // Si una consulta falla hay que decirlo. Sin este `catch`, la promesa se
+  // rechazaba sin que nadie la escuchara, los estados se quedaban en null y la
+  // pantalla giraba para siempre sin un solo mensaje.
   const cargar = useCallback(async () => {
-    const [empresas, p, pa, a, pulso, umbrales] = await Promise.all([
-      listarEmpresas(), cargarParticipantes({ organizacion_id: id }), participacionDeEmpresa(id), listarAdmins(id), pulsoPorEmpresa(), umbralesEmpresa(),
-    ])
-    setEmpresa(empresas.find((x) => x.id === id) ?? null); setFilas(p); setParticipacion(pa); setAdmins(a)
-    const pul = pulso.find((x) => x.organizacion_id === id), u = umbrales.find((x) => x.dimension === 'agotamiento')
-    setNivel(pul?.agotamiento != null && u ? (pul.agotamiento >= Number(u.alto) ? 'alto' : pul.agotamiento >= Number(u.a_vigilar) ? 'a_vigilar' : 'bajo') : null)
+    setFalloCarga(null)
+    try {
+      const [empresas, p, pa, a, pulso, umbrales] = await Promise.all([
+        listarEmpresas(), cargarParticipantes({ organizacion_id: id }), participacionDeEmpresa(id), listarAdmins(id), pulsoPorEmpresa(), umbralesEmpresa(),
+      ])
+      setEmpresa(empresas.find((x) => x.id === id) ?? null); setFilas(p); setParticipacion(pa); setAdmins(a)
+      const pul = pulso.find((x) => x.organizacion_id === id), u = umbrales.find((x) => x.dimension === 'agotamiento')
+      setNivel(pul?.agotamiento != null && u ? (pul.agotamiento >= Number(u.alto) ? 'alto' : pul.agotamiento >= Number(u.a_vigilar) ? 'a_vigilar' : 'bajo') : null)
+    } catch (ex) {
+      // Los errores de Supabase son objetos planos, no instancias de Error.
+      const msg = ex instanceof Error ? ex.message
+        : ex && typeof ex === 'object' && 'message' in ex ? String((ex as { message: unknown }).message ?? '') : ''
+      setFalloCarga(msg || 'No se pudieron cargar los datos de la empresa.')
+    }
   }, [id])
   useFocusEffect(useCallback(() => { cargar() }, [cargar]))
 
@@ -78,6 +90,18 @@ export default function DetalleEmpresa() {
     cerrarSeguimiento(p.id, 'salida_empresa').then(cargar).catch((ex) => setError(ex instanceof Error ? ex.message : 'No se pudo dar de baja.'))
   }
 
+  if (falloCarga && (!filas || !empresa)) return (
+    <Panel rol="investigador">
+      <View style={e.fallo}>
+        <Text style={[texto.seccion, { color: color.texto }]}>No se pudo abrir la empresa</Text>
+        <Text style={[texto.apoyo, { color: color.textoMedio, textAlign: 'center' }]}>{falloCarga}</Text>
+        <View style={[e.fila, { gap: espacio.sm }]}>
+          <BotonChico onPress={() => { cargar() }} tono="verde">Reintentar</BotonChico>
+          <BotonChico onPress={() => router.push(conFiltro('/investigador/empresas', filtro) as never)} tono="suave">Volver a Empresas</BotonChico>
+        </View>
+      </View>
+    </Panel>
+  )
   if (!filas || !empresa) return <Panel rol="investigador"><Cargando /></Panel>
 
   const consent = new Map(participacion.map((x) => [x.participante_id, x.consentimiento]))
@@ -221,6 +245,7 @@ function Cifra({ v, nota, tinta = color.texto }: { v: string; nota: string; tint
 }
 
 const e = StyleSheet.create({
+  fallo: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: espacio.sm, padding: espacio.lg },
   contenido: { padding: espacio.lg, gap: espacio.md, width: '100%', maxWidth: 1100, alignSelf: 'center' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap' },
   tarjeta: { flex: 1, minWidth: 180, backgroundColor: color.superficie, borderRadius: radio.md, borderWidth: 1, borderColor: '#EEECE8', padding: espacio.md, gap: 6 },
