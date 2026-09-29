@@ -23,6 +23,10 @@ import { IconoCandado, IconoCheckCirculo, IconoEscudoCheck, IconoInfo } from '..
 
 type Tarea = 'nowcast' | 'pronostico'
 
+const TIERRA = '#8C4A2B'
+/** Por debajo de esto las métricas no se pueden leer (ESP-005, potencia). */
+const MINIMO_POSITIVOS = 20
+
 export default function DesempenoModelo() {
   const { filtro } = useFiltro()
   const [tarea, setTarea] = useState<Tarea>('nowcast')
@@ -59,6 +63,10 @@ export default function DesempenoModelo() {
   const porSemana = filas.filter((f) => f.semana !== null).sort((a, b) => (a.semana! < b.semana! ? -1 : 1))
   const brier = pares.length ? pares.reduce((s, p) => s + (p.probabilidad - (p.resultado_real ? 1 : 0)) ** 2, 0) / pares.length : null
   const prevalencia = total.n ? (total.vp + total.fn) / total.n : null
+  // Los casos reales son el cuello de botella de todas estas métricas: con
+  // pocos, precisión y recall saltan decenas de puntos por un solo acierto.
+  // El análisis de potencia de ESP-005 pide del orden de 20 para empezar.
+  const positivos = total.vp + total.fn
   const umbral = elegida?.umbral_decision ?? 0.5
   const semanas = porSemana.map((f) => new Date(`${f.semana}T12:00:00`))
   const ventana = semanas.length ? `${semanas.length} semanas · ${total.n} ventanas` : `${total.n} ventanas`
@@ -73,24 +81,46 @@ export default function DesempenoModelo() {
   return (
     <Panel rol="investigador">
       <ScrollView style={{ flex: 1 }} contentContainerStyle={e.contenido}>
-        <Encabezado eyebrow={`Auditoría de inferencia clínica · UNT Lab Salud  /  ID protocolo: ESP-009`} titulo="Evaluación Empírica y Rendimiento de Modelos"
-          subtitulo="Métricas de validación prospectiva y rendimiento en tiempo real sobre la cohorte tech."
-          derecha={(
+        <Encabezado eyebrow="Modelo · ESP-009" titulo="Desempeño del modelo"
+          subtitulo="Qué acertó y qué falló, contando solo lo que predijo en su momento."
+          derecha={empresa ? (
             <View style={e.notaCohorte}>
               <IconoInfo tamano={14} color={color.primarioProfundo} />
               <Text style={[texto.dato, { color: color.texto, flex: 1 }]}>
-                {empresa ? <><Text style={texto.datoFuerte}>Subgrupo {empresa.nombre}.</Text> Las métricas del modelo se calculan sobre toda la cohorte: el filtro de empresa no las segmenta (RN-009-04).</>
-                  : <><Text style={texto.datoFuerte}>Toda la cohorte.</Text> Cifras consolidadas sobre las predicciones registradas en su momento.</>}
+                Estás filtrando por <Text style={texto.datoFuerte}>{empresa.nombre}</Text>, pero el modelo se evalúa sobre toda la cohorte: no se puede partir por empresa (RN-009-04).
               </Text>
             </View>
-          )} />
+          ) : undefined} />
+
+        {/* Lo primero que hay que saber, antes que ninguna cifra. */}
+        {positivos < MINIMO_POSITIVOS ? (
+          <View style={[e.veredicto, { backgroundColor: '#FBEDE6', borderColor: '#EBC9B6' }]}>
+            <Text style={[e.cifraGrande, { color: TIERRA }]}>{positivos}</Text>
+            <View style={{ flex: 1, gap: 2, minWidth: 260 }}>
+              <Text style={[texto.cuerpoFuerte, { color: TIERRA }]}>
+                {positivos === 1 ? 'Un solo caso real: las cifras de abajo no concluyen nada' : 'Muy pocos casos reales: las cifras de abajo no concluyen nada'}
+              </Text>
+              <Text style={[texto.dato, { color: TIERRA }]}>
+                {`Todo lo que sigue se calcula sobre ${positivos} ${positivos === 1 ? 'semana' : 'semanas'} en que alguien cruzó el umbral, de ${total.n} evaluadas. Un acierto de más o de menos mueve la precisión decenas de puntos. Hacen falta unos ${MINIMO_POSITIVOS} para empezar a leerlas.`}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <View style={[e.veredicto, { backgroundColor: '#EAF4EF', borderColor: '#CFE6DA' }]}>
+            <View style={e.escudo}><IconoEscudoCheck tamano={20} color={color.primarioProfundo} /></View>
+            <View style={{ flex: 1, gap: 2, minWidth: 260 }}>
+              <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{`${positivos} casos reales sobre ${total.n} semanas evaluadas`}</Text>
+              <Text style={[texto.dato, { color: color.textoMedio }]}>Muestra suficiente para leer las cifras con cautela. El intervalo de cada una va bajo su número.</Text>
+            </View>
+          </View>
+        )}
 
         {/* Controles */}
         <View style={[e.fila, { gap: espacio.base, alignItems: 'flex-end' }]}>
           <View style={{ gap: 6 }}>
-            <Rotulo>Horizonte de inferencia</Rotulo>
+            <Rotulo>Qué predice</Rotulo>
             <View style={e.segmentos}>
-              {([['nowcast', 'Nowcast intra-semanal', '(L-J → Vie)'], ['pronostico', 'Pronóstico inter-semanal', '(Vie → Sem sig)']] as const).map(([k, t, s]) => (
+              {([['nowcast', 'El viernes de esta semana', 'con lo de lunes a jueves'], ['pronostico', 'El viernes de la próxima', 'con la semana entera']] as const).map(([k, t, s]) => (
                 <Pressable key={k} onPress={() => { setTarea(k); setVersion(null) }} style={[e.segmento, tarea === k && e.segmentoActivo]}>
                   <Text style={[texto.datoFuerte, { color: tarea === k ? color.texto : color.textoMedio }]}>{t}</Text>
                   <Text style={[texto.dato, { color: color.textoMedio, fontSize: 11 }]}>{s}</Text>
@@ -99,7 +129,7 @@ export default function DesempenoModelo() {
             </View>
           </View>
           <View style={{ gap: 6, zIndex: 20 }}>
-            <Rotulo>Arquitectura evaluada</Rotulo>
+            <Rotulo>Versión</Rotulo>
             <Pressable onPress={() => setMenu((m) => !m)} style={e.selector}>
               <Text style={[texto.datoFuerte, { color: color.texto }]}>{elegida ? `${elegida.activa ? 'Modelo activo' : 'Versión'}: ${elegida.version} (${elegida.origen})` : 'Sin versiones registradas'}</Text>
               <Text style={{ color: color.textoMedio }}>▾</Text>
@@ -115,7 +145,7 @@ export default function DesempenoModelo() {
             )}
           </View>
           <View style={{ gap: 6 }}>
-            <Rotulo>Ventana longitudinal</Rotulo>
+            <Rotulo>Periodo</Rotulo>
             <View style={e.selector}><Text style={[texto.datoFuerte, { color: color.texto }]}>Todo el seguimiento</Text><Mono>{ventana}</Mono></View>
           </View>
         </View>
@@ -123,8 +153,8 @@ export default function DesempenoModelo() {
         <View style={e.nota}>
           <IconoCandado tamano={13} color={color.primarioProfundo} />
           <Text style={[texto.dato, { color: color.texto, flex: 1 }]}>
-            <Text style={texto.datoFuerte}>Criterio prospectivo estricto: </Text>
-            Calculado estrictamente con las predicciones registradas de manera prospectiva en su momento temporal; nunca recalculado post-hoc con el modelo actual.
+            <Text style={texto.datoFuerte}>Sin trampa: </Text>
+            Nada se recalcula después con el modelo de hoy: cada cifra sale de lo que el modelo dijo entonces, antes de saber el resultado.
           </Text>
         </View>
 
@@ -133,32 +163,32 @@ export default function DesempenoModelo() {
           <Caja estilo={{ flex: 1, minWidth: 300, gap: espacio.sm }}>
             <View style={[e.fila, { justifyContent: 'space-between', alignItems: 'flex-start' }]}>
               <View style={{ flex: 1 }}>
-                <Rotulo>Matriz diagnóstica 2×2</Rotulo>
-                <Text style={[texto.seccion, { color: color.texto }]}>Desempeño Observado vs Inferencia</Text>
+                <Rotulo>Aciertos y fallos</Rotulo>
+                <Text style={[texto.seccion, { color: color.texto }]}>Lo que dijo frente a lo que pasó</Text>
               </View>
               <View style={e.cuadroN}><Mono tono={color.textoMedio}>N =</Mono><Mono tono={color.texto}>{String(total.n)}</Mono></View>
             </View>
-            <View style={[e.fila, { gap: 6 }]}><Text style={[texto.dato, { color: color.textoMedio }]}>Punto de corte probabilístico calibrado:</Text><Pastilla tono={TONO.gris} mono>{`τ ≥ ${umbral.toFixed(2)}`}</Pastilla></View>
+            <View style={[e.fila, { gap: 6 }]}><Text style={[texto.dato, { color: color.textoMedio }]}>Avisa a partir de:</Text><Pastilla tono={TONO.gris} mono>{`τ ≥ ${umbral.toFixed(2)}`}</Pastilla></View>
             <Matriz total={total} />
             <View style={[e.fila, { justifyContent: 'space-between', paddingTop: 4 }]}>
-              <View style={[e.fila, { gap: 6 }]}><View style={e.puntoVerde} /><Text style={[texto.dato, { color: color.textoMedio }]}>Casos esperados concordantes: <Mono tono={color.texto}>{total.vp + total.vn}</Mono></Text></View>
-              <Text style={[texto.dato, { color: color.textoMedio }]}>Prevalencia muestral: <Mono tono={color.texto}>{prevalencia == null ? '—' : `${(prevalencia * 100).toFixed(1)}%`}</Mono></Text>
+              <View style={[e.fila, { gap: 6 }]}><View style={e.puntoVerde} /><Text style={[texto.dato, { color: color.textoMedio }]}>Acertó en: <Mono tono={color.texto}>{total.vp + total.vn}</Mono></Text></View>
+              <Text style={[texto.dato, { color: color.textoMedio }]}>Semanas con cruce: <Mono tono={color.texto}>{prevalencia == null ? '—' : `${(prevalencia * 100).toFixed(1)}%`}</Mono></Text>
             </View>
           </Caja>
           <View style={{ flex: 1.3, minWidth: 320, gap: espacio.base }}>
             <View style={[e.fila, { gap: espacio.base, alignItems: 'stretch' }]}>
-              <Metrica rotulo="Precisión (PPV)" valor={total.precision} n={total.vp + total.fp} k={total.vp} texto="Probabilidad de agotamiento confirmado ante una alerta generada." />
-              <Metrica rotulo="Recall (Sensibilidad)" valor={total.recall} n={total.vp + total.fn} k={total.vp} texto="Capacidad de detección de casos reales de alto estrés agudo." tinta="#8C4A2B" />
+              <Metrica rotulo="De cada aviso, cuántos eran" valor={total.precision} n={total.vp + total.fp} k={total.vp} texto="Cuando el modelo avisa, con qué frecuencia esa persona sí cruzó el umbral." />
+              <Metrica rotulo="De los que cruzaron, cuántos pilló" valor={total.recall} n={total.vp + total.fn} k={total.vp} texto="Lo que más importa: dejar pasar a alguien es peor que una conversación de más." tinta="#8C4A2B" />
             </View>
             <View style={[e.fila, { gap: espacio.base, alignItems: 'stretch' }]}>
-              <Metrica rotulo="Especificidad" valor={total.especificidad} n={total.vn + total.fp} k={total.vn} texto="Preservación de ventanas estables sin sobre-alertar al psicólogo." />
+              <Metrica rotulo="De los que estaban bien, cuántos dejó en paz" valor={total.especificidad} n={total.vn + total.fp} k={total.vn} texto="Si baja, el psicólogo recibe avisos de gente que está bien." />
               <Caja estilo={{ flex: 1, minWidth: 150, gap: 6 }}>
-                <View style={[e.fila, { justifyContent: 'space-between' }]}><Rotulo>Área bajo la curva (ROC-AUC)</Rotulo><IconoInfo tamano={13} color={color.textoSuave} /></View>
+                <View style={[e.fila, { justifyContent: 'space-between' }]}><Rotulo>Capacidad de ordenar (AUC)</Rotulo><IconoInfo tamano={13} color={color.textoSuave} /></View>
                 <View style={[e.fila, { alignItems: 'baseline', gap: 8 }]}>
                   <Text style={[texto.cifra, { color: color.texto, fontFamily: MONO, fontSize: 26 }]}>{auc == null ? '—' : auc.toFixed(3)}</Text>
                   {auc != null && <Text style={[texto.datoFuerte, { color: color.primarioProfundo }]}>{auc >= 0.9 ? 'Excelente' : auc >= 0.8 ? 'Bueno' : auc >= 0.7 ? 'Aceptable' : 'Débil'}</Text>}
                 </View>
-                <Text style={[texto.dato, { color: color.textoMedio }]}>Poder discriminativo entre ventanas sintomáticas y eutímicas.</Text>
+                <Text style={[texto.dato, { color: color.textoMedio }]}>Si tomo una semana mala y una buena al azar, cuántas veces le da más riesgo a la mala. 0,5 es una moneda al aire.</Text>
                 <View style={[e.fila, { justifyContent: 'space-between' }]}><Mono>Mann-Whitney (N={total.n})</Mono><Mono tono={color.texto}>{total.vp + total.fn} +  ·  {total.vn + total.fp} −</Mono></View>
                 <View style={e.pista}><View style={[e.lleno, { width: `${Math.round((auc ?? 0) * 100)}%`, backgroundColor: color.primarioProfundo }]} /></View>
               </Caja>
@@ -171,9 +201,9 @@ export default function DesempenoModelo() {
           <Caja estilo={{ flex: 1, minWidth: 320, gap: espacio.sm }}>
             <View style={[e.fila, { justifyContent: 'space-between', alignItems: 'flex-start' }]}>
               <View style={{ flex: 1 }}>
-                <Rotulo>Dinámica temporal longitudinal</Rotulo>
-                <Text style={[texto.seccion, { color: color.texto }]}>Precisión y Recall por Semana del Estudio</Text>
-                <Text style={[texto.dato, { color: color.textoMedio }]}>Evolución prospectiva por semana objetivo. Cada punto usa solo las ventanas evaluables de esa semana.</Text>
+                <Rotulo>Semana a semana</Rotulo>
+                <Text style={[texto.seccion, { color: color.texto }]}>¿Mejora con el tiempo?</Text>
+                <Text style={[texto.dato, { color: color.textoMedio }]}>Cada punto usa solo las semanas evaluables de esa fecha, no el acumulado.</Text>
               </View>
               <View style={[e.fila, { gap: 10 }]}><Leyenda tinta={color.primarioProfundo} texto="Precisión" /><Leyenda tinta="#8C4A2B" texto="Recall" /></View>
             </View>
@@ -189,16 +219,16 @@ export default function DesempenoModelo() {
               )}
             </View>
             <View style={[e.fila, { justifyContent: 'space-between' }]}>
-              <Text style={[texto.dato, { color: color.textoMedio }]}>Delta de recall (primera → última semana): <Mono tono={color.texto}>{delta(porSemana.map((f) => f.recall))}</Mono></Text>
-              <Mono>Validación continua sin fuga de datos</Mono>
+              <Text style={[texto.dato, { color: color.textoMedio }]}>Cambio de recall, de la primera semana a la última: <Mono tono={color.texto}>{delta(porSemana.map((f) => f.recall))}</Mono></Text>
+              <Mono>sin mirar el futuro</Mono>
             </View>
           </Caja>
           <Caja estilo={{ flex: 1, minWidth: 320, gap: espacio.sm }}>
             <View style={[e.fila, { justifyContent: 'space-between', alignItems: 'flex-start' }]}>
               <View style={{ flex: 1 }}>
-                <Rotulo>Confiabilidad bayesiana</Rotulo>
-                <Text style={[texto.seccion, { color: color.texto }]}>Curva de Calibración de Probabilidades</Text>
-                <Text style={[texto.dato, { color: color.textoMedio }]}>Dispersión decil a decil: probabilidad estimada vs tasa real observada en los OLBI del viernes.</Text>
+                <Rotulo>¿Se puede creer el porcentaje?</Rotulo>
+                <Text style={[texto.seccion, { color: color.texto }]}>Lo que dijo frente a lo que ocurrió</Text>
+                <Text style={[texto.dato, { color: color.textoMedio }]}>Cuando dice «60 %», ¿cruza el umbral el 60 % de las veces? Cuanto más pegada a la línea gris, mejor.</Text>
               </View>
               <View style={e.cuadroN}><Mono tono={color.textoMedio}>Brier{'\n'}Score:</Mono><Mono tono={color.texto}>{brier == null ? '—' : brier.toFixed(3)}</Mono></View>
             </View>
@@ -226,14 +256,14 @@ export default function DesempenoModelo() {
         <Caja estilo={{ gap: espacio.sm }}>
           <View style={[e.fila, { justifyContent: 'space-between', alignItems: 'flex-start' }]}>
             <View style={{ flex: 1 }}>
-              <Rotulo>{`Versiones registradas · ${tarea === 'nowcast' ? 'Nowcast' : 'Pronóstico'}`}</Rotulo>
-              <Text style={[texto.seccion, { color: color.texto }]}>Comparativa de Arquitecturas</Text>
+              <Rotulo>{tarea === 'nowcast' ? 'El viernes de esta semana' : 'El viernes de la próxima'}</Rotulo>
+              <Text style={[texto.seccion, { color: color.texto }]}>Comparar versiones</Text>
             </View>
-            <Pastilla tono={TONO.verdeSuave} icono={<IconoEscudoCheck tamano={12} color={color.primarioProfundo} />}>{`Métricas en vivo sobre ${todas.filter((t) => t.semana === null).reduce((s, t) => s + t.n, 0)} ventanas evaluables`}</Pastilla>
+            <Pastilla tono={TONO.verdeSuave} icono={<IconoEscudoCheck tamano={12} color={color.primarioProfundo} />}>{`Medido sobre ${todas.filter((t) => t.semana === null).reduce((s, t) => s + t.n, 0)} semanas evaluables`}</Pastilla>
           </View>
           <View style={e.tablaCab}>
-            {[['Versión del modelo', 2.2], ['N entrenamiento', 1], ['Precisión (PPV)', 1], ['Recall', 0.8], ['AUC-ROC', 0.8], ['F1-score', 0.8], ['Tasa FP', 0.8], ['', 1]].map(([h, f]) => (
-              <Text key={String(h)} style={[texto.etiqueta, { color: color.textoMedio, fontSize: 9.5, flex: Number(f), textAlign: h === 'Versión del modelo' ? 'left' : 'right' }]}>{String(h).toUpperCase()}</Text>
+            {[['Versión', 2.2], ['Entrenada con', 1], ['Precisión', 1], ['Recall', 0.8], ['AUC', 0.8], ['F1', 0.8], ['Falsas alarmas', 1], ['', 1]].map(([h, f]) => (
+              <Text key={String(h)} style={[texto.etiqueta, { color: color.textoMedio, fontSize: 9.5, flex: Number(f), textAlign: h === 'Versión' ? 'left' : 'right' }]}>{String(h).toUpperCase()}</Text>
             ))}
           </View>
           {deTarea.length === 0 && <Text style={[texto.apoyo, { color: color.textoMedio, paddingVertical: 10 }]}>Sin versiones registradas para esta tarea.</Text>}
@@ -272,9 +302,9 @@ export default function DesempenoModelo() {
           {elegida && (
             <View style={[e.panelGris, { flexDirection: 'row', alignItems: 'center', gap: espacio.md }]}>
               <View style={{ flex: 1, gap: 2 }}>
-                <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Ficha de la versión {elegida.version}</Text>
+                <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Detalle de la versión {elegida.version}</Text>
                 <Text style={[texto.dato, { color: color.textoMedio }]}>
-                  Origen: {elegida.origen} · Umbral de decisión τ = {Number(elegida.umbral_decision).toFixed(2)} · Entrenada: {elegida.entrenada_en ? new Date(elegida.entrenada_en).toLocaleDateString('es-PE') : '—'} · Visible para: {elegida.visible_para?.join(', ') || '—'}
+                  Origen: {elegida.origen} · Avisa a partir de {Number(elegida.umbral_decision).toFixed(2)} · Entrenada: {elegida.entrenada_en ? new Date(elegida.entrenada_en).toLocaleDateString('es-PE') : '—'} · Visible para: {elegida.visible_para?.join(', ') || '—'}
                   {elegida.notas ? `\n${elegida.notas}` : ''}
                 </Text>
               </View>
@@ -283,7 +313,7 @@ export default function DesempenoModelo() {
           )}
         </Caja>
         <View style={[e.fila, { justifyContent: 'space-between' }]}>
-          <Text style={[texto.dato, { color: color.textoSuave, flex: 1, minWidth: 280 }]}>Validación prospectiva para el protocolo ESP-009. Solo predicciones registradas en su momento (RN-009-05); las ventanas sin OLBI objetivo no cuentan.</Text>
+          <Text style={[texto.dato, { color: color.textoSuave, flex: 1, minWidth: 280 }]}>Solo cuentan las predicciones que el modelo registró en su momento (RN-009-05). Una semana sin OLBI del viernes no se puede evaluar y queda fuera.</Text>
           <Mono tono={color.textoSuave}>Fuente: predicciones_evaluables · desempeno_modelo · calibracion_modelo · roc_auc_modelo()</Mono>
         </View>
       </ScrollView>
@@ -364,6 +394,9 @@ function num(x: unknown): number | null { const n = Number(x); return x == null 
 function pct(x: number | null) { return x == null ? '—' : `${(x * 100).toFixed(1)}%` }
 
 const e = StyleSheet.create({
+  veredicto: { flexDirection: 'row', alignItems: 'center', gap: espacio.base, flexWrap: 'wrap', borderWidth: 1, borderRadius: radio.md, padding: espacio.base },
+  cifraGrande: { ...texto.cifra, fontFamily: MONO, fontSize: 40, lineHeight: 44 },
+  escudo: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#DDF3EA', alignItems: 'center', justifyContent: 'center' },
   contenido: { padding: espacio.lg, gap: espacio.lg, width: '100%', maxWidth: 1100, alignSelf: 'center' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap' },
   notaCohorte: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#F5F4F1', borderRadius: radio.md, padding: 12, maxWidth: 300 },
