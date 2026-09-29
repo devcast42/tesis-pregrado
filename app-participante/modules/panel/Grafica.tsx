@@ -128,7 +128,11 @@ export function GraficaLinea({
   }
 
   function cy(valor: number): number {
-    return MARGEN.top + ph - ((valor - minVal) / rango) * ph
+    // Acotado al área de trazado. Sin esto, un valor por debajo de `yMin`
+    // —precisión cerca de 0 en una gráfica que empezaba en 40— se dibujaba
+    // fuera de la caja, encima del texto que hubiera debajo.
+    const y = MARGEN.top + ph - ((valor - minVal) / rango) * ph
+    return Math.max(MARGEN.top, Math.min(MARGEN.top + ph, y))
   }
 
   // Construir polylines por tramo: un hueco (y nulo) corta la línea en lugar

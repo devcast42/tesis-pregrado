@@ -208,13 +208,15 @@ export default function DesempenoModelo() {
               <View style={[e.fila, { gap: 10 }]}><Leyenda tinta={color.primarioProfundo} texto="Precisión" /><Leyenda tinta="#8C4A2B" texto="Recall" /></View>
             </View>
             <View style={e.panelGris}>
+              {/* El eje va de 0 a 100: la precisión de un modelo con pocos
+                  positivos vive cerca de cero, y empezando en 40 se salía. */}
               {porSemana.length === 0 ? <Vacio /> : (
                 <GraficaLinea
                   series={[
                     { etiqueta: 'Precisión', color: color.primarioProfundo, puntos: porSemana.map((f) => ({ x: f.semana!, y: f.precision == null ? null : Number(f.precision) * 100 })) },
                     { etiqueta: 'Recall', color: '#8C4A2B', puntos: porSemana.map((f) => ({ x: f.semana!, y: f.recall == null ? null : Number(f.recall) * 100 })) },
                   ]}
-                  yMin={40} yMax={100} alto={200} sinLeyenda todasLasEtiquetasX etiquetaX={(x) => `Sem ${semanaCorta(x)}`}
+                  yMin={0} yMax={100} alto={200} sinLeyenda todasLasEtiquetasX etiquetaX={(x) => `Sem ${semanaCorta(x)}`}
                 />
               )}
             </View>
