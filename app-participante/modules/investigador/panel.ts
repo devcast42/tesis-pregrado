@@ -294,7 +294,13 @@ export async function exportaciones(): Promise<ExportacionRegistrada[]> {
 
 export type CitaEstudio = {
   id: string; participante_id: string; codigo_anonimo: string; organizacion_id: string; derivacion_id: string; psicologo_id: string
-  propuesta_para: string; estado: 'solicitada' | 'confirmada' | 'cancelada' | 'realizada'; cancelada_por: string | null; creada_en: string; actualizada_en: string
+  propuesta_para: string
+  /** El enum de la base es `atendida`, no `realizada`. El tipo decía la
+   *  segunda y el `as CitaEstudio[]` lo tapaba: el desglose de Derivaciones
+   *  contaba cero sesiones hechas habiendo dos, y los porcentajes no sumaban
+   *  100 porque un estado entero quedaba fuera del reparto. */
+  estado: 'solicitada' | 'confirmada' | 'cancelada' | 'atendida'
+  cancelada_por: string | null; creada_en: string; actualizada_en: string
 }
 /** Citas sin el motivo escrito (§9.4): el hecho y su estado. */
 export async function citasEstudio(filtro?: FiltroGlobal): Promise<CitaEstudio[]> {

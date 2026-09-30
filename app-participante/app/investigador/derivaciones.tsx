@@ -24,10 +24,10 @@ const MONO = Platform.OS === 'web' ? 'ui-monospace, SFMono-Regular, Menlo, monos
 
 /** Límites del protocolo por tramo, en días (ESP-009 §9.1: pendientes del asesor). */
 const TRAMOS = [
-  { clave: 'dias_a_derivacion', titulo: 'Detección → Derivación', limite: 1 },
-  { clave: 'dias_a_cita', titulo: 'Derivación → Cita Confirmada', limite: 2 },
-  { clave: 'dias_cita_a_sesion', titulo: 'Cita → Primera Sesión', limite: 7 },
-  { clave: 'dias_a_informe', titulo: 'Sesión → Informe Aprobado', limite: 5 },
+  { clave: 'dias_a_derivacion', titulo: 'Detectar y derivar', apoyo: 'del aviso del modelo a tener psicólogo', limite: 1 },
+  { clave: 'dias_a_cita', titulo: 'Conseguir cita', apoyo: 'de la derivación a la cita confirmada', limite: 2 },
+  { clave: 'dias_cita_a_sesion', titulo: 'Llegar a la sesión', apoyo: 'de la cita confirmada a hablar', limite: 7 },
+  { clave: 'dias_a_informe', titulo: 'Cerrar el informe', apoyo: 'de la sesión al informe aprobado', limite: 5 },
 ] as const
 type ClaveTramo = (typeof TRAMOS)[number]['clave']
 
@@ -64,7 +64,7 @@ export default function Derivaciones() {
     const valores = casos.map((c) => c[t.clave]).filter((v): v is number => v != null).map(Number)
     return { ...t, mediana: mediana(valores), n: valores.length, fuera: valores.filter((v) => v > t.limite).length }
   })
-  const citasPorEstado = { realizada: 0, confirmada: 0, cancelada: 0, solicitada: 0 } as Record<CitaEstudio['estado'], number>
+  const citasPorEstado = { atendida: 0, confirmada: 0, cancelada: 0, solicitada: 0 } as Record<CitaEstudio['estado'], number>
   for (const c of citas) citasPorEstado[c.estado] = (citasPorEstado[c.estado] ?? 0) + 1
   const canceladas = citasPorEstado.cancelada, totalCitas = citas.length
   const porEmpresa = Object.entries(casos.reduce<Record<string, number>>((m, c) => ({ ...m, [c.organizacion_id]: (m[c.organizacion_id] ?? 0) + 1 }), {})).sort((a, b) => b[1] - a[1])
@@ -76,40 +76,37 @@ export default function Derivaciones() {
           <View style={e.alerta}>
             <View style={e.alertaIcono}><IconoLupa tamano={16} color="#8C4A2B" /></View>
             <View style={{ flex: 1, gap: 2, minWidth: 240 }}>
-              <View style={[e.fila, { gap: 8 }]}><Text style={[texto.datoFuerte, { color: '#8C4A2B', letterSpacing: 0.6 }]}>CUELLO DE BOTELLA OPERATIVO DETECTADO</Text><View style={e.pastillaOscura}><Text style={[texto.datoFuerte, { color: '#FFFFFF', fontSize: 10 }]}>{sinPsicologo.length} {sinPsicologo.length === 1 ? 'caso' : 'casos'} en cola activa</Text></View></View>
+              <View style={[e.fila, { gap: 8 }]}><Text style={[texto.datoFuerte, { color: '#8C4A2B', letterSpacing: 0.6 }]}>HAY CASOS SIN PSICÓLOGO</Text><View style={e.pastillaOscura}><Text style={[texto.datoFuerte, { color: '#FFFFFF', fontSize: 10 }]}>{sinPsicologo.length} {sinPsicologo.length === 1 ? 'caso' : 'casos'}</Text></View></View>
               <Text style={[texto.dato, { color: color.texto }]}>
-                {sinPsicologo.length === 1 ? 'Derivación' : 'Derivaciones'} <Mono tono="#8C4A2B">{sinPsicologo.map((c) => c.codigo_anonimo).join(', ')}</Mono> sin psicólogo asignado: no había ningún profesional activo al detectar. Requiere asignación manual.
+                {sinPsicologo.length === 1 ? 'Derivación' : 'Derivaciones'} <Mono tono="#8C4A2B">{sinPsicologo.map((c) => c.codigo_anonimo).join(', ')}</Mono> no tienen a quién acudir: no había ningún psicólogo activo cuando se detectaron. Hay que asignarlos a mano.
               </Text>
             </View>
             <Pressable onPress={() => setMenu({ derivaciones: sinPsicologo.map((c) => c.derivacion_id), titulo: sinPsicologo.map((c) => c.codigo_anonimo).join(', ') })} style={e.botonTierra}>
-              <IconoPersona tamano={13} color="#FFFFFF" /><Text style={[texto.datoFuerte, { color: '#FFFFFF' }]}>Asignar profesional ahora</Text>
+              <IconoPersona tamano={13} color="#FFFFFF" /><Text style={[texto.datoFuerte, { color: '#FFFFFF' }]}>Asignar psicólogo</Text>
             </Pressable>
           </View>
         )}
 
-        <Encabezado eyebrow="Circuito de salvaguarda ética · SLA y monitoreo temporal   /   Protocolo ESP-009" titulo="Gestión de Derivaciones y Tiempos del Circuito"
-          subtitulo="Auditoría de latencias operativas desde la detección de alerta hasta el cierre del informe clínico. Se resguarda anonimato institucional sin exponer contenido psicoterapéutico."
-          derecha={(
-            <View style={[e.fila, { gap: 8 }]}>
-              <Cuadro rotulo="Casos totales" valor={casos.length} />
-              <Cuadro rotulo="En circuito" valor={abiertas.length} />
-              <Cuadro rotulo="Informes OK" valor={conInforme} />
-            </View>
-          )} />
+        <Encabezado eyebrow="Circuito de apoyo · ESP-009" titulo="Derivaciones"
+          subtitulo={`Cuánto tarda el sistema en atender a quien detecta. ${casos.length} ${casos.length === 1 ? 'caso' : 'casos'} · ${abiertas.length} sin cerrar · ${conInforme} con informe aprobado.`} />
 
         <View style={[e.fila, { gap: espacio.sm, alignItems: 'stretch' }]}>
           {estadisticas.map((t, i) => (
             <View key={t.clave} style={[e.tramo, { borderTopColor: t.fuera ? '#8C4A2B' : color.primarioProfundo }]}>
-              <View style={[e.fila, { justifyContent: 'space-between' }]}><Rotulo>{`Tramo ${i + 1}`}</Rotulo><Mono>Límite SLA: {t.limite.toFixed(1)} d</Mono></View>
-              <Text style={[texto.datoFuerte, { color: color.texto }]}>{t.titulo}</Text>
+              <View style={[e.fila, { justifyContent: 'space-between' }]}>
+                <Text style={[texto.datoFuerte, { color: color.texto }]}>{`${i + 1}. ${t.titulo}`}</Text>
+                <Mono>{`meta: ${t.limite} d`}</Mono>
+              </View>
+              <Text style={[texto.dato, { color: color.textoMedio }]}>{t.apoyo}</Text>
               <View style={[e.fila, { alignItems: 'baseline', gap: 6 }]}>
-                <Text style={[texto.cifra, { color: color.texto, fontFamily: MONO, fontSize: 24 }]}>{t.mediana == null ? '—' : t.mediana.toFixed(1)}</Text>
-                <Text style={[texto.dato, { color: color.textoMedio }]}>días{t.mediana != null ? ` (${(t.mediana * 24).toFixed(1)} hrs)` : ''}</Text>
+                <Text style={[texto.cifra, { color: t.fuera ? '#8C4A2B' : color.texto, fontFamily: MONO, fontSize: 24 }]}>{t.mediana == null ? '—' : t.mediana.toFixed(1)}</Text>
+                <Text style={[texto.dato, { color: color.textoMedio }]}>{t.mediana == null ? 'sin casos todavía' : 'días de mediana'}</Text>
               </View>
-              <View style={[e.fila, { gap: 6 }]}>
-                <Pastilla tono={TONO.gris} mono>{`n = ${t.n}`}</Pastilla>
-                <Pastilla tono={t.fuera ? TONO.tierraSuave : TONO.verdeSuave}>{t.fuera ? `⚠ ${t.fuera} fuera de rango` : '✓ 0 fuera de rango'}</Pastilla>
-              </View>
+              {t.n > 0 && (
+                <Text style={[texto.dato, { color: t.fuera ? '#8C4A2B' : color.textoMedio }]}>
+                  {t.fuera ? `${t.fuera} de ${t.n} pasaron de ${t.limite} d` : `${t.n} ${t.n === 1 ? 'caso, dentro' : 'casos, todos dentro'} de la meta`}
+                </Text>
+              )}
             </View>
           ))}
         </View>
@@ -118,12 +115,12 @@ export default function Derivaciones() {
           <View style={{ flex: 2, minWidth: 420, gap: espacio.base }}>
             <Caja estilo={{ flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap', padding: 10 }}>
               <View style={e.segmentos}>
-                <Pressable onPress={() => setVista('caso')} style={[e.segmento, vista === 'caso' && e.segmentoOn]}><IconoLupa tamano={13} color={vista === 'caso' ? color.primarioProfundo : color.textoMedio} /><Text style={[texto.datoFuerte, { color: vista === 'caso' ? color.primarioProfundo : color.textoMedio }]}>Vista por Caso</Text><Pastilla tono={vista === 'caso' ? TONO.verde : TONO.gris}>{String(casos.length)}</Pastilla></Pressable>
-                <Pressable onPress={() => setVista('psicologo')} style={[e.segmento, vista === 'psicologo' && e.segmentoOn]}><IconoEquipo tamano={13} color={vista === 'psicologo' ? color.primarioProfundo : color.textoMedio} /><Text style={[texto.datoFuerte, { color: vista === 'psicologo' ? color.primarioProfundo : color.textoMedio }]}>Vista por Psicólogo</Text><Pastilla tono={vista === 'psicologo' ? TONO.verde : TONO.gris}>{String(psicologos.filter((p) => p.activo).length)}</Pastilla></Pressable>
+                <Pressable onPress={() => setVista('caso')} style={[e.segmento, vista === 'caso' && e.segmentoOn]}><IconoLupa tamano={13} color={vista === 'caso' ? color.primarioProfundo : color.textoMedio} /><Text style={[texto.datoFuerte, { color: vista === 'caso' ? color.primarioProfundo : color.textoMedio }]}>Por caso</Text><Pastilla tono={vista === 'caso' ? TONO.verde : TONO.gris}>{String(casos.length)}</Pastilla></Pressable>
+                <Pressable onPress={() => setVista('psicologo')} style={[e.segmento, vista === 'psicologo' && e.segmentoOn]}><IconoEquipo tamano={13} color={vista === 'psicologo' ? color.primarioProfundo : color.textoMedio} /><Text style={[texto.datoFuerte, { color: vista === 'psicologo' ? color.primarioProfundo : color.textoMedio }]}>Por psicólogo</Text><Pastilla tono={vista === 'psicologo' ? TONO.verde : TONO.gris}>{String(psicologos.filter((p) => p.activo).length)}</Pastilla></Pressable>
               </View>
               <View style={[e.buscador, { flex: 1, minWidth: 160 }]}>
                 <IconoLupa tamano={13} color={color.textoSuave} />
-                <TextInput value={busqueda} onChangeText={(t) => { setBusqueda(t); setPagina(0) }} placeholder="Filtrar código P-XXX…" placeholderTextColor={color.textoSuave} style={[texto.dato, { flex: 1, color: color.texto, fontFamily: MONO, outlineStyle: 'none' } as any]} />
+                <TextInput value={busqueda} onChangeText={(t) => { setBusqueda(t); setPagina(0) }} placeholder="Buscar código…" placeholderTextColor={color.textoSuave} style={[texto.dato, { flex: 1, color: color.texto, fontFamily: MONO, outlineStyle: 'none' } as any]} />
               </View>
             </Caja>
 
@@ -131,31 +128,35 @@ export default function Derivaciones() {
               <Caja estilo={{ gap: 4 }}>
                 <View style={[e.fila, { justifyContent: 'space-between', alignItems: 'flex-start' }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[texto.seccion, { color: color.texto }]}>Derivaciones Activas y Latencias por Tramo</Text>
-                    <Text style={[texto.dato, { color: color.textoMedio }]}>SLA de contención clínica inmediata. Tiempos señalizados en tierra indican demoras operativas.</Text>
+                    <Text style={[texto.seccion, { color: color.texto }]}>Cada caso, paso a paso</Text>
+                    <Text style={[texto.dato, { color: color.textoMedio }]}>En naranja, los pasos que tardaron más de lo previsto. Pulsa un caso para abrir su ficha.</Text>
                   </View>
-                  <Pastilla tono={TONO.gris} mono>{`${paginados.length} de ${filtrados.length} registros`}</Pastilla>
+                  <Pastilla tono={TONO.gris} mono>{`${paginados.length} de ${filtrados.length}`}</Pastilla>
                 </View>
                 <View style={e.tablaCab}>
-                  {[['Código', 1], ['Empresa', 1.2], ['Psicólogo asignado', 1.4], ['Origen', 1], ['Det. → Der.', 0.8], ['Der. → Cita', 0.8], ['Cita → Ses.', 0.8], ['Ses. → Inf.', 0.8], ['Estado', 1]].map(([h, f]) => (
+                  {[['Caso', 1.2], ['Empresa', 1.2], ['Psicólogo', 1.4], ['Derivar', 0.8], ['Cita', 0.8], ['Sesión', 0.8], ['Informe', 0.8], ['Estado', 0.9]].map(([h, f]) => (
                     <Text key={String(h)} style={[texto.etiqueta, { color: color.textoMedio, fontSize: 9.5, flex: Number(f) }]}>{String(h).toUpperCase()}</Text>
                   ))}
                 </View>
                 {paginados.length === 0 && <Text style={[texto.apoyo, { color: color.textoMedio, paddingVertical: 12 }]}>{busqueda ? 'Ningún caso coincide con la búsqueda.' : 'Sin derivaciones en este corte.'}</Text>}
                 {paginados.map((c) => (
                   <Pressable key={c.derivacion_id} onPress={() => router.push(conFiltro(`/investigador/participante/${c.participante_id}`, filtro) as never)} style={e.tablaFila}>
-                    <View style={{ flex: 1 }}><Codigo>{c.codigo_anonimo}</Codigo></View>
+                    {/* El origen deja de ser columna: es un rasgo del caso y va
+                        bajo su código, donde se lee sin ocupar una cabecera. */}
+                    <View style={{ flex: 1.2, gap: 1 }}>
+                      <Codigo>{c.codigo_anonimo}</Codigo>
+                      <Mono>{c.origen === 'solicitud' ? 'la pidió' : 'la detectó el modelo'}</Mono>
+                    </View>
                     <Text style={[texto.dato, { color: color.texto, flex: 1.2 }]}>{nombreEmpresa(c.organizacion_id)}</Text>
                     <View style={{ flex: 1.4 }}>
                       {c.psicologo ? <Text style={[texto.dato, { color: color.texto }]}>{c.psicologo}</Text>
-                        : <Pressable onPress={() => setMenu({ derivaciones: [c.derivacion_id], titulo: c.codigo_anonimo })}><Text style={[texto.datoFuerte, { color: '#8C4A2B' }]}>Sin asignar · Asignar</Text></Pressable>}
+                        : <Pressable onPress={() => setMenu({ derivaciones: [c.derivacion_id], titulo: c.codigo_anonimo })}><Text style={[texto.datoFuerte, { color: '#8C4A2B' }]}>Sin asignar · asignar</Text></Pressable>}
                     </View>
-                    <View style={{ flex: 1 }}><Pastilla tono={c.origen === 'solicitud' ? TONO.verdeSuave : TONO.gris}>{c.origen === 'solicitud' ? 'VOLUNTARIA' : 'ALGORITMO'}</Pastilla></View>
                     <Chip dias={c.dias_a_derivacion} limite={1} pendienteDesde={c.origen === 'solicitud' ? undefined : c.detectado_en} hito={c.derivado_en} cerrada={!!c.cerrada_en} />
                     <Chip dias={c.dias_a_cita} limite={2} pendienteDesde={c.derivado_en} hito={c.cita_confirmada_en} cerrada={!!c.cerrada_en} />
                     <Chip dias={c.dias_cita_a_sesion} limite={7} pendienteDesde={c.cita_confirmada_en} hito={c.primera_sesion_en} cerrada={!!c.cerrada_en} />
                     <Chip dias={c.dias_a_informe} limite={5} pendienteDesde={c.primera_sesion_en} hito={c.informe_aprobado_en} cerrada={!!c.cerrada_en} />
-                    <View style={[e.fila, { flex: 1, gap: 5 }]}><View style={[e.punto, { backgroundColor: c.cerrada_en ? '#BDB8B1' : color.primarioProfundo }]} /><Text style={[texto.dato, { color: color.texto }]}>{c.cerrada_en ? 'Cerrada' : 'Abierta'}</Text></View>
+                    <View style={[e.fila, { flex: 0.9, gap: 5 }]}><View style={[e.punto, { backgroundColor: c.cerrada_en ? '#BDB8B1' : color.primarioProfundo }]} /><Text style={[texto.dato, { color: color.texto }]}>{c.cerrada_en ? 'Cerrada' : 'Abierta'}</Text></View>
                   </Pressable>
                 ))}
                 <View style={[e.fila, { justifyContent: 'space-between', paddingTop: 8 }]}>
@@ -184,21 +185,21 @@ export default function Derivaciones() {
                           <View style={e.avatar}><Text style={[texto.datoFuerte, { color: color.primarioProfundo }]}>{iniciales(p.nombre)}</Text></View>
                           <View><Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{p.nombre}</Text><Mono>{/^cpsp/i.test(p.colegiatura) ? p.colegiatura : `CPsP ${p.colegiatura}`}</Mono></View>
                         </View>
-                        {abiertos.length > 0 && <BotonChico onPress={() => setMenu({ derivaciones: abiertos.map((c) => c.derivacion_id), titulo: `${abiertos.length} casos`, actualId: p.id, actualNombre: p.nombre })} icono={<IconoEquipo tamano={13} color={color.texto} />}>Reasignar todos sus casos</BotonChico>}
+                        {abiertos.length > 0 && <BotonChico onPress={() => setMenu({ derivaciones: abiertos.map((c) => c.derivacion_id), titulo: `${abiertos.length} casos`, actualId: p.id, actualNombre: p.nombre })} icono={<IconoEquipo tamano={13} color={color.texto} />}>Pasar sus casos a otro</BotonChico>}
                       </View>
                       <View style={[e.fila, { gap: espacio.base }]}>
-                        <Dato rotulo="Casos abiertos" valor={String(abiertos.length)} nota={abiertos.length > 4 ? 'capacidad elevada (> 4)' : 'carga óptima (≤ 4)'} tinta={abiertos.length > 4 ? '#8C4A2B' : color.primarioProfundo} />
-                        <Dato rotulo="Mediana a 1ª sesión" valor={med == null ? '—' : `${med.toFixed(1)} d`} nota={`n = ${suyos.filter((c) => c.dias_a_sesion != null).length}`} tinta={med != null && med > 7 ? '#8C4A2B' : color.texto} />
-                        <Dato rotulo="Citas en el corte" valor={String(sus.length)} nota={`${cuenta('realizada')} realizadas · ${cuenta('cancelada')} canceladas`} />
+                        <Dato rotulo="Casos abiertos" valor={String(abiertos.length)} nota={abiertos.length > 4 ? 'conviene repartir' : 'carga razonable'} tinta={abiertos.length > 4 ? '#8C4A2B' : color.primarioProfundo} />
+                        <Dato rotulo="Tarda en atender" valor={med == null ? '—' : `${med.toFixed(1)} d`} nota={`n = ${suyos.filter((c) => c.dias_a_sesion != null).length}`} tinta={med != null && med > 7 ? '#8C4A2B' : color.texto} />
+                        <Dato rotulo="Citas" valor={String(sus.length)} nota={`${cuenta('atendida')} hechas · ${cuenta('cancelada')} canceladas`} />
                       </View>
                       {sus.length > 0 && (
                         <View style={e.barraSeg}>
-                          {([['realizada', color.primarioProfundo], ['confirmada', '#A8DFCF'], ['solicitada', '#E4E1DC'], ['cancelada', '#8C4A2B']] as const).map(([k, c]) => cuenta(k) > 0 && <View key={k} style={{ flex: cuenta(k), backgroundColor: c }} />)}
+                          {([['atendida', color.primarioProfundo], ['confirmada', '#A8DFCF'], ['solicitada', '#E4E1DC'], ['cancelada', '#8C4A2B']] as const).map(([k, c]) => cuenta(k) > 0 && <View key={k} style={{ flex: cuenta(k), backgroundColor: c }} />)}
                         </View>
                       )}
                       {abiertos.length > 0 && (
                         <View style={{ gap: 4 }}>
-                          <Rotulo>Casos abiertos más antiguos</Rotulo>
+                          <Rotulo>Los que llevan más tiempo abiertos</Rotulo>
                           {abiertos.slice(0, 4).map((c) => (
                             <Pressable key={c.derivacion_id} onPress={() => router.push(conFiltro(`/investigador/participante/${c.participante_id}`, filtro) as never)} style={[e.fila, { justifyContent: 'space-between', paddingVertical: 4 }]}>
                               <View style={[e.fila, { gap: 8 }]}><Codigo>{c.codigo_anonimo}</Codigo><Text style={[texto.dato, { color: color.textoMedio }]}>{nombreEmpresa(c.organizacion_id)}</Text></View>
@@ -210,7 +211,7 @@ export default function Derivaciones() {
                     </Caja>
                   )
                 })}
-                {psicologos.filter((p) => p.activo).length === 0 && <Caja><Text style={[texto.apoyo, { color: '#8C4A2B' }]}>No hay psicólogos activos: las detecciones nuevas quedarán sin asignar.</Text></Caja>}
+                {psicologos.filter((p) => p.activo).length === 0 && <Caja><Text style={[texto.apoyo, { color: '#8C4A2B' }]}>No hay ningún psicólogo activo: quien se detecte a partir de ahora se quedará sin asignar.</Text></Caja>}
               </View>
             )}
           </View>
@@ -219,18 +220,18 @@ export default function Derivaciones() {
           <View style={{ flex: 1, minWidth: 260, gap: espacio.base }}>
             <Caja estilo={{ gap: espacio.sm }}>
               <View style={[e.fila, { justifyContent: 'space-between', alignItems: 'flex-start' }]}>
-                <View style={{ flex: 1 }}><Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Control de Citas Agendadas</Text><Text style={[texto.dato, { color: color.textoMedio }]}>Tasa de ausentismo y efectividad en cohortes</Text></View>
+                <View style={{ flex: 1 }}><Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Citas</Text><Text style={[texto.dato, { color: color.textoMedio }]}>Cuántas se cancelan y cuántas llegan a hacerse</Text></View>
                 <Pastilla tono={TONO.gris} mono>Todo el seguimiento</Pastilla>
               </View>
               <View style={[e.panelGris, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
                 <View>
-                  <Rotulo>Tasa de cancelación total</Rotulo>
+                  <Rotulo>Se cancelaron</Rotulo>
                   <View style={[e.fila, { alignItems: 'baseline', gap: 6 }]}><Text style={[texto.cifra, { color: color.texto, fontFamily: MONO, fontSize: 26 }]}>{totalCitas ? `${((canceladas / totalCitas) * 100).toFixed(1)}%` : '—'}</Text><Mono>({canceladas} / {totalCitas} citas)</Mono></View>
                 </View>
                 <View style={e.anillo}><Text style={[texto.datoFuerte, { color: color.primarioProfundo }]}>{totalCitas}</Text></View>
               </View>
-              <Rotulo>Desglose operativo de citas</Rotulo>
-              {([['realizada', 'Sesiones Realizadas', color.primarioProfundo], ['confirmada', 'Confirmadas / En Agenda', '#A8DFCF'], ['solicitada', 'Solicitadas sin confirmar', '#E4E1DC'], ['cancelada', 'Canceladas', '#8C4A2B']] as const).map(([k, t, c]) => (
+              <Rotulo>En qué acabaron</Rotulo>
+              {([['atendida', 'Se hicieron', color.primarioProfundo], ['confirmada', 'Confirmadas, aún por hacer', '#A8DFCF'], ['solicitada', 'Pedidas, sin confirmar', '#E4E1DC'], ['cancelada', 'Canceladas', '#8C4A2B']] as const).map(([k, t, c]) => (
                 <View key={k} style={[e.filaCita]}>
                   <View style={[e.punto, { backgroundColor: c }]} />
                   <Text style={[texto.dato, { color: color.texto, flex: 1 }]}>{t}</Text>
@@ -239,12 +240,12 @@ export default function Derivaciones() {
                 </View>
               ))}
               <View style={e.panelGris}>
-                <View style={[e.fila, { gap: 6 }]}><IconoEscudoCheck tamano={13} color={color.primarioProfundo} /><Text style={[texto.datoFuerte, { color: color.texto }]}>Regla de Resguardo por Inasistencia</Text></View>
+                <View style={[e.fila, { gap: 6 }]}><IconoEscudoCheck tamano={13} color={color.primarioProfundo} /><Text style={[texto.datoFuerte, { color: color.texto }]}>Si alguien cancela</Text></View>
                 <Text style={[texto.dato, { color: color.textoMedio }]}>Tras una cancelación, el participante puede pedir otra cita cuando quiera desde la app; el sistema no insiste ni avisa al empleador.</Text>
               </View>
             </Caja>
             <Caja estilo={{ gap: 8 }}>
-              <View style={[e.fila, { justifyContent: 'space-between' }]}><Rotulo>Derivaciones por empresa</Rotulo><Mono>{porEmpresa.length} {porEmpresa.length === 1 ? 'centro' : 'centros'}</Mono></View>
+              <View style={[e.fila, { justifyContent: 'space-between' }]}><Rotulo>Casos por empresa</Rotulo><Mono>{porEmpresa.length} {porEmpresa.length === 1 ? 'centro' : 'centros'}</Mono></View>
               {porEmpresa.map(([id, n]) => (
                 <View key={id} style={{ gap: 3 }}>
                   <View style={[e.fila, { justifyContent: 'space-between' }]}><Text style={[texto.dato, { color: color.texto }]}>{nombreEmpresa(id)}</Text><Mono>{n} casos ({casos.length ? Math.round((n / casos.length) * 100) : 0}%)</Mono></View>
@@ -280,9 +281,6 @@ function Chip({ dias, limite, pendienteDesde, hito, cerrada }: { dias: number | 
   return <View style={{ flex: 0.8 }}><View style={[e.chip, { backgroundColor: 'transparent' }]}><Text style={[texto.dato, { color: color.textoSuave }]}>–</Text></View></View>
 }
 
-function Cuadro({ rotulo, valor }: { rotulo: string; valor: number }) {
-  return <View style={e.cuadro}><Text style={[texto.etiqueta, { color: color.textoMedio, fontSize: 9, textAlign: 'center' }]}>{rotulo.toUpperCase()}</Text><Text style={[texto.cifra, { color: color.texto, fontFamily: MONO, fontSize: 18, textAlign: 'center' }]}>{valor}</Text></View>
-}
 function Dato({ rotulo, valor, nota, tinta = color.texto }: { rotulo: string; valor: string; nota?: string; tinta?: string }) {
   return <View style={{ minWidth: 120 }}><Rotulo>{rotulo}</Rotulo><Text style={[texto.cifra, { color: tinta, fontFamily: MONO, fontSize: 20 }]}>{valor}</Text>{nota && <Text style={[texto.dato, { color: color.textoMedio }]}>{nota}</Text>}</View>
 }
@@ -294,7 +292,6 @@ const e = StyleSheet.create({
   alertaIcono: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#F3DDD2', alignItems: 'center', justifyContent: 'center' },
   pastillaOscura: { backgroundColor: '#8C4A2B', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
   botonTierra: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#8C4A2B', borderRadius: 8, paddingHorizontal: 14, height: 38 },
-  cuadro: { backgroundColor: '#F1EFEB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, minWidth: 74, gap: 2 },
   tramo: { flex: 1, minWidth: 200, backgroundColor: color.superficie, borderRadius: radio.md, borderWidth: 1, borderColor: '#EEECE8', borderTopWidth: 3, padding: espacio.md, gap: 6 },
   segmentos: { flexDirection: 'row', backgroundColor: '#F1EFEB', borderRadius: 8, padding: 3 },
   segmento: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
