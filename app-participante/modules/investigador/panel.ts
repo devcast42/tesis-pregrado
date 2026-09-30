@@ -310,6 +310,19 @@ export async function citasEstudio(filtro?: FiltroGlobal): Promise<CitaEstudio[]
   return (data ?? []) as CitaEstudio[]
 }
 
+/** Las citas de una persona, para su ficha.
+ *
+ *  `ficha_participante` no las trae: la función no es SECURITY DEFINER y
+ *  `citas` no tiene ninguna política de RLS para el investigador —solo el
+ *  participante y su psicólogo la leen—, así que el campo `cita` de la ficha
+ *  llegaba siempre en nulo y la pantalla decía «sin cita pedida» de alguien
+ *  que la tenía confirmada. La vista `citas_estudio` es la puerta que sí le
+ *  corresponde (RF-009-10), y es la que se usa aquí. */
+export async function citasDelParticipante(id: string): Promise<CitaEstudio[]> {
+  const { data } = await supabase.from('citas_estudio').select('*').eq('participante_id', id).order('propuesta_para', { ascending: false })
+  return (data ?? []) as CitaEstudio[]
+}
+
 // ------------------------------------------------------------------ Maestros
 
 export type UmbralEmpresa = { dimension: 'agotamiento' | 'desvinculacion'; a_vigilar: number; alto: number; fuente: string; actualizado_en: string }
