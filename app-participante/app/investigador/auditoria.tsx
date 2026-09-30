@@ -246,7 +246,7 @@ export default function Auditoria() {
                 <Mono tono={color.texto} tamano={12}>{v.version}</Mono>
                 <Text style={[texto.dato, { color: color.texto, flex: 1 }]}>{v.tarea} · {v.origen}</Text>
                 <Mono>τ {Number(v.umbral_decision).toFixed(2)}</Mono>
-                <Text style={[texto.dato, { color: color.textoMedio }]}>{v.entrenada_en ? new Date(v.entrenada_en).toLocaleDateString('es-PE') : '—'}</Text>
+                <Text style={[texto.dato, { color: color.textoMedio }]}>{v.entrenado_en ? new Date(v.entrenado_en).toLocaleDateString('es-PE') : '—'}</Text>
                 {v.activa ? <Pastilla tono={TONO.verde}>Activa</Pastilla> : <Pastilla tono={TONO.gris}>Registrada</Pastilla>}
               </View>
             ))}

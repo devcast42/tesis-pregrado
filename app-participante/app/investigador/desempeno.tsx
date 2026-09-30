@@ -286,7 +286,7 @@ export default function DesempenoModelo() {
                     <Mono tono={color.texto} tamano={12}>{v.version}</Mono>
                     {v.activa ? <Pastilla tono={TONO.verde}>ACTIVO</Pastilla> : <Pastilla tono={TONO.ambar}>CANDIDATO</Pastilla>}
                   </View>
-                  <Text style={[texto.dato, { color: color.textoMedio, paddingLeft: 16 }]}>{v.notas ?? v.origen}</Text>
+                  <Text style={[texto.dato, { color: color.textoMedio, paddingLeft: 16 }]}>{v.origen}</Text>
                 </View>
                 <Mono tono={color.texto}>{m.n != null ? `${m.n} vtas (entren.)` : t ? `${t.n} vtas (vivo)` : '—'}</Mono>
                 <Text style={[texto.datoFuerte, { color: esElegida ? color.primarioProfundo : color.texto, flex: 1, textAlign: 'right', fontFamily: MONO }]}>{pct(prec)}</Text>
@@ -306,8 +306,8 @@ export default function DesempenoModelo() {
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Detalle de la versión {elegida.version}</Text>
                 <Text style={[texto.dato, { color: color.textoMedio }]}>
-                  Origen: {elegida.origen} · Avisa a partir de {Number(elegida.umbral_decision).toFixed(2)} · Entrenada: {elegida.entrenada_en ? new Date(elegida.entrenada_en).toLocaleDateString('es-PE') : '—'} · Visible para: {elegida.visible_para?.join(', ') || '—'}
-                  {elegida.notas ? `\n${elegida.notas}` : ''}
+                  Origen: {elegida.origen} · Avisa a partir de {Number(elegida.umbral_decision).toFixed(2)} · Entrenada: {elegida.entrenado_en ? new Date(elegida.entrenado_en).toLocaleDateString('es-PE') : '—'} · Visible para: {elegida.visible_para?.join(', ') || '—'}
+                  {elegida.fuente ? `\nDatos de entrenamiento: ${elegida.fuente}` : ''}
                 </Text>
               </View>
               <BotonChico onPress={() => aviso(`Métricas registradas · ${elegida.version}`, JSON.stringify(elegida.metricas ?? {}, null, 2) || 'Sin métricas registradas.')}>Ficha técnica</BotonChico>

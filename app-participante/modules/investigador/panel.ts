@@ -199,7 +199,15 @@ export async function reasignarDerivacion(derivacionId: string, psicologoId: str
 
 export type VersionModelo = {
   version: string; tarea: 'nowcast' | 'pronostico'; origen: string; activa: boolean
-  umbral_decision: number; visible_para: string[]; metricas: Record<string, any>; entrenada_en: string | null; notas: string | null
+  umbral_decision: number; visible_para: string[]; metricas: Record<string, any>
+  /** Ojo con el nombre: la columna es `entrenado_en`. El tipo decía
+   *  `entrenada_en`, que no existe, así que la fecha salía siempre vacía en
+   *  Versiones, Desempeño y Auditoría; el `as VersionModelo[]` del select lo
+   *  tapaba y TypeScript no podía avisar. */
+  entrenado_en: string | null
+  /** De dónde salen los datos con que se entrenó. Tampoco se veía: el código
+   *  pedía `notas`, que no es columna de esta tabla. */
+  fuente: string | null
 }
 export async function versiones(): Promise<VersionModelo[]> {
   const { data } = await supabase.from('modelo_versiones').select('*').order('tarea').order('activa', { ascending: false })
