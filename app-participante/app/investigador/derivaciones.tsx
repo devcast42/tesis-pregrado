@@ -172,7 +172,24 @@ export default function Derivaciones() {
               </Caja>
             ) : (
               <View style={{ gap: espacio.base }}>
-                {psicologos.filter((p) => p.activo).map((p) => {
+                {/* Quien no lleva ningún caso va en una línea, no en una
+                    tarjeta con todo a cero: esta vista es para ver cómo está
+                    repartida la carga, y tres tarjetas iguales la esconden.
+                    Siguen a la vista porque son justo a quienes reasignar. */}
+                {(() => {
+                  const libres = psicologos.filter((p) => p.activo && !casos.some((c) => c.psicologo_id === p.id && !c.cerrada_en))
+                  if (libres.length === 0) return null
+                  return (
+                    <View style={e.libres}>
+                      <IconoPersona tamano={14} color={color.primarioProfundo} />
+                      <Text style={[texto.dato, { color: color.texto, flex: 1, minWidth: 200 }]}>
+                        <Text style={texto.datoFuerte}>{`${libres.length} sin casos abiertos: `}</Text>
+                        {libres.map((p) => p.nombre).join(' · ')}
+                      </Text>
+                    </View>
+                  )
+                })()}
+                {psicologos.filter((p) => p.activo && casos.some((c) => c.psicologo_id === p.id && !c.cerrada_en)).map((p) => {
                   const suyos = casos.filter((c) => c.psicologo_id === p.id)
                   const abiertos = suyos.filter((c) => !c.cerrada_en).sort((a, b) => (a.derivado_en < b.derivado_en ? -1 : 1))
                   const sus = citas.filter((c) => c.psicologo_id === p.id)
@@ -286,6 +303,7 @@ function Dato({ rotulo, valor, nota, tinta = color.texto }: { rotulo: string; va
 }
 
 const e = StyleSheet.create({
+  libres: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F7F6F3', borderRadius: radio.md, borderWidth: 1, borderColor: '#EEECE8', paddingVertical: 10, paddingHorizontal: 14, flexWrap: 'wrap' },
   contenido: { padding: espacio.lg, gap: espacio.lg, width: '100%', maxWidth: 1100, alignSelf: 'center' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap' },
   alerta: { flexDirection: 'row', alignItems: 'center', gap: espacio.md, backgroundColor: '#FBEDE6', borderRadius: radio.md, padding: espacio.md, flexWrap: 'wrap', borderWidth: 1, borderColor: '#F3DDD2' },
