@@ -1,18 +1,22 @@
 # Demostración de 5 minutos
 
-Guion para presentar el sistema. Cada bloque tiene su tiempo; si uno se alarga,
-el que se sacrifica es el último.
+Guion para presentar el sistema. Cada bloque tiene su tiempo; si uno se
+alarga, el que se sacrifica es el último.
 
 Los datos los crea `supabase/semilla_demo_presentacion.py`, que **borra todo y
 deja cuatro empresas** en distintos momentos del estudio. No son datos del
 estudio real y conviene decirlo en voz alta una vez, al principio.
 
-| Empresa | Personas | Semanas | Por qué está |
-|---|---|---|---|
-| Nexa Software | 22 | 6 | la cohorte madura, con historia completa |
-| Andes Data Labs | 16 | 4 | más carga: infraestructura y guardias, más detecciones |
-| Marea Studio | 13 | 6 | buen clima: casi ninguna detección |
-| Kuntur Fintech | 7 | 2 | **por debajo del mínimo de reporte**: el panel no puede mostrarle agregados |
+| Empresa | Prefijo | Personas | Semanas | Por qué está |
+|---|---|---|---|---|
+| Nexa Software | `NEX` | 22 | 6 | la cohorte madura, con historia completa |
+| Andes Data Labs | `AND` | 16 | 4 | más carga: infraestructura y guardias, más detecciones |
+| Marea Studio | `MAR` | 13 | 6 | buen clima: ninguna detección |
+| Kuntur Fintech | `KUN` | 7 | 2 | **por debajo del mínimo de reporte**: el panel no puede mostrarle agregados |
+
+Los códigos llevan las letras de su empresa y miden seis: `NEX-001`,
+`AND-014`. El prefijo se fija al crear la empresa, así que al inscribir a
+alguien ya se sabe cómo se va a llamar.
 
 ---
 
@@ -28,17 +32,22 @@ Deja **cuatro pestañas abiertas y con sesión iniciada**, en este orden:
 
 | # | Pestaña | Cuenta | Contraseña |
 |---|---|---|---|
-| 1 | `localhost:8081/hoy` | `user.prueba2@gmail.com` (es NX-01) | la de `duna-…` |
+| 1 | `localhost:8081/hoy` | `user.prueba2@gmail.com` (es NEX-001) | la de `duna-…` |
 | 2 | `localhost:8081/psicologo` | `test+psicologo@tesis.local` | `Test1234!` |
 | 3 | `localhost:8081/investigador` | `test+investigador@tesis.local` | `Test1234!` |
 | 4 | `localhost:8081/admin` | `test+admin@tesis.local` | `Test1234!` |
 
+Es `Test1234!`, con «Test», no «Tesis».
+
 En la pestaña 3 el selector de empresa de arriba a la izquierda es tu amigo:
-déjalo en «Todas las empresas» para el panorama y filtra por una cuando quieras
-entrar al detalle.
+déjalo en «Todas las empresas» para el panorama y filtra por una cuando
+quieras entrar al detalle.
 
 > Cada rol necesita su propia sesión. Si entras con otra cuenta en la misma
 > pestaña, cierras la anterior. Por eso van cuatro pestañas y no una.
+
+> La sesión caduca a la hora. Si una pantalla te manda al formulario de
+> acceso, es eso: vuelve a entrar. Antes se quedaba en ceros sin avisar.
 
 ---
 
@@ -49,6 +58,10 @@ entrar al detalle.
 
 **Pestaña 1.** Muestra la pantalla Hoy y entra al check-in. Responde dos o tres
 preguntas en vivo mientras hablas y envíalo.
+
+El check-in de hoy está sin responder a propósito: la semilla se lo salta a
+quien presta su cuenta. Los demás sí lo tienen, para que la semana en curso no
+salga vacía.
 
 Lo que debe quedar: **son 35 segundos al día**, no un cuestionario clínico.
 
@@ -71,17 +84,18 @@ Al enviar, aparece el cierre del día. Señala dos cosas:
 
 ## 1:20 – 2:50 · El circuito de apoyo (el bloque fuerte)
 
-**Pestaña 2.** La bandeja del psicólogo muestra cuatro casos, cada uno en una
+**Pestaña 2.** La bandeja del psicólogo muestra los casos, cada uno en una
 etapa distinta del circuito. Léelos de arriba abajo: es el recorrido completo.
 
-| Caso | Etapa |
-|---|---|
-| NX-15 | cita pedida, falta confirmar |
-| NX-16 | cita confirmada, sala por abrir |
-| NX-14 | detectado, aún sin contacto |
-| **NX-17** | **sesión hecha, informe por aprobar** |
+| Caso | Empresa | Etapa |
+|---|---|---|
+| AND-014 | Andes Data Labs | detectado, aún sin contacto |
+| AND-015 | Andes Data Labs | cita confirmada, sala por abrir |
+| NEX-022 | Nexa Software | cita pedida, falta confirmar |
+| **NEX-021** | **Nexa Software** | **sesión hecha, informe por aprobar** |
+| AND-016 | Andes Data Labs | completo: informe aprobado y caso cerrado |
 
-Abre **NX-17 → «Revisar nota»**. Aquí está el núcleo:
+Abre **NEX-021 → «Revisar nota»**. Aquí está el núcleo:
 
 1. La sesión se grabó **solo con el consentimiento de ambos**.
 2. Despliega **«Transcripción de la sesión»**: se transcribió automáticamente.
@@ -98,18 +112,32 @@ Abre **NX-17 → «Revisar nota»**. Aquí está el núcleo:
 
 ## 2:50 – 4:10 · El panel del investigador
 
-**Pestaña 3**, con el filtro en Nexa Software.
+**Pestaña 3**, con el filtro en «Todas las empresas».
 
-- **Resumen** — 18 participantes, adherencia, detecciones. Una foto de la cohorte.
-- **Participantes → NX-17** — abre la ficha. Enseña la **trayectoria OLBI**: se ve
-  la subida semana a semana hasta cruzar el umbral. Esto es lo longitudinal.
-- **Desempeño** — cómo le fue al modelo: precisión, recall, curva. Di el número
-  honesto: *«con esta muestra el intervalo es ancho; el análisis de potencia está
-  en la especificación»*.
-- **Exportación** — el dataset reproducible, con diccionario de variables y hash.
+- **Resumen** — 53 personas en seguimiento de 58 inscritas, adherencia,
+  detecciones. Una foto del estudio.
+- **Derivaciones** — los cuatro pasos del circuito con su meta y lo que se
+  tarda de verdad. Es el indicador OE2 de la tesis. Señala que 0,0 días de
+  «detectar y derivar» no es redondeo: la derivación se crea en el mismo
+  evento que la detección.
+- **Participantes → NEX-021** — abre la ficha. Enseña la **trayectoria OLBI**:
+  se ve la subida semana a semana hasta cruzar el umbral. Esto es lo
+  longitudinal.
+- **Desempeño** — aquí conviene adelantarse. Lo primero que se ve es el aviso
+  en ámbar: *«5 casos reales: las cifras de abajo no concluyen nada»*. Dilo tú
+  antes de que lo pregunten: con cinco positivos, precisión y recall se mueven
+  decenas de puntos por un solo acierto. El análisis de potencia está en la
+  especificación y pide unos veinte.
+- **Exportación** — el paquete reproducible, con diccionario de variables y
+  hash. Tarda unos segundos en contar: entra un momento antes si vas a
+  señalar la cifra.
 
-> «Todo lo que ve el investigador está seudonimizado. NX-17 es un código; para
-> ver la identidad hay que pedirla, y queda registrado en la auditoría.»
+> «Todo lo que ve el investigador está seudonimizado. NEX-021 es un código;
+> para ver la identidad hay que pedirla, y queda registrado en la auditoría.»
+
+Si te sobra tiempo, **Auditoría** lo demuestra en dos clics: abre la identidad
+de alguien desde su ficha y enséñala apareciendo en el registro, con hora,
+quién y motivo.
 
 ---
 
@@ -122,6 +150,10 @@ Abre **NX-17 → «Revisar nota»**. Aquí está el núcleo:
 
 > «La empresa recibe un diagnóstico organizacional. Nunca sabe quién está mal.
 > Sin esa garantía nadie responde con sinceridad, y el estudio no sirve.»
+
+Kuntur Fintech es el contraejemplo: 7 personas, por debajo del mínimo. En la
+lista de Empresas lo dice en su propia fila. Es una garantía del diseño, no
+una carencia.
 
 ---
 
@@ -144,6 +176,12 @@ Tres frases:
 No. Son una cohorte simulada con un proceso de tres niveles calibrado contra un
 estudio publicado. Está en `modelo/simular.py` y las estadísticas se comparan
 contra la referencia. Ningún número que se vea hoy es un resultado.
+
+**«¿Por qué la precisión es tan baja?»**
+Porque hay cinco casos positivos. Con esa muestra, un acierto de más o de menos
+mueve la cifra decenas de puntos: no mide el modelo, mide la falta de datos. Es
+justo lo que dice el aviso de la pantalla y lo que cuantifica el análisis de
+potencia.
 
 **«¿Por qué predecir el OLBI desde preguntas del OLBI no es circular?»**
 Es la crítica correcta y está asumida: son cuatro ítems en versión diaria, escala
@@ -168,5 +206,10 @@ por uso; el resto corre en la capa gratuita.
 modelo/exploracion/venv/bin/python supabase/semilla_demo_presentacion.py --limpiar
 ```
 
-Retira la cohorte y la empresa sin tocar nada más. El participante que prestó su
-cuenta vuelve a quedar como estaba.
+Retira las cohortes y las empresas sin tocar cuentas, psicólogos, formularios
+ni versiones del modelo. El participante que prestó su cuenta vuelve a quedar
+como estaba.
+
+Ojo: al limpiar del todo, el rol de administrador se va con su empresa —un
+admin no puede existir sin una—, así que habrá que reasignarlo al crear la
+primera empresa real.
