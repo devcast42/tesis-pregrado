@@ -56,7 +56,13 @@ export default function Resumen() {
   const { cohorte, adherencia, empresas, circuito, citas, participantes, versiones, desempeno } = datos
 
   const semanas = cohorte.slice(-8)
-  const ultima = semanas[semanas.length - 1]
+  /** La semana en curso ya tiene fila —hay check-ins de lunes y martes— pero
+   *  su viernes todavía no ha llegado, así que `respondieron_viernes` es 0.
+   *  Tomarla como «la última» hacía anunciar «0% contestó el OLBI» un
+   *  miércoles. La última con datos es la última que ya tuvo su viernes. */
+  const ultima = [...semanas].reverse().find((s) => s.respondieron_viernes > 0) ?? semanas[semanas.length - 1]
+  const enCurso = semanas[semanas.length - 1]
+  const hayEnCurso = !!enCurso && enCurso !== ultima
   const nSemana = semanas.length
   const tasaAdh = adherencia.esperados ? adherencia.cumplidos / adherencia.esperados : null
 
@@ -181,7 +187,8 @@ export default function Resumen() {
                     <View style={[e.fila, { gap: 8 }]}>
                       <Text style={[texto.datoFuerte, { color: esUltima ? color.primarioProfundo : color.texto }]}>{`Semana ${i + 1}`}</Text>
                       <Text style={[texto.dato, { color: color.textoMedio }]}>{rangoSemana(s.semana)}</Text>
-                      {esUltima && <Pastilla tono={TONO.verde}>la más reciente</Pastilla>}
+                      {s === ultima && <Pastilla tono={TONO.verde}>la última con OLBI</Pastilla>}
+                      {s === enCurso && hayEnCurso && <Pastilla tono={TONO.gris}>en curso, sin viernes aún</Pastilla>}
                     </View>
                     <Mono tono={color.texto}>{`${siguen} de ${s.inscritos} (${Math.round((siguen / total) * 100)}%)`}</Mono>
                   </View>
@@ -205,7 +212,7 @@ export default function Resumen() {
               <View style={e.pastillaClara}><Text style={[texto.datoFuerte, { color: '#FFFFFF', fontSize: 10.5 }]}>LA ÚLTIMA SEMANA</Text></View>
               {ultima && <Mono tono="#DDF3EA">{rangoSemana(ultima.semana)}</Mono>}
             </View>
-            <Text style={[texto.dato, { color: '#DDF3EA' }]}>Contestaron el OLBI del viernes</Text>
+            <Text style={[texto.dato, { color: '#DDF3EA' }]}>Contestaron el OLBI de ese viernes</Text>
             <View style={[e.fila, { alignItems: 'baseline', gap: 6 }]}>
               <Text style={[texto.cifra, { color: '#FFFFFF', fontFamily: MONO, fontSize: 34 }]}>{respuestaViernes == null ? '—' : `${Math.round(respuestaViernes * 100)}%`}</Text>
               <Text style={[texto.dato, { color: '#DDF3EA' }]}>{ultima ? `${ultima.respondieron_viernes} de ${ultima.inscritos}` : ''}</Text>
@@ -236,7 +243,7 @@ export default function Resumen() {
                 <Text style={[texto.dato, { color: color.textoMedio }]}>
                   {empresas.length === 1
                     ? `Meta del estudio: ${META_ADHERENCIA * 100}%.`
-                    : `La marca negra es la media de las ${empresas.length}: ${pct(mediaEmpresas, 0)}.`}
+                    : `La marca negra es la media de las ${empresas.length}: ${pct(mediaEmpresas)}.`}
                 </Text>
               </View>
             </View>
@@ -247,7 +254,7 @@ export default function Resumen() {
                 <View key={em.organizacion_id} style={{ gap: 4 }}>
                   <View style={[e.fila, { justifyContent: 'space-between' }]}>
                     <Text style={[texto.datoFuerte, { color: color.texto }]}>{em.nombre}</Text>
-                    <Mono tono={bajo ? AMBAR : color.primarioProfundo}>{`${pct(t, 0)} · ${em.participantes_activos} personas`}</Mono>
+                    <Mono tono={bajo ? AMBAR : color.primarioProfundo}>{`${pct(t)} · ${em.participantes_activos} personas`}</Mono>
                   </View>
                   <View style={e.pista}>
                     <View style={[e.lleno, { width: `${(t ?? 0) * 100}%`, backgroundColor: bajo ? AMBAR : color.primarioProfundo }]} />

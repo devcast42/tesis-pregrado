@@ -430,6 +430,20 @@ def circuito(cx, c, psi, etapa: str) -> None:
                        estado_cita, detectado_en + timedelta(hours=3))).fetchone()[0]
     cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'cita_solicitada', %s, %s)",
                (pid, detectado_en + timedelta(hours=3), psycopg.types.json.Jsonb({'cita_id': str(cita)})))
+
+    # Confirmar la cita deja su propio hito. En la app lo escribe
+    # `confirmar_cita()`; aquí la fila de `citas` nace ya confirmada, sin pasar
+    # por esa función, así que el evento hay que ponerlo a mano.
+    #
+    # Sin él, `circuito_apoyo.cita_confirmada_en` quedaba en nulo para todo el
+    # mundo —esa vista se calcula desde `eventos`— y los dos tramos que
+    # dependen de él, «conseguir cita» y «llegar a la sesión», decían «sin
+    # casos todavía» en Derivaciones aunque hubiera citas confirmadas y
+    # sesiones hechas. El embudo del Resumen contaba cero citas por lo mismo.
+    if etapa != 'cita_solicitada':
+        confirmada_en = detectado_en + timedelta(hours=5)
+        cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'cita_confirmada', %s, %s)",
+                   (pid, confirmada_en, psycopg.types.json.Jsonb({'cita_id': str(cita)})))
     if etapa in ('cita_solicitada', 'cita_confirmada'):
         return
 

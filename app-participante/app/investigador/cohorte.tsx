@@ -52,7 +52,16 @@ export default function Cohorte() {
   if (!filas) return <Panel rol="investigador"><Cargando /></Panel>
 
   const empresa = empresas.find((e) => e.id === filtro.organizacion_id)
-  const ultima = filas[filas.length - 1]
+  /** Igual que en el Resumen: la semana en curso ya tiene fila, pero su
+   *  viernes no ha llegado y `respondieron_viernes` es 0. La «última con
+   *  datos» es la última que ya tuvo su OLBI. */
+  const ultima = [...filas].reverse().find((f) => f.respondieron_viernes > 0) ?? filas[filas.length - 1]
+  const enCurso = filas[filas.length - 1]
+  const hayEnCurso = !!enCurso && enCurso !== ultima
+  /** Las gráficas solo pintan semanas que ya tuvieron su viernes: con la
+   *  semana en curso dentro, la línea de participación se desplomaba a 0 como
+   *  si la gente hubiera dejado de responder. */
+  const conOlbi = filas.filter((f) => f.respondieron_viernes > 0)
   const n = (x: number | null | undefined) => (x == null ? null : Number(x))
   const f1 = (x: number | null | undefined) => (x == null ? '—' : Number(x).toFixed(1))
   const f2 = (x: number | null | undefined) => (x == null ? '—' : Number(x).toFixed(2))
@@ -74,7 +83,7 @@ export default function Cohorte() {
           <Text style={[texto.apoyo, { color: color.textoMedio, maxWidth: 680 }]}>
             {filas.length === 0
               ? 'Todavía no hay ninguna semana con respuestas del viernes en este corte.'
-              : `${filas.length} ${filas.length === 1 ? 'semana' : 'semanas'} con datos, ${rango(filas[0].semana, ultima.semana)}. Aquí no se oculta nada por tamaño de grupo: eso solo se aplica al administrador de empresa.`}
+              : `${filas.length} ${filas.length === 1 ? 'semana' : 'semanas'} con datos, ${rango(filas[0].semana, enCurso.semana)}. Aquí no se oculta nada por tamaño de grupo: eso solo se aplica al administrador de empresa.`}
           </Text>
         </View>
 
@@ -90,7 +99,10 @@ export default function Cohorte() {
           <>
             <View style={[e.fila, { justifyContent: 'space-between' }]}>
               <Rotulo>La última semana con datos</Rotulo>
-              <Pastilla tono={TONO.verdeSuave}>{rangoSemana(ultima.semana)}</Pastilla>
+              <View style={[e.fila, { gap: 6 }]}>
+                {hayEnCurso && <Text style={[texto.dato, { color: color.textoSuave }]}>{`la de ahora (${rangoSemana(enCurso.semana)}) aún no tiene viernes`}</Text>}
+                <Pastilla tono={TONO.verdeSuave}>{rangoSemana(ultima.semana)}</Pastilla>
+              </View>
             </View>
 
             <View style={[e.fila, { gap: espacio.sm, alignItems: 'stretch' }]}>
@@ -125,8 +137,8 @@ export default function Cohorte() {
                 </Text>
                 <GraficaLinea
                   series={[
-                    { etiqueta: 'Agotamiento', color: TIERRA, puntos: filas.map((f) => ({ x: f.semana, y: n(f.olbi_agotamiento_media) })) },
-                    { etiqueta: 'Desvinculación', color: color.primarioProfundo, puntos: filas.map((f) => ({ x: f.semana, y: n(f.olbi_desvinculacion_media) })) },
+                    { etiqueta: 'Agotamiento', color: TIERRA, puntos: conOlbi.map((f) => ({ x: f.semana, y: n(f.olbi_agotamiento_media) })) },
+                    { etiqueta: 'Desvinculación', color: color.primarioProfundo, puntos: conOlbi.map((f) => ({ x: f.semana, y: n(f.olbi_desvinculacion_media) })) },
                   ]}
                   yMin={1} yMax={4} alto={220} umbral={UMBRAL_AGOTAMIENTO} umbralEtiqueta="Umbral de agotamiento"
                   referencia={UMBRAL_DESVINCULACION} todasLasEtiquetasX etiquetaX={etiquetaSemana}
@@ -139,8 +151,8 @@ export default function Cohorte() {
                 </Text>
                 <GraficaLinea
                   series={[
-                    { etiqueta: 'Pasaron el umbral', color: TIERRA, puntos: filas.map((f) => ({ x: f.semana, y: n(f.pct_alto) })) },
-                    { etiqueta: 'Respondieron', color: color.primarioProfundo, puntos: filas.map((f) => ({ x: f.semana, y: respuesta(f) })) },
+                    { etiqueta: 'Pasaron el umbral', color: TIERRA, puntos: conOlbi.map((f) => ({ x: f.semana, y: n(f.pct_alto) })) },
+                    { etiqueta: 'Respondieron', color: color.primarioProfundo, puntos: conOlbi.map((f) => ({ x: f.semana, y: respuesta(f) })) },
                   ]}
                   yMin={0} yMax={100} alto={220} todasLasEtiquetasX etiquetaX={etiquetaSemana}
                 />
@@ -166,7 +178,7 @@ export default function Cohorte() {
                 <Tabla
                   cabecera={['Semana', 'Inscritas', 'En seguimiento', 'Detectadas', 'Retiradas', 'Terminadas']}
                   filas={filas.map((f, i) => ({
-                    clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: rangoSemana(f.semana),
+                    clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: f === enCurso && hayEnCurso ? `${rangoSemana(f.semana)} · en curso` : rangoSemana(f.semana),
                     celdas: [
                       { v: String(f.inscritos) }, { v: String(f.activos) },
                       { v: String(f.detectados), tinta: f.detectados ? TIERRA : undefined, fuerte: !!f.detectados },
@@ -183,7 +195,7 @@ export default function Cohorte() {
                     const alto = n(f.olbi_agotamiento_media) != null && n(f.olbi_agotamiento_media)! >= UMBRAL_AGOTAMIENTO
                     const baja = respuesta(f) != null && respuesta(f)! < 80
                     return {
-                      clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: rangoSemana(f.semana), resaltar: alto,
+                      clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: f === enCurso && hayEnCurso ? `${rangoSemana(f.semana)} · en curso` : rangoSemana(f.semana), resaltar: alto,
                       celdas: [
                         { v: `${f.respondieron_viernes} de ${f.inscritos}` },
                         { v: respuesta(f) == null ? '—' : `${respuesta(f)}%`, tinta: baja ? TIERRA : undefined },
@@ -200,7 +212,7 @@ export default function Cohorte() {
                 <Tabla
                   cabecera={['Semana', 'Horas al día', 'Horas de sueño', 'Trabajó el finde', 'Sobretiempo', 'De guardia', 'Apoyo del jefe']}
                   filas={filas.map((f, i) => ({
-                    clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: rangoSemana(f.semana),
+                    clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: f === enCurso && hayEnCurso ? `${rangoSemana(f.semana)} · en curso` : rangoSemana(f.semana),
                     celdas: [
                       { v: `${f1(f.horas_dia_media)} h` }, { v: `${f1(f.sueno_media)} h` }, { v: `${f1(f.fin_de_semana_media)} h` },
                       { v: `${f1(f.sobretiempo_media)} h` }, { v: pct(f.guardia_pct) },

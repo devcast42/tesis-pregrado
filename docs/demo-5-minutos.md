@@ -117,9 +117,11 @@ Abre **NEX-021 → «Revisar nota»**. Aquí está el núcleo:
 - **Resumen** — 53 personas en seguimiento de 58 inscritas, adherencia,
   detecciones. Una foto del estudio.
 - **Derivaciones** — los cuatro pasos del circuito con su meta y lo que se
-  tarda de verdad. Es el indicador OE2 de la tesis. Señala que 0,0 días de
-  «detectar y derivar» no es redondeo: la derivación se crea en el mismo
-  evento que la detección.
+  tarda de verdad. Es el indicador OE2 de la tesis, y los cuatro tramos están
+  medidos: 0,0 d para detectar y derivar, 0,2 d para conseguir la cita, 2,7 d
+  para llegar a la sesión y 0,1 d para cerrar el informe, todos dentro de la
+  meta. Señala que 0,0 días de «detectar y derivar» no es redondeo: la
+  derivación se crea en el mismo evento que la detección.
 - **Participantes → NEX-021** — abre la ficha. Enseña la **trayectoria OLBI**:
   se ve la subida semana a semana hasta cruzar el umbral. Esto es lo
   longitudinal.
