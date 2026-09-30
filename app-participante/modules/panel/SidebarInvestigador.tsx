@@ -17,7 +17,7 @@ import {
   IconoGrafica, IconoHoja, IconoLupa, IconoMaletin, IconoNota, IconoPersona, IconoReloj, IconoSalir, IconoEnviar, IconoActualizar,
 } from '../nucleo/iconos'
 import { ProveedorFiltro, conFiltro, useFiltro } from '../investigador/filtro'
-import { bandeja, participantes as listarParticipantes } from '../investigador/panel'
+import { bandeja, cuantosActivos } from '../investigador/panel'
 import { listarEmpresas, type Empresa } from './datos'
 
 type Seccion = { ruta: string; titulo: string; grupo: string; icono: (c: string) => ReactNode; badge?: boolean }
@@ -220,7 +220,7 @@ export function BarraSuperiorInvestigador() {
   const [activos, setActivos] = useState<number | null>(null)
   const [hora, setHora] = useState(new Date())
   useEffect(() => {
-    listarParticipantes(filtro).then((p) => setActivos(p.filter((x) => x.estado === 'activo').length)).catch(() => {})
+    cuantosActivos(filtro).then(setActivos).catch(() => {})
     setHora(new Date())
   }, [filtro.organizacion_id])
   return (

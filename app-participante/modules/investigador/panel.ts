@@ -85,6 +85,18 @@ export async function participantes(filtro?: FiltroGlobal): Promise<FilaParticip
   })
 }
 
+/** Cuántos participantes siguen activos. Es lo único que necesita la barra
+ *  superior, que la pintaba trayéndose `panel_participantes_v2` entera —58
+ *  filas anchas con seis CTE materializadas, la consulta más cara del panel—
+ *  en cada pantalla, para después contar en el navegador. Aquí cuenta la
+ *  base sobre `participantes`, que el investigador ya puede leer. */
+export async function cuantosActivos(filtro?: FiltroGlobal): Promise<number | null> {
+  let q = supabase.from('participantes').select('id', { count: 'exact', head: true }).eq('estado', 'activo')
+  if (filtro?.organizacion_id) q = q.eq('organizacion_id', filtro.organizacion_id)
+  const { count, error } = await q
+  return error ? null : count ?? 0
+}
+
 // -------------------------------------------------------------------- Ficha
 
 export type Ficha = {

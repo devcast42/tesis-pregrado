@@ -140,7 +140,8 @@ export default function FichaParticipante() {
     })
   }
   function exportarFicha() {
-    const paquete = { ficha: f, calendario: envios, serie_diaria: serie, olbi_semanal: olbi, predicciones: preds, respuestas, linea_tiempo: hitos, exportado_en: new Date().toISOString() }
+    // `ficha.cita` va en nulo por RLS; las de verdad son estas.
+    const paquete = { ficha: f, citas, calendario: envios, serie_diaria: serie, olbi_semanal: olbi, predicciones: preds, respuestas, linea_tiempo: hitos, exportado_en: new Date().toISOString() }
     descargarTexto(`ficha-${f!.codigo_anonimo}.json`, JSON.stringify(paquete, null, 2))
     descargarTexto(`ficha-${f!.codigo_anonimo}-serie.csv`, aCsv(serie as any), 'text/csv')
   }
