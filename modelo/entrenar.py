@@ -111,7 +111,7 @@ RED_FICHA = ['guardia_previa']
 def rasgos_principales(tarea: str) -> list[str]:
     """El modelo PRINCIPAL de la tesis (ESP-005 §4.3, §7.6): recortado.
 
-    13 variables en nowcast y 16 en pronóstico. El conjunto completo de §4.2 se
+    15 variables en nowcast y 18 en pronóstico. El conjunto completo de §4.2 se
     sigue calculando y se reporta como `A-completo`, pero es exploratorio: con
     ~50 semanas altas no hay potencia para estimar 30 coeficientes."""
     return (COMPARTIDOS + PROPIOS_DIARIOS + RED_FICHA

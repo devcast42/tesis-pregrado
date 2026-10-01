@@ -49,21 +49,146 @@ Edad, rol, antigüedad, modalidad, tamaño de equipo, personas a cargo, traslado
 
 ## 3. Cómo calcula
 
-Tres pasos.
-
-**Paso 1 — Resume la semana.** De todas las respuestas diarias saca 15 números.
-Por ejemplo, de las 4 preguntas de ánimo saca: el promedio de la semana, el
-valor del último día, el peor día, si va subiendo o bajando, y cuántos días
-respondió.
-
-**Paso 2 — Pesa cada número.** Cada uno de los 15 tiene un peso aprendido:
-*dormir poco suma riesgo, desconectar bien resta riesgo*, y así.
-
-**Paso 3 — Suma y convierte en probabilidad.** El total se transforma en un
-número entre 0% y 100%. Eso es lo que la app muestra.
-
 Es una **regresión logística**: se eligió porque los pesos se pueden leer y
-discutir en la tesis, a diferencia de modelos más opacos.
+discutir en la tesis, a diferencia de modelos más opacos. Lo que sigue es todo
+el modelo, sin nada escondido.
+
+### 3.1 Lo que la persona responde ya son números
+
+| Pregunta | Qué contesta | Valor |
+|---|---|---|
+| «Hoy termino el trabajo exhausto y fatigado» | Nunca / Rara vez / A veces / Seguido / Siempre | **1, 2, 3, 4, 5** |
+| «¿Cuántas horas trabajaste hoy?» | escribe un número | **8.5** |
+| «¿Te contactaron fuera de horario?» | Sí / No | **1 / 0** |
+
+No hay que convertir nada. La escala de 1 a 5 *es* el número.
+
+### 3.2 De 4 respuestas al día a 3 números al día
+
+Cada día, de las cuatro preguntas de ánimo salen tres promedios:
+
+```
+t_dia = (od_04 + od_12 + od_03 + od_06) / 4     el total del día
+e_dia = (od_04 + od_12) / 2                      agotamiento
+d_dia = (od_03 + od_06) / 2                      desvinculación
+```
+
+Si el lunes contestó 2, 3, 2, 2: `t_dia = 2.25`, `e_dia = 2.5`, `d_dia = 2.0`.
+
+### 3.3 De 4 días a los 15 números
+
+Una semana de alguien que va empeorando:
+
+| | od_04 | od_12 | od_03 | od_06 | → `t_dia` |
+|---|---|---|---|---|---|
+| Lunes | 2 | 3 | 2 | 2 | 2.25 |
+| Martes | 3 | 3 | 2 | 3 | 2.75 |
+| Miércoles | 3 | 4 | 3 | 3 | 3.25 |
+| Jueves | 4 | 4 | 3 | 4 | 3.75 |
+
+**Ánimo — 7 números**, todos de la tabla de arriba:
+
+| Variable | Cómo se calcula | Ejemplo |
+|---|---|---|
+| `t_media` | promedio de los cuatro `t_dia` | 3.00 |
+| `t_ultimo` | el `t_dia` del último día respondido | 3.75 |
+| `t_max` | el mayor de los cuatro | 3.75 |
+| `t_pendiente` | pendiente de la recta sobre los días | +0.50 |
+| `e_media` | promedio de los `e_dia` | 3.25 |
+| `d_media` | promedio de los `d_dia` | 2.75 |
+| `n_dias` | cuántos días respondió (0 a 4) | 4 |
+
+**Carga — 5 números:** `horas_media`, `horas_max`, `sueno_media`, `sueno_min`,
+`horas_fin_de_semana`.
+
+**Recuperación — 3 números:** `desconexion_media`, `contacto_fuera_horario`,
+`guardia_previa` (si estuvo de guardia **la semana anterior**: la guardia de
+esta semana se responde el viernes, y el nowcast tiene que poder opinar desde
+el lunes).
+
+> En pronóstico se añaden tres que el viernes ya son pasado: `horas_sobretiempo`,
+> `guardias` y `apoyo_lider`. Son 18 en total.
+
+Si alguien contestó solo lunes y miércoles, `n_dias` vale 2 y los promedios se
+calculan sobre esos dos días. Nada se inventa.
+
+### 3.4 Poner todo en la misma unidad
+
+Las horas trabajadas valen ~8.5 y el ánimo ~2.3. Sumados tal cual, las horas
+pesarían más **solo por ser números más grandes**: es sumar soles con
+kilómetros. Así que cada número se reemplaza por *qué tan lejos de lo normal
+está esta persona*:
+
+```
+tipificado = (mi valor − media) / desviación
+```
+
+La **media** y la **desviación** no son de esta persona: son de la población de
+referencia y vienen guardadas en el modelo. Para `t_media`, media 2.30 y
+desviación 0.756. La desviación es «un paso»: casi todo el mundo cae entre
+2.30 − 0.76 y 2.30 + 0.76.
+
+Con `t_media` = 3.00:
+
+```
+3.00 − 2.30 = +0.70      estoy 0.70 arriba del promedio
+0.70 / 0.756 = +0.93     es casi un paso entero
+```
+
+| Tipificado | Significa |
+|---|---|
+| 0 | exactamente el promedio |
+| +1 | un paso por encima: ya destaca |
+| +2 | dos pasos: entre el 2 % peor |
+| −1 | un paso por debajo: mejor que la mayoría |
+
+Quien duerme 5 h cuando la media son 7 con desviación 1 sale en −2. Ahora el
+modelo puede sumar ánimo y sueño sin problema: ya no son puntos ni horas, son
+pasos desde lo normal. El nombre técnico es **puntuación Z**.
+
+### 3.5 Pesar, sumar y convertir en probabilidad
+
+Cada número tipificado se multiplica por su peso y se suman todos. Con los
+pesos que hoy están en producción (los del estudio de referencia, §5):
+
+| Variable | Tipificado | × peso | = aporte |
+|---|---|---|---|
+| `t_media` | +0.93 | +0.171 | **+0.158** |
+| `t_ultimo` | +1.66 | +0.340 | **+0.563** |
+| `t_max` | +1.18 | −0.006 | −0.007 |
+| `t_pendiente` | +0.91 | −0.030 | −0.028 |
+| `e_media` | +0.89 | +0.176 | **+0.156** |
+| `d_media` | +0.77 | +0.126 | **+0.097** |
+| `n_dias` | +1.34 | −0.018 | −0.024 |
+| intercepto | | | −0.122 |
+| | | **suma** | **+0.794** |
+
+La suma se aplasta entre 0 y 1 con la **sigmoide**:
+
+```
+probabilidad = 1 / (1 + e^(−0.794)) = 0.689  →  69 %
+```
+
+Eso es lo que la app muestra. Una suma de −3 da 5 %, una de 0 da 50 %, una de
++3 da 95 %.
+
+### 3.6 Lo que este ejemplo ya enseña
+
+El **71 %** de la señal vino de `t_ultimo` (+0.563 de +0.794): cómo estaba el
+jueves importa más que el promedio de la semana. El estado reciente manda sobre
+el acumulado.
+
+Y `t_max` tiene peso casi cero. También es un hallazgo: una vez que se sabe el
+promedio y el último día, **el peor día no añade nada** —está correlacionado
+con los otros dos—.
+
+Poder leer esa tabla y discutirla es exactamente por lo que se eligió una
+regresión logística. Con un bosque aleatorio esta conversación no existe.
+
+> **Hoy en operación corren 7 números, no 15**: los de ánimo, que son los
+> únicos que el estudio de referencia compartía y por tanto los únicos
+> preentrenables. Los 15 son el modelo que se entrena cuando haya datos
+> propios. El salto de 7 a 15 es, literalmente, lo que aporta la muestra.
 
 ---
 
