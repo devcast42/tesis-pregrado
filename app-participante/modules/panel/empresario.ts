@@ -66,12 +66,34 @@ export async function pulsoEstudio(): Promise<PulsoEstudio[]> {
   return (data ?? []) as PulsoEstudio[]
 }
 
+/** Los factores por semana, solo de las semanas ya cerradas.
+ *
+ *  La vista incluye la semana en curso en cuanto hay un check-in del lunes,
+ *  pero el sobretiempo, las guardias y el apoyo del jefe salen del
+ *  formulario del viernes: hasta que llega, esas tres columnas son nulas.
+ *  Dejarla pasar hacía que las pantallas que miran «la última semana»
+ *  hablaran de uno a medio llenar —en Factores de Trabajo, tres de las seis
+ *  tarjetas salían con un guion— y, en el Inicio, de una semana distinta a
+ *  la de las cifras de arriba.
+ *
+ *  El corte es la fecha, no los nulos: una semana está cerrada cuando su
+ *  viernes ya pasó. Así no se descarta una semana real en la que, por lo
+ *  que sea, nadie contestó el formulario semanal. */
 export async function factoresEmpresa(orgId: string, segmento?: Segmento): Promise<FactoresSemana[]> {
   const base = segmento
     ? supabase.from('factores_empresa_segmento').select('*').eq('tipo_segmento', segmento.tipo_segmento).eq('segmento', segmento.segmento)
     : supabase.from('factores_empresa').select('*')
   const { data } = await base.eq('organizacion_id', orgId).order('semana')
-  return (data ?? []) as FactoresSemana[]
+  const hoy = new Date(); hoy.setHours(23, 59, 59, 0)
+  return ((data ?? []) as FactoresSemana[]).filter((f) => viernesDe(f.semana) <= hoy)
+}
+
+/** El viernes de la semana cuyo lunes llega como «2026-09-21». Se lee a
+ *  mediodía: `new Date('2026-09-21')` es medianoche UTC y en Perú cae el 20. */
+function viernesDe(lunesIso: string): Date {
+  const d = new Date(`${lunesIso.slice(0, 10)}T12:00:00`)
+  d.setDate(d.getDate() + 4)
+  return d
 }
 
 /** Segmentos que alcanzan el mínimo en la última semana reportable (RF-008-17).
