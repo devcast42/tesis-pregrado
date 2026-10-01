@@ -185,6 +185,7 @@ Prevalencia esperada de semanas sobre el umbral: 10–25 %. `class_weight='balan
 | Clase mayoritaria | Trivial | Todas |
 | **«Igual que el viernes pasado»** | Regla literal: quien ya estaba alto seguirá alto. **Bajo la censura de §3.5 es degenerada** (nadie en seguimiento supera el umbral, así que nunca dispara y su recall es 0). Se reporta para dejar constancia | — |
 | **Logística solo con el OLBI previo** | Lo que sabe el OLBI solo, sin señales diarias, usando la distancia al umbral en vez de la regla binaria. Es la comparación que decide si las señales diarias aportan | **A**, en pronóstico |
+| **El preentrenamiento sin reajustar** | `w₀` aplicado tal cual a los datos propios. Pregunta distinta de A₀: no si sirvió preentrenar, sino si hacía falta reentrenar. Si el modelo propio no la supera, la muestra no aportó nada. No lleva particiones: nada se ajusta con datos propios, así que todas las filas son fuera de muestra | **A** / **B**, en ambas tareas |
 | **A₀ / B₀** | El mismo modelo sin preentrenamiento | A / B, para que el preentrenamiento demuestre valor |
 
 ### 7.6 Potencia: el número de variables es un problema de diseño
@@ -308,7 +309,7 @@ dejaría a la tesis sin un resultado medible con esta muestra.
 | §4.1 en SQL, §8 (`modelo_versiones`, predicción, evento `prediccion_modelo`) | `supabase/migrations/20260918120000_modelo_versiones.sql` (`rasgos_semana`), `20260918150000_modelo_pronostico.sql` (`probabilidad_semana`, `registrar_prediccion` con tarea, `ultima_prediccion_semana`) |
 | CA-005-05, CA-005-06 | Automatizadas en `modelo/pruebas.py`: comparan la vista, `rasgos_semana` y `rasgos()` de Python en cada participante-semana, y la sigmoide de Postgres contra la de Python en cada versión cargada |
 | §8, vista `semanas_modelo` | `supabase/migrations/20260923100000_semanas_modelo.sql` — una fila por (participante, semana), rasgos de §4, ambas etiquetas y censura de §3.5 |
-| §5.2 pasos 3–4, §4.3 (A, B, A₀, B₀), §6 (random forest como comparación), §7 (GroupKFold, métricas, líneas base), §12 decisión 5 (λ hacia w₀ elegida en validación) | `modelo/entrenar.py`. Se niega a publicar una versión si el entrenamiento incluye datos sintéticos o si hay menos de 20 personas |
+| §5.2 pasos 3–4, §4.3 (A, B, A₀, B₀), §6 (random forest como comparación), §7 (GroupKFold, métricas, las cuatro líneas base de §7.4 —`base_preentrenado()` es la del preentrenamiento sin reajustar), §12 decisión 5 (λ hacia w₀ elegida en validación) | `modelo/entrenar.py`. Se niega a publicar una versión si el entrenamiento incluye datos sintéticos o si hay menos de 20 personas |
 | CA-005-01 … CA-005-06, CA-005-08 | `modelo/pruebas.py` — los ocho pasan (2026-09-24). CA-005-07 se revisa sobre la salida de `entrenar.py` |
 | Ensayo del pipeline sin datos propios | `modelo/simular.py` — cohorte simulada de 80 personas con proceso generativo de tres niveles y ruido de medición independiente entre el OLBI del viernes y los ítems diarios. Calibrada contra la referencia: prevalencia 0.14, T 2.08 (DE 0.92), ICC 0.59, autocorrelación diaria 0.57 |
 | §7 con datos propios | **Pendiente de la muestra.** Los ensayos (`modelo/resultados/`) usan datos sintéticos: prueban la mecánica, no son resultados del estudio |

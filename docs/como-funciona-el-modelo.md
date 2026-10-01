@@ -225,9 +225,18 @@ El **71 %** de la señal vino de `t_ultimo` (+0.563 de +0.794): cómo estaba el
 jueves importa más que el promedio de la semana. El estado reciente manda sobre
 el acumulado.
 
-Y `t_max` tiene peso casi cero. También es un hallazgo: una vez que se sabe el
-promedio y el último día, **el peor día no añade nada** —está correlacionado
-con los otros dos—.
+Y `t_max` tiene peso casi cero, pero **solo en el nowcast**: en el pronóstico
+vale +0.392 y es `t_ultimo` el que se desinfla. Tiene sentido —para adivinar
+este viernes importa cómo estabas ayer; para el viernes que viene, el jueves
+pasado ya queda lejos y manda el nivel de la semana—.
+
+Lo que esto enseña no es que `t_max` sobre, sino algo más útil: **un peso
+grande no significa que una variable sea imprescindible, y uno casi cero no
+significa que sobre**. El peso dice cuánto usa el modelo esa columna *dado que
+tiene las demás*. De hecho quitar `t_max` no cambia el resultado en ninguna de
+las dos tareas, porque está muy correlacionada con `t_media` y las otras
+absorben su señal. Se mantiene igualmente: las variables se fijan antes de
+reclutar, no se eligen mirando resultados (§11).
 
 Poder leer esa tabla y discutirla es exactamente por lo que se eligió una
 regresión logística. Con un bosque aleatorio esta conversación no existe.
@@ -426,16 +435,24 @@ sobreajuste—. Eso es mejor argumento que decir «las quité porque no cabían�
 El modelo se entrena en varias versiones y se comparan. Eso es el capítulo de
 resultados.
 
-| Versión | Qué usa | Qué demuestra |
-|---|---|---|
-| **D — ánimo** | solo las 4 preguntas de ánimo | cuánta señal viene de preguntar cómo te sientes |
-| **F — objetivo** | solo sueño, horas, desconexión, contacto | **la más interesante**: ¿se puede detectar sin preguntar por el ánimo? |
-| **A — principal** | las dos cosas | el modelo que se publica |
-| **A₀** | igual que A pero sin el arranque polaco | sirve de control: ¿el preentrenamiento aportó? |
-| **Random forest** | otro algoritmo | comparación; si no gana claro, se descarta |
+Todas son **el mismo modelo**; lo único que cambia es qué información se le da.
+Recuerda los dos bloques: **ánimo** (las 4 preguntas de cómo te sientes) y
+**objetivo** (sueño, horas, desconexión, contacto, guardia).
 
-Y tres líneas base que hay que superar: predecir siempre "no", predecir según el
-OLBI de la semana pasada, y el modelo polaco sin reajustar.
+| Versión | Qué se le da | Qué demuestra |
+|---|---|---|
+| **D — ánimo** | solo ánimo (7) | cuánta señal viene de preguntar cómo te sientes |
+| **F reducida** | solo sueño y horas (4) | **la más interesante**: ¿se puede detectar sin preguntar por el ánimo? |
+| **F — objetivo** | todo lo que no es ánimo (24-27) | la misma pregunta sin recortar. Lleva también la ficha, así que con ~50 positivos va sobrada de variables: se lee junto a la reducida, no en su lugar |
+| **A — principal** | ánimo + objetivo (15) | el modelo del nowcast |
+| **B** | A + el OLBI del viernes pasado (18) | **el principal del pronóstico**, que es la tarea que sostiene la tesis. Ese dato solo se puede usar aquí: en el nowcast sería hacer trampa |
+| **A₀ / B₀** | lo mismo, sin el arranque polaco | el control: ¿el preentrenamiento aportó? |
+| **Random forest** | otro algoritmo, mismos rasgos | comparación; si no gana claro, se descarta |
+
+Y cuatro líneas base que hay que superar: predecir siempre «no»; la regla «el
+viernes pasado ya estaba alto»; una logística solo con el OLBI previo; y el
+modelo polaco **sin reajustar**, que pregunta algo distinto de A₀ —no si sirvió
+preentrenar, sino si hacía falta reentrenar—.
 
 ### Por qué F es la versión interesante
 
