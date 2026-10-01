@@ -447,12 +447,23 @@ Recuerda los dos bloques: **ánimo** (las 4 preguntas de cómo te sientes) y
 | **A — principal** | ánimo + objetivo (15) | el modelo del nowcast |
 | **B** | A + el OLBI del viernes pasado (18) | **el principal del pronóstico**, que es la tarea que sostiene la tesis. Ese dato solo se puede usar aquí: en el nowcast sería hacer trampa |
 | **A₀ / B₀** | lo mismo, sin el arranque polaco | el control: ¿el preentrenamiento aportó? |
-| **Random forest** | otro algoritmo, mismos rasgos | comparación; si no gana claro, se descarta |
+| **Random forest** | otro algoritmo, **una vez por cada fila de esta tabla** | comparación; si no gana claro, se descarta |
 
 Y cuatro líneas base que hay que superar: predecir siempre «no»; la regla «el
 viernes pasado ya estaba alto»; una logística solo con el OLBI previo; y el
 modelo polaco **sin reajustar**, que pregunta algo distinto de A₀ —no si sirvió
 preentrenar, sino si hacía falta reentrenar—.
+
+**Todas son la misma receta** —una regresión logística— con distintos
+ingredientes; cada una produce su propia tabla de pesos. El random forest es la
+única excepción, y por eso se entrena una vez por versión: mismos rasgos,
+mismas particiones, lo único distinto es el algoritmo. Nunca recibe el
+preentrenamiento (`w₀` es un vector lineal y no tiene traducción a un árbol),
+así que la comparación limpia es **contra A₀**, no contra A.
+
+**Y solo uno se instala.** En la app hay un modelo activo por tarea —hay un
+candado en la base que impide dos—. Las demás versiones se entrenan, se anota
+qué nota sacaron y se apagan: son el experimento, no el producto.
 
 ### Por qué F es la versión interesante
 
