@@ -137,15 +137,15 @@ export default function PersonasAdmin() {
           <View style={{ flex: 1, gap: 4, minWidth: 280 }}>
             <Text style={[texto.etiqueta, { color: color.textoMedio }]}>Tu equipo en el estudio</Text>
             <Text style={[texto.titulo, { color: color.texto }]}>Las personas de tu empresa</Text>
-            <Text style={[texto.apoyo, { color: color.textoMedio, maxWidth: 560 }]}>
-              Aquí das de alta a quien entra, le restableces la contraseña si la pierde y das de baja a quien se va. Es la única pantalla del panel donde salen nombres.
+            <Text style={[texto.apoyo, { color: color.textoMedio, maxWidth: 520 }]}>
+              Altas, bajas y contraseñas. La única pantalla con nombres.
             </Text>
           </View>
           <View style={e.aislamiento}>
             <IconoEscudo tamano={20} color={color.primarioProfundo} />
             <View style={{ flex: 1 }}>
               <Text style={[texto.datoFuerte, { color: color.primarioProfundo }]}>Aquí no verás cómo está nadie</Text>
-              <Text style={[texto.dato, { color: color.textoMedio }]}>Sabes quién participa y quién responde, nunca qué contestó ni cómo le va.</Text>
+              <Text style={[texto.dato, { color: color.textoMedio }]}>Quién responde, sí. Qué respondió, no.</Text>
             </View>
           </View>
         </View>
@@ -157,18 +157,16 @@ export default function PersonasAdmin() {
             {/* Indicadores (RF-008-19) */}
             <View style={e.indicadores}>
               <Indicador rotulo="Dadas de alta" icono={<IconoCredencial tamano={18} color={color.primarioProfundo} />}
-                cifra={String(inscritos)} unidad="personas" nota="Las que has inscrito desde que empezó" />
+                cifra={String(inscritos)} unidad="personas" />
               <Indicador rotulo="Han aceptado participar" icono={<IconoNota tamano={18} color={color.primarioProfundo} />}
                 cifra={String(resumen?.consintieron ?? 0)} unidad={`de ${inscritos}`}
-                nota={pctAdopcion === 100 ? 'Todas firmaron el consentimiento' : `${pctAdopcion}% ha firmado el consentimiento`} notaIcono="check" />
+                nota={pctAdopcion === 100 ? undefined : `faltan ${inscritos - (resumen?.consintieron ?? 0)}`} notaIcono="check" />
               <Indicador rotulo="Siguen respondiendo" icono={<IconoEscudoCheck tamano={18} color={color.primarioProfundo} />}
                 cifra={String(resumen?.en_seguimiento ?? 0)} unidad={`de ${inscritos}`}
-                nota={`El resto terminó o se dio de baja (${pctSeguimiento}% sigue)`} />
+                nota={pctSeguimiento === 100 ? undefined : `${inscritos - (resumen?.en_seguimiento ?? 0)} ya no participan`} />
               <Indicador rotulo="Contestaron el último viernes" icono={<IconoBarras tamano={18} color={color.primarioProfundo} />}
                 cifra={tasa != null ? `${tasa}%` : '—'} unidad={tasa != null ? 'de las inscritas' : 'sin datos aún'}
-                nota={tasa == null ? 'Aparece cuando se conteste el primer viernes'
-                  : tasa >= 60 ? 'Suficiente para que las cifras se puedan leer'
-                  : 'Por debajo del 60 %: la lectura semanal es poco fiable'} notaIcono="tendencia"
+                nota={tasa != null && tasa < 60 ? 'bajo el 60 %: poco fiable' : undefined} notaIcono="tendencia"
                 tono={tasa != null && tasa < 60 ? color.alerta : undefined} />
             </View>
 
@@ -182,15 +180,12 @@ export default function PersonasAdmin() {
                 <Text style={[texto.apoyo, { color: color.textoMedio }]}>
                   {resumen?.reportable
                     ? tasa != null && tasa >= 60
-                      ? `Con ${inscritos} personas inscritas y un ${tasa} % de respuesta, las cifras de las otras pantallas se pueden leer sin reservas.`
-                      : `Hay gente de sobra, pero esta semana contestó el ${tasa ?? 0} %. Por debajo del 60 % la lectura semanal se vuelve poco fiable: recordar en la reunión de equipo que las respuestas son anónimas suele bastar.`
-                    : `Los promedios aparecen cuando hay al menos ${MINIMO} personas respondiendo la misma semana. Con menos, una cifra podría señalar a alguien concreto.`}
+                      ? 'Las cifras de las otras pantallas se pueden leer sin reservas.'
+                      : `Esta semana contestó el ${tasa ?? 0} %. Bajo el 60 %, la lectura semanal es poco fiable.`
+                    : `Hacen falta ${MINIMO} respuestas en la misma semana; con menos, una cifra señalaría a alguien.`}
                 </Text>
               </View>
-              <View style={{ alignItems: 'flex-end', minWidth: 150 }}>
-                <Text style={[texto.dato, { color: color.textoSuave }]}>El cuestionario largo</Text>
-                <Text style={[texto.apoyoFuerte, { color: color.texto }]}>se contesta los viernes</Text>
-              </View>
+              <Text style={[texto.dato, { color: color.textoSuave }]}>El cuestionario largo es los viernes</Text>
             </View>
 
             {/* Lo único accionable de esta pantalla, y estaba en los datos
@@ -199,7 +194,7 @@ export default function PersonasAdmin() {
               <View style={e.recordatorio}>
                 <IconoReloj tamano={16} color="#8A5A12" />
                 <Text style={[texto.apoyo, { color: color.texto, flex: 1, minWidth: 260 }]}>
-                  {`${resumen!.sin_responder_4d} ${resumen!.sin_responder_4d === 1 ? 'persona lleva' : 'personas llevan'} cuatro días o más sin contestar. Las tienes marcadas en la lista; puedes recordárselo sin saber nada de lo que responden.`}
+                  {`${resumen!.sin_responder_4d} ${resumen!.sin_responder_4d === 1 ? 'persona lleva' : 'personas llevan'} cuatro días o más sin contestar. Van marcadas en la lista.`}
                 </Text>
               </View>
             )}
@@ -366,19 +361,15 @@ export default function PersonasAdmin() {
               )}
             </Caja>
 
-            {/* Garantía */}
+            {/* Un solo recordatorio de privacidad: antes había cuatro
+                diciendo lo mismo —esta caja, `NotaAgregacion`, `Pie` y la del
+                encabezado—, uno detrás de otro. */}
             <View style={e.garantia}>
               <View style={e.muestraIcono}><IconoEscudoCheck tamano={20} color={color.primarioProfundo} /></View>
-              <View style={{ flex: 1, minWidth: 240, gap: 4 }}>
-                <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Dónde termina lo que puedes ver</Text>
-                <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-                  Puedes dar de alta, dar de baja y restablecer contraseñas, pero no ves ni una respuesta, ni una puntuación, ni si alguien ha hablado con un psicólogo. Y «ya no participa» no dice por qué: puede ser que terminara, que retirara su consentimiento o que esté en acompañamiento. Para enseñar cualquier promedio hacen falta {MINIMO} respuestas.
-                </Text>
-              </View>
+              <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1, minWidth: 240 }]}>
+                No ves respuestas, ni puntuaciones, ni quién habló con un psicólogo. «Ya no participa» tampoco dice por qué.
+              </Text>
             </View>
-
-            <NotaAgregacion minimo={MINIMO} />
-            <Pie />
           </>
         )}
       </Pantalla>
@@ -386,8 +377,10 @@ export default function PersonasAdmin() {
   )
 }
 
+/** Cifra del encabezado. La línea de apoyo es opcional: cuando no añade
+ *  nada al rótulo, se omite en vez de rellenar con una frase. */
 function Indicador({ rotulo, icono, cifra, unidad, nota, notaIcono, tono }: {
-  rotulo: string; icono: React.ReactNode; cifra: string; unidad: string; nota: string; notaIcono?: 'check' | 'tendencia'; tono?: string
+  rotulo: string; icono: React.ReactNode; cifra: string; unidad: string; nota?: string; notaIcono?: 'check' | 'tendencia'; tono?: string
 }) {
   return (
     <View style={{ flex: 1, minWidth: 190 }}>
@@ -400,12 +393,14 @@ function Indicador({ rotulo, icono, cifra, unidad, nota, notaIcono, tono }: {
           <Text style={[texto.cifra, { color: tono ?? color.texto, fontSize: 30, lineHeight: 34 }]}>{cifra}</Text>
           <Text style={[texto.apoyoFuerte, { color: tono ?? color.primarioProfundo, paddingBottom: 4 }]}>{unidad}</Text>
         </View>
-        <View style={[e.fila, { gap: 6 }]}>
-          {notaIcono === 'check' ? <IconoCheckCirculo tamano={12} color={color.primarioProfundo} />
-            : notaIcono === 'tendencia' ? <IconoBarras tamano={12} color={color.primarioProfundo} />
-            : <View style={e.puntoNota} />}
-          <Text style={[texto.dato, { color: color.textoMedio, flex: 1 }]}>{nota}</Text>
-        </View>
+        {nota != null && (
+          <View style={[e.fila, { gap: 6 }]}>
+            {notaIcono === 'check' ? <IconoCheckCirculo tamano={12} color={color.primarioProfundo} />
+              : notaIcono === 'tendencia' ? <IconoBarras tamano={12} color={color.primarioProfundo} />
+              : <View style={e.puntoNota} />}
+            <Text style={[texto.dato, { color: color.textoMedio, flex: 1 }]}>{nota}</Text>
+          </View>
+        )}
       </Caja>
     </View>
   )
