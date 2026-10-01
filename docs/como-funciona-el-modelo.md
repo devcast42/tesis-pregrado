@@ -98,16 +98,29 @@ Una semana de alguien que va empeorando:
 | `d_media` | promedio de los `d_dia` | 2.75 |
 | `n_dias` | cuántos días respondió (0 a 4) | 4 |
 
-**Carga — 5 números:** `horas_media`, `horas_max`, `sueno_media`, `sueno_min`,
-`horas_fin_de_semana`.
+**Carga — 5 números**, de las dos preguntas numéricas del diario:
 
-**Recuperación — 3 números:** `desconexion_media`, `contacto_fuera_horario`,
-`guardia_previa` (si estuvo de guardia **la semana anterior**: la guardia de
-esta semana se responde el viernes, y el nowcast tiene que poder opinar desde
-el lunes).
+| Variable | Cómo se calcula | Ejemplo |
+|---|---|---|
+| `horas_media` | promedio de las horas trabajadas al día | 9.1 |
+| `horas_max` | el día más largo | 11.0 |
+| `sueno_media` | promedio de las horas dormidas | 6.2 |
+| `sueno_min` | la peor noche | 4.5 |
+| `horas_fin_de_semana` | horas trabajadas el fin de semana (se pregunta el lunes) | 3.0 |
 
-> En pronóstico se añaden tres que el viernes ya son pasado: `horas_sobretiempo`,
-> `guardias` y `apoyo_lider`. Son 18 en total.
+**Recuperación — 3 números.** Lo que distingue a dos personas con la misma
+jornada:
+
+| Variable | Cómo se calcula | Ejemplo |
+|---|---|---|
+| `desconexion_media` | promedio de «¿lograste desconectarte?» (escala 1–5) | 2.3 |
+| `contacto_fuera_horario` | proporción de días en que lo contactaron (0 a 1) | 0.75 |
+| `guardia_previa` | si estuvo de guardia **la semana anterior** (sí/no) | 1 |
+
+> `guardia_previa` mira a la semana pasada a propósito: la guardia de esta
+> semana se responde el viernes, y el nowcast tiene que poder opinar desde el
+> lunes. En pronóstico se añaden tres que el viernes ya son pasado
+> —`horas_sobretiempo`, `guardias` y `apoyo_lider`—: son 18 en total.
 
 Si alguien contestó solo lunes y miércoles, `n_dias` vale 2 y los promedios se
 calculan sobre esos dos días. Nada se inventa.
@@ -265,17 +278,35 @@ La cuenta del estudio: 60–100 personas × 6 semanas ≈ 400 filas, de las cual
 ~13% son semanas altas ≈ **50 casos positivos**. Con 50 casos alcanzan unas 5
 variables; con 15 ya se va justo; con 30 el modelo memoriza en vez de aprender.
 
-Por eso el modelo principal se recortó de 30 a 15. Salieron:
+Por eso salió entera la ficha de inscripción. Son **7 preguntas, pero 17
+columnas**, porque un modelo lineal convierte cada categoría en un sí/no:
 
-- **rol** (eran 8 columnas: ¿es QA? ¿es diseño?…)
-- **modalidad** (eran 3)
-- edad, antigüedades, tamaño de equipo, personas a cargo, traslado
+| Pregunta | Columnas |
+|---|---|
+| Edad, antigüedad en la empresa, antigüedad en el sector, tamaño de equipo, personas a cargo, minutos de traslado | 1 cada una = 6 |
+| **Rol** | **8** (¿desarrollo? ¿QA? ¿datos? ¿infra? ¿soporte? ¿diseño? ¿gestión? ¿otro?) |
+| **Modalidad** | **3** (¿remoto? ¿híbrido? ¿presencial?) |
+| | **17** |
 
-Y entró en su lugar **si estuvo de guardia la semana pasada**, que es un dato
-real y está disponible desde el lunes.
+Incluirlas llevaría el modelo de 15 a 32 variables: **1.5 casos por variable**
+cuando la regla pide 10.
 
-> **La app sigue preguntando todo.** Solo cambia qué se usa para calcular.
-> Lo demás se describe en la tesis ("el 34% eran desarrolladores…").
+**Entró una sola en su lugar:** `guardia_previa`. La diferencia es defendible —
+`rol = infraestructura` es una *suposición* de que ese puesto suele tener
+guardias; `guardia_previa` es un hecho que la persona reportó, y está
+disponible desde el lunes.
+
+**Pero se siguen calculando y se reportan.** `entrenar.py` entrena una versión
+`A-completo` con las 32, que no se publica: existe para enseñar que con el
+doble de variables sale el mismo resultado. En el ensayo simulado la versión
+completa en pronóstico cayó a ROC-AUC 0.44, por debajo del azar —la firma del
+sobreajuste—. Eso es mejor argumento que decir «las quité porque no cabían».
+
+> **La app sigue preguntando todo.** Solo cambia qué se **estima**. Lo demás
+> tiene otros tres usos: describir la muestra en la tesis ("el 34% eran
+> desarrolladores…"), segmentar el panel de la empresa (el filtro «Híbrido»
+> sale de `modalidad`), y quedar disponible por si la muestra sale mayor de lo
+> previsto. Recoger de más se puede; recoger después, no.
 
 ---
 
