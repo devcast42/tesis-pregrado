@@ -435,9 +435,14 @@ sobreajuste—. Eso es mejor argumento que decir «las quité porque no cabían�
 El modelo se entrena en varias versiones y se comparan. Eso es el capítulo de
 resultados.
 
-Todas son **el mismo modelo**; lo único que cambia es qué información se le da.
-Recuerda los dos bloques: **ánimo** (las 4 preguntas de cómo te sientes) y
-**objetivo** (sueño, horas, desconexión, contacto, guardia).
+**No son siete técnicas distintas.** Hay **tres ejes** que se combinan, y por eso
+las versiones del informe se llaman `A`, `A0` y `A-bosque`.
+
+### Eje 1 — qué información se le da
+
+Es el eje del experimento. Recuerda los dos bloques: **ánimo** (las 4 preguntas
+de cómo te sientes) y **objetivo** (sueño, horas, desconexión, contacto,
+guardia).
 
 | Versión | Qué se le da | Qué demuestra |
 |---|---|---|
@@ -446,24 +451,43 @@ Recuerda los dos bloques: **ánimo** (las 4 preguntas de cómo te sientes) y
 | **F — objetivo** | todo lo que no es ánimo (24-27) | la misma pregunta sin recortar. Lleva también la ficha, así que con ~50 positivos va sobrada de variables: se lee junto a la reducida, no en su lugar |
 | **A — principal** | ánimo + objetivo (15) | el modelo del nowcast |
 | **B** | A + el OLBI del viernes pasado (18) | **el principal del pronóstico**, que es la tarea que sostiene la tesis. Ese dato solo se puede usar aquí: en el nowcast sería hacer trampa |
-| **A₀ / B₀** | lo mismo, sin el arranque polaco | el control: ¿el preentrenamiento aportó? |
-| **Random forest** | otro algoritmo, **una vez por cada fila de esta tabla** | comparación; si no gana claro, se descarta |
 
-Y cuatro líneas base que hay que superar: predecir siempre «no»; la regla «el
-viernes pasado ya estaba alto»; una logística solo con el OLBI previo; y el
-modelo polaco **sin reajustar**, que pregunta algo distinto de A₀ —no si sirvió
+### Eje 2 — con o sin el arranque polaco
+
+| | |
+|---|---|
+| **A**, **B** | arrancan desde los pesos de referencia `w₀` (§5.4) |
+| **A₀**, **B₀** | arrancan de cero |
+
+Comparar A contra A₀ es el control que responde: **¿el preentrenamiento
+aportó?**
+
+### Eje 3 — con qué algoritmo
+
+| | |
+|---|---|
+| **Regresión logística** | el principal. Se publica porque los pesos se leen y se discuten (§3.5) |
+| **Random forest** | la comparación. Se entrena **una vez por cada fila del eje 1**, con los mismos rasgos y las mismas particiones: lo único distinto es el algoritmo |
+
+El bosque **nunca recibe el preentrenamiento** —`w₀` es un vector de pesos
+lineales y no tiene traducción a un árbol—, así que la comparación limpia es
+**contra A₀**, no contra A. Si no gana claro, se reporta y se descarta.
+
+> No confundir el algoritmo con el z-score de §3.4: ese no es un modelo, es el
+> paso previo que pone todas las variables en la misma unidad.
+
+### Las líneas base
+
+Cuatro, y hay que superarlas todas: predecir siempre «no»; la regla «el viernes
+pasado ya estaba alto»; una logística solo con el OLBI previo; y el modelo
+polaco **sin reajustar**, que pregunta algo distinto de A₀ —no si sirvió
 preentrenar, sino si hacía falta reentrenar—.
 
-**Todas son la misma receta** —una regresión logística— con distintos
-ingredientes; cada una produce su propia tabla de pesos. El random forest es la
-única excepción, y por eso se entrena una vez por versión: mismos rasgos,
-mismas particiones, lo único distinto es el algoritmo. Nunca recibe el
-preentrenamiento (`w₀` es un vector lineal y no tiene traducción a un árbol),
-así que la comparación limpia es **contra A₀**, no contra A.
+### De todo esto, uno se instala
 
-**Y solo uno se instala.** En la app hay un modelo activo por tarea —hay un
-candado en la base que impide dos—. Las demás versiones se entrenan, se anota
-qué nota sacaron y se apagan: son el experimento, no el producto.
+En la app hay **un modelo activo por tarea** —hay un candado en la base que
+impide tener dos—. Las demás versiones se entrenan, se anota qué nota sacaron y
+se apagan: son el experimento, no el producto.
 
 ### Por qué F es la versión interesante
 
