@@ -152,8 +152,8 @@ export function TarjetaDimension({ dimension, pulso, estudio }: {
         {serie.length >= 2 && (
           <View style={e.mini}>
             <Text style={[texto.dato, { color: color.textoMedio }]}>
-              {`Semana a semana, de la ${desde} a la ${pulso.length}: se ha movido entre ${Math.min(...valores).toFixed(1)} y ${Math.max(...valores).toFixed(1)}.`}
-              {estudio != null ? ' La línea de puntos es el resto del estudio.' : ''}
+              {`Semanas ${desde} a ${pulso.length}: entre ${Math.min(...valores).toFixed(1)} y ${Math.max(...valores).toFixed(1)}.`}
+              {estudio != null ? ' Puntos: el resto del estudio.' : ''}
             </Text>
             <GraficaLinea
               series={[{ etiqueta: dimension, color: tinta, puntos: serie.map((p) => ({ x: p.semana, y: Number(p[clave]) })) }]}
@@ -267,12 +267,12 @@ export function NotaAgregacion({ respondientes, minimo }: { respondientes?: numb
       <IconoCandado tamano={14} color={color.textoMedio} />
       <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1, minWidth: 240 }]}>
         {respondientes
-          ? `Estas cifras son el promedio de ${respondientes} respuestas. Ni tú ni nadie de la empresa puede ver lo que contestó una persona concreta.`
-          : 'Estas cifras son promedios. Ni tú ni nadie de la empresa puede ver lo que contestó una persona concreta.'}
+          ? `Promedio de ${respondientes} respuestas. Nadie de la empresa ve lo que contestó una persona.`
+          : 'Son promedios. Nadie de la empresa ve lo que contestó una persona.'}
       </Text>
       <View style={[e.fila, { gap: 6 }]}>
         <View style={[e.punto, { backgroundColor: color.primario }]} />
-        <Text style={[texto.datoFuerte, { color: color.texto }]}>Hacen falta {minimo} respuestas para enseñar un promedio</Text>
+        <Text style={[texto.datoFuerte, { color: color.texto }]}>Mínimo {minimo} respuestas</Text>
       </View>
     </View>
   )

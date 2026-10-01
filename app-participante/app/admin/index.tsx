@@ -113,8 +113,8 @@ export default function InicioEmpresario() {
         ) : (
           <>
             <View style={e.fila}>
-              <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1, minWidth: 260 }]}>
-                Las dos cifras del cuestionario que contesta el equipo cada viernes. Van de 1 a 4, y cuanto más bajas, mejor.
+              <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1, minWidth: 240 }]}>
+                Lo que sale del cuestionario de los viernes, de 1 a 4.
               </Text>
               <Text style={[texto.dato, { color: color.textoSuave }]}>{actualizado}</Text>
             </View>
@@ -126,7 +126,7 @@ export default function InicioEmpresario() {
             {pesan.length > 0 && (
               <>
                 <TituloSeccion titulo="Qué le está pesando al equipo"
-                  subtitulo="Lo que se salió de lo previsto esa semana. Son las condiciones de trabajo que más se relacionan con el cansancio." />
+                  subtitulo="Lo que se salió de lo previsto esa semana." />
                 <View style={[e.grid, ancha && e.gridFila]}>
                   {pesan.map((f) => (
                     <View key={f.clave} style={e.col}><TarjetaPesa clave={f.clave} valor={Number(ultimosFactores![f.clave])} /></View>
@@ -138,7 +138,7 @@ export default function InicioEmpresario() {
             {recs.length > 0 && (
               <>
                 <TituloSeccion titulo="Qué puedes hacer esta semana" punto={color.primario}
-                  subtitulo="Medidas concretas y baratas para lo que salió de rango arriba. Cada una dice de qué investigación viene." />
+                  subtitulo="Para lo de arriba, y de dónde sale cada medida." />
                 <View style={[e.grid, ancha && e.gridFila]}>
                   {recs.map((r, i) => <View key={r.id} style={e.col}><TarjetaRecomendacion r={r} numero={i + 1} /></View>)}
                 </View>

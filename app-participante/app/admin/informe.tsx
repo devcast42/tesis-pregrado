@@ -1,8 +1,13 @@
 /** Informe mensual — implementa ESP-008 rev. 2 (RF-008-21, RF-008-22).
  *  Diseño: Figma 3fRKKoY8Urkjlh1KQkPC9x «Informe Mensual».
  *
- *  Una página A4 para gerencia: pulso del mes, factores fuera de referencia,
- *  uso agregado del apoyo y recomendaciones. «Descargar PDF» e «Imprimir»
+ *  Una página A4 para gerencia: cómo estuvo el equipo, qué se salió de lo
+ *  previsto, uso del apoyo y qué hacer. Los títulos eran «Sección 1: Pulso
+ *  y Desgaste Emocional del Mes» y «Sección 4: Intervenciones Prioritarias»
+ *  —sin Sección 3, que se había quedado sin número—, y la nota del apoyo
+ *  ocupaba cuatro líneas para decir que la cifra está redondeada.
+ *
+ *  «Descargar PDF» e «Imprimir»
  *  usan la impresión del navegador: el panel es web y así no hay que
  *  generar el documento en el servidor. Al pie, siempre, la leyenda de
  *  agregación y el mínimo de reporte. */
@@ -110,44 +115,41 @@ export default function InformeMensual() {
             @page { size: A4; margin: 12mm; }
           }
         `)}
-        <View style={e.encabezado} nativeID="no-imprimir">
-          <View style={{ gap: 4, minWidth: 260 }}>
-            <View style={e.fila}>
-              <IconoCheckCirculo tamano={14} color={color.primarioProfundo} />
-              <Text style={[texto.etiqueta, { color: color.textoMedio }]}>VALIDACIÓN ESTADÍSTICA · PROTOCOLO DEL ESTUDIO</Text>
-            </View>
-            <Text style={[texto.titulo, { color: color.texto }]}>Informe Mensual{'\n'}Ejecutivo</Text>
+        <View style={[e.encabezado, { zIndex: selectorAbierto ? 30 : 1 }]} nativeID="no-imprimir">
+          <View style={{ gap: 4, minWidth: 260, flex: 1 }}>
+            <Text style={[texto.etiqueta, { color: color.textoMedio }]}>Para pasar a gerencia</Text>
+            <Text style={[texto.titulo, { color: color.texto }]}>{mes ? `Informe de ${nombreMes(mes, false)}` : 'Informe mensual'}</Text>
           </View>
-          <View style={{ gap: espacio.sm, alignItems: 'flex-end' }}>
-            <View style={e.fila}>
-              <View>
-                <Pressable onPress={() => setSelectorAbierto((v) => !v)} style={e.selector} accessibilityRole="button">
-                  <IconoCalendario tamano={16} color={color.textoMedio} />
-                  <Text style={[texto.apoyo, { color: color.texto }]}>{mes ? nombreMes(mes) : '—'}</Text>
-                  <IconoChevronAbajo tamano={18} color={color.textoMedio} />
-                </Pressable>
-                {selectorAbierto && (
-                  <View style={e.menu}>
-                    {meses.map((m) => (
-                      <Pressable key={m} onPress={() => { setMes(m); setSelectorAbierto(false) }} style={e.menuItem}>
-                        <Text style={[texto.apoyo, { color: m === mes ? color.primarioProfundo : color.texto }]}>{nombreMes(m)}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
-              </View>
-              {Platform.OS === 'web' && (
-                <Pressable onPress={() => window.print()} style={e.botonBorde} accessibilityRole="button">
-                  <IconoImprimir tamano={16} color={color.texto} />
-                  <Text style={[texto.apoyoFuerte, { color: color.texto }]}>Imprimir informe</Text>
-                </Pressable>
+          {/* Los tres controles en una sola fila: el de PDF colgaba debajo y a
+           *  la derecha, desalineado con el selector y con «Imprimir». */}
+          <View style={[e.acciones, { zIndex: selectorAbierto ? 30 : 1 }]}>
+            <View style={{ zIndex: selectorAbierto ? 30 : 1 }}>
+              <Pressable onPress={() => setSelectorAbierto((v) => !v)} style={e.selector} accessibilityRole="button">
+                <IconoCalendario tamano={16} color={color.textoMedio} />
+                <Text style={[texto.apoyo, { color: color.texto }]}>{mes ? nombreMes(mes) : '—'}</Text>
+                <IconoChevronAbajo tamano={18} color={color.textoMedio} />
+              </Pressable>
+              {selectorAbierto && (
+                <View style={e.menu}>
+                  {meses.map((m) => (
+                    <Pressable key={m} onPress={() => { setMes(m); setSelectorAbierto(false) }} style={e.menuItem}>
+                      <Text style={[texto.apoyo, { color: m === mes ? color.primarioProfundo : color.texto }]}>{nombreMes(m)}</Text>
+                    </Pressable>
+                  ))}
+                </View>
               )}
             </View>
             {Platform.OS === 'web' && (
-              <Pressable onPress={() => window.print()} style={e.botonPdf} accessibilityRole="button">
-                <IconoArchivo tamano={16} color="#FFFFFF" />
-                <Text style={[texto.cuerpoFuerte, { color: '#FFFFFF' }]}>Descargar PDF (A4)</Text>
-              </Pressable>
+              <>
+                <Pressable onPress={() => window.print()} style={e.botonBorde} accessibilityRole="button">
+                  <IconoImprimir tamano={16} color={color.texto} />
+                  <Text style={[texto.apoyoFuerte, { color: color.texto }]}>Imprimir</Text>
+                </Pressable>
+                <Pressable onPress={() => window.print()} style={e.botonPdf} accessibilityRole="button">
+                  <IconoArchivo tamano={16} color="#FFFFFF" />
+                  <Text style={[texto.cuerpoFuerte, { color: '#FFFFFF' }]}>Descargar PDF</Text>
+                </Pressable>
+              </>
             )}
           </View>
         </View>
@@ -162,36 +164,28 @@ export default function InformeMensual() {
                 <View style={e.sello}><IconoHoja tamano={20} color={color.primarioProfundo} /></View>
                 <View>
                   <Text style={[texto.seccion, { color: color.texto, fontSize: 18 }]}>{empresa.nombre}</Text>
-                  <Text style={[texto.dato, { color: color.textoMedio, maxWidth: 170 }]}>Estudio de Bienestar Laboral Tech · Investigación universitaria</Text>
+                  <Text style={[texto.dato, { color: color.textoMedio, maxWidth: 190 }]}>Estudio de la Universidad Nacional de Trujillo</Text>
                 </View>
               </View>
               <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                <Pastilla fondo="#EDEBE7" tinta={color.texto}>DOCUMENTO AGREGADO</Pastilla>
+                <Text style={[texto.apoyoFuerte, { color: color.texto }]}>{nombreMes(mes)}</Text>
                 <Text style={[texto.dato, { color: color.textoMedio }]}>
-                  Periodo: {nombreMes(mes)} (Semanas {semanasIso[0]}{semanasIso.length > 1 ? ` a ${semanasIso[semanasIso.length - 1]}` : ''})
+                  {`${pulsoMes.length} ${pulsoMes.length === 1 ? 'semana' : 'semanas'} con datos`}
                 </Text>
               </View>
             </View>
 
             {/* Intro */}
             <View style={e.intro}>
-              <View style={{ flex: 1, minWidth: 260, gap: 4 }}>
-                <Text style={[texto.etiqueta, { color: color.primarioProfundo, fontSize: 11 }]}>FRECUENCIA Y COBERTURA MENSUAL</Text>
-                <Text style={[texto.seccion, { color: color.texto, fontSize: 18 }]}>Informe Ejecutivo Mensual de Bienestar Organizacional</Text>
-                <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-                  {respondientesMes ? `${Math.round(respondientesMes)} respondientes promedio semanal` : ''}
-                  {inscritos ? ` sobre una plantilla total de ${inscritos} colaboradores.` : '.'}
-                  {' '}Cifras agregadas con mínimo de reporte de {MINIMO} personas por celda, que salvaguarda el anonimato estricto.
-                </Text>
-              </View>
+              <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1, minWidth: 240 }]}>
+                {`Contestaron ${Math.round(respondientesMes ?? 0)} de ${inscritos} personas por semana. Todo lo que sigue son promedios del equipo.`}
+              </Text>
               {tasaMes != null && (
                 <View style={e.cajaMuestra}>
                   <IconoEquipo tamano={18} color={color.primarioProfundo} />
                   <View>
-                    <Text style={[texto.apoyoFuerte, { color: color.texto }]}>
-                      {Math.round(tasaMes)}% <Text style={[texto.dato, { color: color.textoMedio }]}>({Math.round(respondientesMes ?? 0)} / {inscritos} colab.)</Text>
-                    </Text>
-                    <Text style={[texto.dato, { color: color.primarioProfundo }]}>{tasaMes >= 60 ? 'Muestra válida estadísticamente' : 'Muestra por debajo del 60 %'}</Text>
+                    <Text style={[texto.apoyoFuerte, { color: color.texto }]}>{Math.round(tasaMes)}% contestó</Text>
+                    {tasaMes < 60 && <Text style={[texto.dato, { color: color.alerta }]}>bajo el 60 %: poco fiable</Text>}
                   </View>
                 </View>
               )}
@@ -200,18 +194,18 @@ export default function InformeMensual() {
             {/* Sección 1 */}
             <View style={e.fila}>
               <View style={e.puntoVerde} />
-              <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Sección 1: Pulso y Desgaste Emocional del Mes</Text>
-              <Text style={[texto.dato, { color: color.textoSuave }]}>Escala Validada OLBI (1 – 4.0)</Text>
+              <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Cómo estuvo el equipo</Text>
+              <Text style={[texto.dato, { color: color.textoSuave }]}>de 1 a 4</Text>
             </View>
             <View style={e.tres}>
-              <CeldaDimension rotulo="AGOTAMIENTO MEDIO" valor={agMes} nivel={nivelMes('agotamiento')} previo={agPrev} mesPrevio={nombreMes(mesAnterior(mes), false)} />
-              <CeldaDimension rotulo="DESVINCULACIÓN CÍNICA" valor={dvMes} nivel={nivelMes('desvinculacion')} previo={dvPrev} mesPrevio={nombreMes(mesAnterior(mes), false)} />
+              <CeldaDimension rotulo="AGOTAMIENTO" valor={agMes} nivel={nivelMes('agotamiento')} previo={agPrev} mesPrevio={nombreMes(mesAnterior(mes), false)} />
+              <CeldaDimension rotulo="DESVINCULACIÓN" valor={dvMes} nivel={nivelMes('desvinculacion')} previo={dvPrev} mesPrevio={nombreMes(mesAnterior(mes), false)} />
               <View style={e.celda}>
-                <Text style={[texto.etiqueta, { color: color.textoMedio, fontSize: 11 }]}>TRAYECTORIA SEMANAL</Text>
+                <Text style={[texto.etiqueta, { color: color.textoMedio, fontSize: 11 }]}>SEMANA A SEMANA</Text>
                 <GraficaLinea
                   series={[{ etiqueta: 'Agotamiento', color: '#B0532F', puntos: pulsoMes.map((p) => ({ x: p.semana, y: Number(p.agotamiento_media) })) }]}
                   yMin={1} yMax={4} alto={80} desnuda sinLeyenda todasLasEtiquetasX
-                  etiquetaX={(x) => `Sem ${numeroSemanaIso(x)}`}
+                  etiquetaX={(x, i) => `S${i + 1}`}
                 />
               </View>
             </View>
@@ -219,11 +213,10 @@ export default function InformeMensual() {
             {/* Sección 2 */}
             <View style={e.fila}>
               <View style={e.puntoVerde} />
-              <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Sección 2: Factores Organizacionales Críticos</Text>
-              <Text style={[texto.dato, { color: color.textoSuave }]}>Diagnóstico de Fuentes de Estrés</Text>
+              <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Qué se salió de lo previsto</Text>
             </View>
             {fuera.length === 0 ? (
-              <Text style={[texto.apoyo, { color: color.textoMedio }]}>Ningún factor fuera de referencia en la última semana del mes.</Text>
+              <Text style={[texto.apoyo, { color: color.textoMedio }]}>Nada se salió de lo previsto este mes.</Text>
             ) : (
               <View style={e.tres}>
                 {fuera.map((f) => {
@@ -237,7 +230,7 @@ export default function InformeMensual() {
                         <Text style={[texto.apoyo, { color: color.textoMedio }]}>{f.clave === 'guardia_pct' ? 'del equipo' : f.unidad.replace('h / ', '/ ')}</Text>
                       </Text>
                       <Text style={[texto.dato, { color: color.textoMedio }]}>
-                        {f.peorSi === 'mayor' ? 'Supera' : 'Queda bajo'} la cota ergonómica referencial de {f.peorSi === 'mayor' ? '≤' : '≥'} {f.ref}{f.clave === 'guardia_pct' ? ' %' : ' h'}.
+                        {`Lo previsto: ${f.peorSi === 'mayor' ? 'hasta' : 'al menos'} ${f.ref}${f.clave === 'guardia_pct' ? ' %' : ' h'}`}
                       </Text>
                       <View style={e.barrita}><View style={[e.barritaLlena, { width: `${pct}%` }]} /></View>
                     </View>
@@ -251,20 +244,15 @@ export default function InformeMensual() {
               <View style={[e.fila, { alignItems: 'flex-start' }]}>
                 <View style={e.iconoApoyo}><IconoApoyo tamano={18} color={color.primarioProfundo} /></View>
                 <View style={{ flex: 1, gap: 6, minWidth: 240 }}>
-                  <View style={e.fila}>
-                    <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Uso del Programa de Orientación y Apoyo Psicológico</Text>
-                    <Pastilla fondo="#EDEBE7" tinta={color.textoMedio}>{`Privacidad K-${MINIMO}`}</Pastilla>
-                  </View>
+                  <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Uso del apoyo psicológico</Text>
                   <Text style={[texto.cuerpo, { color: color.texto }]}>
                     {sesiones != null
-                      ? <>Aproximadamente <Text style={{ color: color.primarioProfundo }}>{sesiones} sesiones</Text> orientadas registradas en el mes en curso.</>
-                      : 'Menos de 5 sesiones en el mes: por debajo del umbral de reporte, no se informa la cifra.'}
+                      ? <>Alrededor de <Text style={{ color: color.primarioProfundo }}>{sesiones} sesiones</Text> este mes.</>
+                      : 'Hubo menos de cinco sesiones, así que no se da la cifra.'}
                   </Text>
-                  <View style={e.cajaGarantia}>
-                    <Text style={[texto.dato, { color: color.textoMedio }]}>
-                      <Text style={texto.datoFuerte}>Garantía Ética de No Trazabilidad:</Text> Cifra deliberadamente aproximada y procesada solo tras superar el umbral estricto de cinco interacciones. Ningún dato demográfico, horario o departamento asociado puede ser consultado por la empresa patrocinadora.
-                    </Text>
-                  </View>
+                  <Text style={[texto.dato, { color: color.textoMedio }]}>
+                    La cifra va redondeada y solo aparece a partir de cinco. Nunca sabrás quién fue, ni cuándo, ni de qué área.
+                  </Text>
                 </View>
               </View>
             </View>
@@ -274,8 +262,7 @@ export default function InformeMensual() {
               <>
                 <View style={e.fila}>
                   <View style={e.puntoVerde} />
-                  <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Sección 4: Intervenciones Prioritarias para {mesSiguiente(mes)}</Text>
-                  <Text style={[texto.dato, { color: color.textoSuave }]}>Acciones no punitivas</Text>
+                  <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Qué hacer en {mesSiguiente(mes).toLowerCase()}</Text>
                 </View>
                 <View style={e.tres}>
                   {recs.map((r, i) => (
@@ -296,7 +283,7 @@ export default function InformeMensual() {
             <View style={e.pieHoja}>
               <IconoEscudo tamano={14} color={color.primarioProfundo} />
               <Text style={[texto.dato, { color: color.textoMedio, flex: 1, minWidth: 220 }]}>
-                Cifras agregadas y anonimizadas. Umbral ético de reporte: mínimo {MINIMO} respondientes por subcélula.
+                Promedios del equipo. Ninguna cifra se calcula con menos de {MINIMO} respuestas.
               </Text>
               <Text style={[texto.datoFuerte, { color: color.textoMedio }]}>INFORME · {empresa.nombre.toUpperCase().slice(0, 18)} · {mes}</Text>
             </View>
@@ -338,13 +325,14 @@ function CeldaDimension({ rotulo, valor, nivel, previo, mesPrevio }: { rotulo: s
 }
 
 const e = StyleSheet.create({
-  encabezado: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: espacio.base, flexWrap: 'wrap' },
+  encabezado: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: espacio.base, flexWrap: 'wrap' },
+  acciones: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap' },
   selector: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, backgroundColor: color.superficie, borderWidth: 1, borderColor: color.borde, borderRadius: radio.md, paddingHorizontal: espacio.md, height: 42 },
-  menu: { position: 'absolute', top: 46, left: 0, minWidth: 200, backgroundColor: color.superficie, borderRadius: radio.md, borderWidth: 1, borderColor: color.borde, paddingVertical: 4, zIndex: 10, elevation: 4 },
+  menu: { position: 'absolute', top: 46, left: 0, minWidth: 200, backgroundColor: color.superficie, borderRadius: radio.md, borderWidth: 1, borderColor: color.borde, paddingVertical: 4, zIndex: 30, elevation: 8, shadowColor: '#1C1917', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
   menuItem: { paddingHorizontal: espacio.md, paddingVertical: 10 },
   botonBorde: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, backgroundColor: color.superficie, borderWidth: 1, borderColor: color.borde, borderRadius: radio.md, paddingHorizontal: espacio.md, height: 42 },
-  botonPdf: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, paddingHorizontal: 18, height: 44, borderRadius: radio.md, backgroundColor: color.primario },
+  botonPdf: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, paddingHorizontal: 18, height: 42, borderRadius: radio.md, backgroundColor: color.primario },
   hoja: { backgroundColor: color.superficie, borderRadius: radio.lg, padding: espacio.xl, gap: espacio.base, borderWidth: 1, borderColor: '#EEECE8', maxWidth: 860, width: '100%', alignSelf: 'center' },
   sello: { width: 44, height: 44, borderRadius: radio.md, backgroundColor: '#E8EFEA', alignItems: 'center', justifyContent: 'center' },
   intro: { flexDirection: 'row', alignItems: 'center', gap: espacio.base, backgroundColor: '#E8F3EE', borderRadius: radio.md, padding: espacio.base, flexWrap: 'wrap' },
