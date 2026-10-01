@@ -111,7 +111,7 @@ RED_FICHA = ['guardia_previa']
 def rasgos_principales(tarea: str) -> list[str]:
     """El modelo PRINCIPAL de la tesis (ESP-005 §4.3, §7.6): recortado.
 
-    13 variables en nowcast y 16 en pronóstico. El conjunto completo de §4.2 se
+    15 variables en nowcast y 18 en pronóstico. El conjunto completo de §4.2 se
     sigue calculando y se reporta como `A-completo`, pero es exploratorio: con
     ~50 semanas altas no hay potencia para estimar 30 coeficientes."""
     return (COMPARTIDOS + PROPIOS_DIARIOS + RED_FICHA
@@ -364,11 +364,39 @@ def validar(D: pd.DataFrame, rasgos: list[str], y: np.ndarray, grupos: np.ndarra
     return {'por_pliegue': por_pliegue, 'resumen': resumen(por_pliegue)}, p
 
 
-def lineas_base(D: pd.DataFrame, y: np.ndarray, grupos: np.ndarray, tarea: str) -> dict:
+def base_preentrenado(D: pd.DataFrame, y: np.ndarray, w0: dict | None) -> dict | None:
+    """§7.4. El modelo de referencia aplicado TAL CUAL, sin reentrenar.
+
+    Responde una pregunta distinta de A0. A0 pregunta si sirvió de algo
+    preentrenar; esta pregunta si hacía falta reentrenar, o si con los pesos
+    del estudio de referencia ya bastaba. Si el modelo propio no la supera, la
+    muestra no aportó nada y hay que decirlo.
+
+    No lleva particiones y no las necesita: nada se ajusta con los datos
+    propios, así que todas las filas son fuera de muestra por construcción."""
+    if not w0:
+        return None
+    z = np.full(len(D), float(w0['intercepto']))
+    for r in COMPARTIDOS:
+        if r not in D:
+            return None
+        mu = w0['medias'][EN_W0[r]]
+        sd = w0['desviaciones'][EN_W0[r]] or 1.0
+        z = z + w0['pesos'][EN_W0[r]] * (D[r].to_numpy(float) - mu) / sd
+    p = 1.0 / (1.0 + np.exp(-z))
+    return {**metricas(y, p, 0.5),
+            'nota': 'pesos de referencia sin reentrenar; todas las filas fuera de muestra'}
+
+
+def lineas_base(D: pd.DataFrame, y: np.ndarray, grupos: np.ndarray, tarea: str,
+                w0: dict | None = None) -> dict:
     """§7.4. La que importa es cuánto sabe el OLBI solo, sin señales diarias:
     si el modelo no la supera, las señales diarias no aportan nada y el título
     de la tesis no se sostiene."""
     base = {'clase_mayoritaria': metricas(y, np.full(len(y), float(y.mean())), 0.5)}
+    ref = base_preentrenado(D, y, w0)
+    if ref:
+        base['referencia_sin_reajustar'] = ref
     if tarea != 'pronostico' or 'e_previo' not in D:
         return base
 
@@ -449,7 +477,7 @@ def entrenar_tarea(D: pd.DataFrame, tarea: str) -> dict:
         'lambda_probadas': REJILLA_LAMBDA,
         'version_principal': 'B' if tarea == 'pronostico' else 'A',
         'rasgos_principales': rasgos_principales(tarea),
-        'lineas_base': lineas_base(d, y, grupos, tarea),
+        'lineas_base': lineas_base(d, y, grupos, tarea, w0),
         'versiones': {},
     }
     if len(np.unique(y)) < 2:

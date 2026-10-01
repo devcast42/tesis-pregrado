@@ -49,21 +49,202 @@ Edad, rol, antigüedad, modalidad, tamaño de equipo, personas a cargo, traslado
 
 ## 3. Cómo calcula
 
-Tres pasos.
-
-**Paso 1 — Resume la semana.** De todas las respuestas diarias saca 15 números.
-Por ejemplo, de las 4 preguntas de ánimo saca: el promedio de la semana, el
-valor del último día, el peor día, si va subiendo o bajando, y cuántos días
-respondió.
-
-**Paso 2 — Pesa cada número.** Cada uno de los 15 tiene un peso aprendido:
-*dormir poco suma riesgo, desconectar bien resta riesgo*, y así.
-
-**Paso 3 — Suma y convierte en probabilidad.** El total se transforma en un
-número entre 0% y 100%. Eso es lo que la app muestra.
-
 Es una **regresión logística**: se eligió porque los pesos se pueden leer y
-discutir en la tesis, a diferencia de modelos más opacos.
+discutir en la tesis, a diferencia de modelos más opacos. Lo que sigue es todo
+el modelo, sin nada escondido.
+
+### 3.1 Lo que la persona responde ya son números
+
+| Pregunta | Qué contesta | Valor |
+|---|---|---|
+| «Hoy termino el trabajo exhausto y fatigado» | Nunca / Rara vez / A veces / Seguido / Siempre | **1, 2, 3, 4, 5** |
+| «¿Cuántas horas trabajaste hoy?» | escribe un número | **8.5** |
+| «¿Te contactaron fuera de horario?» | Sí / No | **1 / 0** |
+
+No hay que convertir nada. La escala de 1 a 5 *es* el número.
+
+### 3.2 De 4 respuestas al día a 3 números al día
+
+Cada día, de las cuatro preguntas de ánimo salen tres promedios:
+
+```
+t_dia = (od_04 + od_12 + od_03 + od_06) / 4     el total del día
+e_dia = (od_04 + od_12) / 2                      agotamiento
+d_dia = (od_03 + od_06) / 2                      desvinculación
+```
+
+Si el lunes contestó 2, 3, 2, 2: `t_dia = 2.25`, `e_dia = 2.5`, `d_dia = 2.0`.
+
+### 3.3 De 4 días a los 15 números
+
+Una semana de alguien que va empeorando:
+
+| | od_04 | od_12 | od_03 | od_06 | → `t_dia` |
+|---|---|---|---|---|---|
+| Lunes | 2 | 3 | 2 | 2 | 2.25 |
+| Martes | 3 | 3 | 2 | 3 | 2.75 |
+| Miércoles | 3 | 4 | 3 | 3 | 3.25 |
+| Jueves | 4 | 4 | 3 | 4 | 3.75 |
+
+**Ánimo — 7 números**, todos de la tabla de arriba:
+
+| Variable | Cómo se calcula | Ejemplo |
+|---|---|---|
+| `t_media` | promedio de los cuatro `t_dia` | 3.00 |
+| `t_ultimo` | el `t_dia` del último día respondido | 3.75 |
+| `t_max` | el mayor de los cuatro | 3.75 |
+| `t_pendiente` | pendiente de la recta sobre los días | +0.50 |
+| `e_media` | promedio de los `e_dia` | 3.25 |
+| `d_media` | promedio de los `d_dia` | 2.75 |
+| `n_dias` | cuántos días respondió (0 a 4) | 4 |
+
+**Carga — 5 números**, de las dos preguntas numéricas del diario:
+
+| Variable | Cómo se calcula | Ejemplo |
+|---|---|---|
+| `horas_media` | promedio de las horas trabajadas al día | 9.1 |
+| `horas_max` | el día más largo | 11.0 |
+| `sueno_media` | promedio de las horas dormidas | 6.2 |
+| `sueno_min` | la peor noche | 4.5 |
+| `horas_fin_de_semana` | horas trabajadas el fin de semana (se pregunta el lunes) | 3.0 |
+
+**Recuperación — 3 números.** Lo que distingue a dos personas con la misma
+jornada:
+
+| Variable | Cómo se calcula | Ejemplo |
+|---|---|---|
+| `desconexion_media` | promedio de «¿lograste desconectarte?» (escala 1–5) | 2.3 |
+| `contacto_fuera_horario` | proporción de días en que lo contactaron (0 a 1) | 0.75 |
+| `guardia_previa` | si estuvo de guardia **la semana anterior** (sí/no) | 1 |
+
+> `guardia_previa` mira a la semana pasada a propósito: la guardia de esta
+> semana se responde el viernes, y el nowcast tiene que poder opinar desde el
+> lunes. En pronóstico se añaden tres que el viernes ya son pasado
+> —`horas_sobretiempo`, `guardias` y `apoyo_lider`—: son 18 en total.
+
+Si alguien contestó solo lunes y miércoles, `n_dias` vale 2 y los promedios se
+calculan sobre esos dos días. Nada se inventa.
+
+### 3.4 Poner todo en la misma unidad
+
+Las horas trabajadas valen ~8.5 y el ánimo ~2.3. Sumados tal cual, las horas
+pesarían más **solo por ser números más grandes**: es sumar soles con
+kilómetros. Así que cada número se reemplaza por *qué tan lejos de lo normal
+está esta persona*:
+
+```
+tipificado = (mi valor − media) / desviación
+```
+
+La **media** y la **desviación** no son de esta persona: son de la población de
+referencia y vienen guardadas en el modelo. Para `t_media`, media 2.30 y
+desviación 0.756. La desviación es «un paso»: casi todo el mundo cae entre
+2.30 − 0.76 y 2.30 + 0.76.
+
+Con `t_media` = 3.00:
+
+```
+3.00 − 2.30 = +0.70      estoy 0.70 arriba del promedio
+0.70 / 0.756 = +0.93     es casi un paso entero
+```
+
+| Tipificado | Significa |
+|---|---|
+| 0 | exactamente el promedio |
+| +1 | un paso por encima: ya destaca |
+| +2 | dos pasos: entre el 2 % peor |
+| −1 | un paso por debajo: mejor que la mayoría |
+
+Quien duerme 5 h cuando la media son 7 con desviación 1 sale en −2. Ahora el
+modelo puede sumar ánimo y sueño sin problema: ya no son puntos ni horas, son
+pasos desde lo normal. El nombre técnico es **puntuación Z**.
+
+### 3.5 Pesar, sumar y convertir en probabilidad
+
+Cada número tipificado se multiplica por su peso y se suman todos. Con los
+pesos que hoy están en producción (los del estudio de referencia, §5):
+
+| Variable | Tipificado | × peso | = aporte |
+|---|---|---|---|
+| `t_media` | +0.93 | +0.171 | **+0.158** |
+| `t_ultimo` | +1.66 | +0.340 | **+0.563** |
+| `t_max` | +1.18 | −0.006 | −0.007 |
+| `t_pendiente` | +0.91 | −0.030 | −0.028 |
+| `e_media` | +0.89 | +0.176 | **+0.156** |
+| `d_media` | +0.77 | +0.126 | **+0.097** |
+| `n_dias` | +1.34 | −0.018 | −0.024 |
+| intercepto | | | −0.122 |
+| | | **suma** | **+0.794** |
+
+**Cómo leer la tabla.** Tres columnas, tres dueños distintos:
+
+| Columna | De quién es |
+|---|---|
+| Tipificado | **de la persona**: qué tan lejos de lo normal está (§3.4) |
+| Peso | **del modelo**: el mismo para todo el mundo |
+| Aporte | lo que esa variable, en esta persona, puso en la balanza |
+
+**La suma no es un porcentaje**: son *puntos de riesgo*, una moneda interna.
+Cero es «ni idea, 50/50»; positivo se inclina a *sí saldrá alto*; negativo, a
+*no*. La sigmoide es lo único que traduce puntos a porcentaje.
+
+**Un peso es un tipo de cambio**: cuántos puntos de riesgo suma esa variable
+por cada paso que te alejas de lo normal. Como todos están en la misma moneda,
+se comparan directamente — `t_ultimo` (+0.340) pesa el doble que `e_media`
+(+0.176). Lo que eso hace en la práctica, moviendo una sola variable desde una
+persona promedio:
+
+| Situación | Suma | Probabilidad |
+|---|---|---|
+| Todo en la media | −0.122 | **47 %** |
+| `t_ultimo` un paso arriba | +0.218 | **55 %** |
+| `t_ultimo` dos pasos arriba | +0.558 | **64 %** |
+| `t_media` un paso arriba | +0.049 | **51 %** |
+| `t_max` un paso arriba | −0.128 | **47 %** (no se mueve) |
+
+**El intercepto es el único que no multiplica a nada**: es el punto de partida,
+lo que marca alguien exactamente promedio en las siete variables. Sin él, el
+modelo estaría obligado a decir 50 % a esa persona aunque los datos digan otra
+cosa.
+
+Ni los pesos ni el intercepto los eligió nadie: salen todos de la misma
+búsqueda, explicada en §5.2.
+
+La suma se aplasta entre 0 y 1 con la **sigmoide**:
+
+```
+probabilidad = 1 / (1 + e^(−0.794)) = 0.689  →  69 %
+```
+
+Eso es lo que la app muestra. Una suma de −3 da 5 %, una de 0 da 50 %, una de
++3 da 95 %.
+
+### 3.6 Lo que este ejemplo ya enseña
+
+El **71 %** de la señal vino de `t_ultimo` (+0.563 de +0.794): cómo estaba el
+jueves importa más que el promedio de la semana. El estado reciente manda sobre
+el acumulado.
+
+Y `t_max` tiene peso casi cero, pero **solo en el nowcast**: en el pronóstico
+vale +0.392 y es `t_ultimo` el que se desinfla. Tiene sentido —para adivinar
+este viernes importa cómo estabas ayer; para el viernes que viene, el jueves
+pasado ya queda lejos y manda el nivel de la semana—.
+
+Lo que esto enseña no es que `t_max` sobre, sino algo más útil: **un peso
+grande no significa que una variable sea imprescindible, y uno casi cero no
+significa que sobre**. El peso dice cuánto usa el modelo esa columna *dado que
+tiene las demás*. De hecho quitar `t_max` no cambia el resultado en ninguna de
+las dos tareas, porque está muy correlacionada con `t_media` y las otras
+absorben su señal. Se mantiene igualmente: las variables se fijan antes de
+reclutar, no se eligen mirando resultados (§11).
+
+Poder leer esa tabla y discutirla es exactamente por lo que se eligió una
+regresión logística. Con un bosque aleatorio esta conversación no existe.
+
+> **Hoy en operación corren 7 números, no 15**: los de ánimo, que son los
+> únicos que el estudio de referencia compartía y por tanto los únicos
+> preentrenables. Los 15 son el modelo que se entrena cuando haya datos
+> propios. El salto de 7 a 15 es, literalmente, lo que aporta la muestra.
 
 ---
 
@@ -81,8 +262,9 @@ anticipar dos días es menos impresionante que anticipar una semana.
 
 ## 5. De dónde salen los pesos
 
-Aquí hay un truco que vale la pena entender, porque es una contribución propia
-de la tesis.
+### 5.1 El truco: preentrenar con datos ajenos
+
+Esto vale la pena entenderlo, porque es una contribución propia de la tesis.
 
 **El problema:** el primer día de estudio no hay datos propios, así que no
 habría nada que mostrarle al participante.
@@ -96,8 +278,84 @@ Las 4 preguntas diarias se eligieron a propósito para que coincidan con 4 de
 las 8 del estudio polaco. Si se cambian, se rompe el truco.
 
 **Después**, cuando haya datos propios, el modelo se reentrena partiendo de esos
-pesos: puede cambiarlos, pero le cuesta. Si los datos peruanos no dicen nada
-distinto, se queda cerca de lo que ya se sabía.
+pesos: puede cambiarlos, pero le cuesta (§5.4).
+
+### 5.2 Cómo se encuentran, en concreto
+
+Un peso no se elige: se busca. La idea completa cabe en una frase.
+
+> Prueba unos pesos, mira cuánto se equivoca, ajústalos, repite hasta que no
+> mejore.
+
+**Hacen falta casos con respuesta conocida.** Del estudio de referencia salen
+**1 880 ejemplos** (persona-semana, con 1 a 4 días respondidos) de los que ya se
+sabe el final: 492 terminaron altos, 1 388 no.
+
+**Equivocarse se cobra según la confianza.** No es «acertó o no»: el modelo
+entrega una probabilidad y paga por ella.
+
+| Dijo | Pasó | Castigo |
+|---|---|---|
+| 90 % | fue alto | casi nada |
+| 55 % | cualquiera | poco |
+| 90 % | **no** fue alto | **mucho** |
+
+La suma de ese castigo sobre los 1 880 ejemplos es **el coste**. Los pesos
+buenos son los que lo dejan más bajo.
+
+**La búsqueda.** Se arranca con todos los pesos en cero —el modelo dice 50 % a
+todo— y se repite: calcular el coste, ver en qué dirección baja cada peso,
+moverlo un poco. Miles de veces, hasta que ningún movimiento mejora. Es
+**descenso de gradiente**, y `scikit-learn` lo resuelve en una línea.
+
+**Se puede comprobar.** Dejando fijos los otros seis pesos y moviendo solo el de
+`t_ultimo` sobre los datos reales:
+
+| Peso de `t_ultimo` | Coste |
+|---|---|
+| al revés (−0.34) | 643.20 |
+| cero, se ignora | 604.72 |
+| el doble (+0.68) | 603.00 |
+| la mitad (+0.17) | 595.67 |
+| **el aprendido (+0.340)** | **592.79** ← el mínimo |
+
+El 0.340 no es una preferencia de nadie: es donde el coste toca fondo. Y el
+peso negativo es con diferencia lo peor, así que ni siquiera el signo lo puso
+una persona: los datos dicen que estar peor el jueves se asocia a terminar
+alto.
+
+### 5.3 Dos ajustes que cambian el resultado
+
+**Clases desbalanceadas.** Solo el 26 % de los ejemplos son altos; un modelo que
+dijera «nunca» acertaría el 74 % de las veces y sería inútil. Por eso cada
+ejemplo alto vale casi el triple al calcular el coste (`class_weight='balanced'`).
+Sin esto el modelo aprende a callarse.
+
+**Penalización por pesos grandes.** Al coste se le suma la suma de los pesos al
+cuadrado. Un peso enorme suele ser el modelo aferrándose a una casualidad de
+estos 1 880 ejemplos; la penalización lo frena, y una variable que no gana su
+sitio se queda en casi cero sola. Es la **regularización L2** (`C = 0.5`).
+
+> Por eso `t_max` acabó en −0.006: sabiendo ya el promedio y el último día, el
+> peor día no añade lo suficiente como para compensar la penalización. **El
+> modelo lo apagó solo.**
+
+### 5.4 Y con datos propios, el giro
+
+Todo lo anterior arranca con los pesos en cero. Con muestra propia el
+entrenamiento arranca **desde los pesos de referencia `w₀`**, y la penalización
+no empuja hacia cero sino **hacia `w₀`**:
+
+```
+coste = error + λ · (cuánto me alejé de w₀)
+```
+
+Es decir: *puedes cambiar lo que ya sabíamos, pero tienes que pagar por ello.*
+
+`λ` no se elige a dedo: se prueban cinco valores (0.1, 0.3, 1, 3, 10) y gana el
+que mejor funcione **en gente que el modelo no vio**. Un λ grande significa «me
+fío del estudio de referencia»; uno chico, «mandan mis datos». Cuál ganó es un
+resultado reportable.
 
 **Cuidado:** los polacos son administración pública, no gente de tecnología en
 Perú. Por eso el modelo se reporta siempre en dos versiones —con y sin ese
@@ -140,17 +398,35 @@ La cuenta del estudio: 60–100 personas × 6 semanas ≈ 400 filas, de las cual
 ~13% son semanas altas ≈ **50 casos positivos**. Con 50 casos alcanzan unas 5
 variables; con 15 ya se va justo; con 30 el modelo memoriza en vez de aprender.
 
-Por eso el modelo principal se recortó de 30 a 15. Salieron:
+Por eso salió entera la ficha de inscripción. Son **7 preguntas, pero 17
+columnas**, porque un modelo lineal convierte cada categoría en un sí/no:
 
-- **rol** (eran 8 columnas: ¿es QA? ¿es diseño?…)
-- **modalidad** (eran 3)
-- edad, antigüedades, tamaño de equipo, personas a cargo, traslado
+| Pregunta | Columnas |
+|---|---|
+| Edad, antigüedad en la empresa, antigüedad en el sector, tamaño de equipo, personas a cargo, minutos de traslado | 1 cada una = 6 |
+| **Rol** | **8** (¿desarrollo? ¿QA? ¿datos? ¿infra? ¿soporte? ¿diseño? ¿gestión? ¿otro?) |
+| **Modalidad** | **3** (¿remoto? ¿híbrido? ¿presencial?) |
+| | **17** |
 
-Y entró en su lugar **si estuvo de guardia la semana pasada**, que es un dato
-real y está disponible desde el lunes.
+Incluirlas llevaría el modelo de 15 a 32 variables: **1.5 casos por variable**
+cuando la regla pide 10.
 
-> **La app sigue preguntando todo.** Solo cambia qué se usa para calcular.
-> Lo demás se describe en la tesis ("el 34% eran desarrolladores…").
+**Entró una sola en su lugar:** `guardia_previa`. La diferencia es defendible —
+`rol = infraestructura` es una *suposición* de que ese puesto suele tener
+guardias; `guardia_previa` es un hecho que la persona reportó, y está
+disponible desde el lunes.
+
+**Pero se siguen calculando y se reportan.** `entrenar.py` entrena una versión
+`A-completo` con las 32, que no se publica: existe para enseñar que con el
+doble de variables sale el mismo resultado. En el ensayo simulado la versión
+completa en pronóstico cayó a ROC-AUC 0.44, por debajo del azar —la firma del
+sobreajuste—. Eso es mejor argumento que decir «las quité porque no cabían».
+
+> **La app sigue preguntando todo.** Solo cambia qué se **estima**. Lo demás
+> tiene otros tres usos: describir la muestra en la tesis ("el 34% eran
+> desarrolladores…"), segmentar el panel de la empresa (el filtro «Híbrido»
+> sale de `modalidad`), y quedar disponible por si la muestra sale mayor de lo
+> previsto. Recoger de más se puede; recoger después, no.
 
 ---
 
@@ -159,16 +435,59 @@ real y está disponible desde el lunes.
 El modelo se entrena en varias versiones y se comparan. Eso es el capítulo de
 resultados.
 
-| Versión | Qué usa | Qué demuestra |
-|---|---|---|
-| **D — ánimo** | solo las 4 preguntas de ánimo | cuánta señal viene de preguntar cómo te sientes |
-| **F — objetivo** | solo sueño, horas, desconexión, contacto | **la más interesante**: ¿se puede detectar sin preguntar por el ánimo? |
-| **A — principal** | las dos cosas | el modelo que se publica |
-| **A₀** | igual que A pero sin el arranque polaco | sirve de control: ¿el preentrenamiento aportó? |
-| **Random forest** | otro algoritmo | comparación; si no gana claro, se descarta |
+**No son siete técnicas distintas.** Hay **tres ejes** que se combinan, y por eso
+las versiones del informe se llaman `A`, `A0` y `A-bosque`.
 
-Y tres líneas base que hay que superar: predecir siempre "no", predecir según el
-OLBI de la semana pasada, y el modelo polaco sin reajustar.
+### Eje 1 — qué información se le da
+
+Es el eje del experimento. Recuerda los dos bloques: **ánimo** (las 4 preguntas
+de cómo te sientes) y **objetivo** (sueño, horas, desconexión, contacto,
+guardia).
+
+| Versión | Qué se le da | Qué demuestra |
+|---|---|---|
+| **D — ánimo** | solo ánimo (7) | cuánta señal viene de preguntar cómo te sientes |
+| **F reducida** | solo sueño y horas (4) | **la más interesante**: ¿se puede detectar sin preguntar por el ánimo? |
+| **F — objetivo** | todo lo que no es ánimo (24-27) | la misma pregunta sin recortar. Lleva también la ficha, así que con ~50 positivos va sobrada de variables: se lee junto a la reducida, no en su lugar |
+| **A — principal** | ánimo + objetivo (15) | el modelo del nowcast |
+| **B** | A + el OLBI del viernes pasado (18) | **el principal del pronóstico**, que es la tarea que sostiene la tesis. Ese dato solo se puede usar aquí: en el nowcast sería hacer trampa |
+
+### Eje 2 — con o sin el arranque polaco
+
+| | |
+|---|---|
+| **A**, **B** | arrancan desde los pesos de referencia `w₀` (§5.4) |
+| **A₀**, **B₀** | arrancan de cero |
+
+Comparar A contra A₀ es el control que responde: **¿el preentrenamiento
+aportó?**
+
+### Eje 3 — con qué algoritmo
+
+| | |
+|---|---|
+| **Regresión logística** | el principal. Se publica porque los pesos se leen y se discuten (§3.5) |
+| **Random forest** | la comparación. Se entrena **una vez por cada fila del eje 1**, con los mismos rasgos y las mismas particiones: lo único distinto es el algoritmo |
+
+El bosque **nunca recibe el preentrenamiento** —`w₀` es un vector de pesos
+lineales y no tiene traducción a un árbol—, así que la comparación limpia es
+**contra A₀**, no contra A. Si no gana claro, se reporta y se descarta.
+
+> No confundir el algoritmo con el z-score de §3.4: ese no es un modelo, es el
+> paso previo que pone todas las variables en la misma unidad.
+
+### Las líneas base
+
+Cuatro, y hay que superarlas todas: predecir siempre «no»; la regla «el viernes
+pasado ya estaba alto»; una logística solo con el OLBI previo; y el modelo
+polaco **sin reajustar**, que pregunta algo distinto de A₀ —no si sirvió
+preentrenar, sino si hacía falta reentrenar—.
+
+### De todo esto, uno se instala
+
+En la app hay **un modelo activo por tarea** —hay un candado en la base que
+impide tener dos—. Las demás versiones se entrenan, se anota qué nota sacaron y
+se apagan: son el experimento, no el producto.
 
 ### Por qué F es la versión interesante
 
@@ -258,3 +577,124 @@ modelo/exploracion/venv/bin/python modelo/entrenar.py
 modelo/exploracion/venv/bin/python modelo/simular.py --cargar
 modelo/exploracion/venv/bin/python modelo/entrenar.py --origen simulada
 ```
+
+---
+
+## 13. Resultados, hasta hoy
+
+> **Ninguna cifra de esta sección es un resultado del estudio.** No hay muestra:
+> hoy no existe una sola persona real que aporte una fila entrenable. Lo que
+> sigue prueba que la maquinaria funciona, nada más.
+
+Hay dos fuentes, y conviene no confundirlas:
+
+| Fuente | Qué es | Qué vale |
+|---|---|---|
+| **Datos de referencia** | 235 empleados polacos, personas reales | Los pesos que hoy están en producción |
+| **Cohorte simulada** | 80 personas inventadas por `simular.py` | Ensayo del *pipeline*. No dice nada sobre el burnout |
+
+### 13.1 El preentrenamiento, sobre los datos de referencia
+
+Lo único de esta sección medido con personas de verdad. Validado por persona.
+
+**Nowcast**, según cuántos días lleva respondidos la semana:
+
+| Días respondidos | ROC-AUC | Precisión | Recall |
+|---|---|---|---|
+| 1 (solo lunes) | 0.65 | 0.37 | 0.63 |
+| 2 | 0.68 | 0.38 | 0.63 |
+| 3 | 0.70 | 0.38 | 0.63 |
+| 4 (jueves) | 0.75 | 0.43 | 0.67 |
+
+Es lo que la app traduce a «confianza baja/media» y a «de cada 10 avisos se
+confirman unos 4».
+
+**Pronóstico:** ROC-AUC 0.88 · PR-AUC 0.50 · recall 0.74 · precisión 0.32 ·
+Brier 0.135, con n = 235 y 11.5 % de positivos.
+
+### 13.2 Ensayo con la cohorte simulada — nowcast
+
+300 filas, 78 personas, 16 % de semanas altas. `c/r` = casos positivos por
+rasgo; la regla pide 10.
+
+| Versión | Rasgos | c/r | Recall | F1 | PR-AUC | ROC-AUC |
+|---|---|---|---|---|---|---|
+| *base* clase mayoritaria | | | 0.00 | 0.00 | 0.16 | 0.50 |
+| **A** (principal) | 15 | 3.3 | 0.92 ± 0.08 | 0.29 ± 0.02 | 0.32 ± 0.08 | **0.63 ± 0.11** |
+| A₀ | 15 | 3.3 | 0.85 ± 0.14 | 0.28 ± 0.04 | 0.29 ± 0.10 | 0.61 ± 0.10 |
+| A-bosque | 15 | 3.3 | 0.96 ± 0.05 | 0.30 ± 0.04 | 0.25 ± 0.09 | 0.59 ± 0.13 |
+| A-completo | 31 | 1.6 | 0.84 ± 0.10 | 0.29 ± 0.03 | 0.32 ± 0.06 | 0.63 ± 0.10 |
+| A-completo₀ | 31 | 1.6 | 0.88 ± 0.19 | 0.26 ± 0.03 | 0.28 ± 0.12 | 0.58 ± 0.11 |
+| A-completo-bosque | 31 | 1.6 | 0.92 ± 0.12 | 0.29 ± 0.03 | 0.27 ± 0.13 | 0.55 ± 0.15 |
+| **D — ánimo** | 7 | 7.0 | 0.96 ± 0.05 | 0.30 ± 0.03 | 0.32 ± 0.07 | **0.64 ± 0.10** |
+| D₀ | 7 | 7.0 | 0.92 ± 0.07 | 0.30 ± 0.01 | 0.29 ± 0.08 | 0.62 ± 0.09 |
+| D-bosque | 7 | 7.0 | 0.86 ± 0.14 | 0.28 ± 0.01 | 0.25 ± 0.06 | 0.61 ± 0.08 |
+| **F — objetivo** | 24 | 2.0 | 0.96 ± 0.09 | 0.28 ± 0.03 | 0.18 ± 0.05 | **0.46 ± 0.12** |
+| F-objetivo-bosque | 24 | 2.0 | 0.89 ± 0.17 | 0.27 ± 0.04 | 0.23 ± 0.09 | 0.46 ± 0.13 |
+| **F reducida** | 4 | 12.3 | 0.96 ± 0.05 | 0.28 ± 0.02 | 0.25 ± 0.09 | **0.55 ± 0.14** |
+| F-reducida-bosque | 4 | 12.3 | 0.91 ± 0.18 | 0.27 ± 0.04 | 0.20 ± 0.04 | 0.56 ± 0.09 |
+
+### 13.3 Ensayo con la cohorte simulada — pronóstico
+
+222 filas, 61 personas, 14 % de semanas altas.
+
+| Versión | Rasgos | c/r | Recall | F1 | PR-AUC | ROC-AUC |
+|---|---|---|---|---|---|---|
+| *base* clase mayoritaria | | | 0.00 | 0.00 | 0.14 | 0.50 |
+| *base* ya estaba alto | | | 0.00 | 0.00 | 0.14 | 0.50 |
+| *base* solo OLBI previo | | | 0.87 ± 0.15 | 0.24 ± 0.06 | 0.26 ± 0.07 | 0.58 ± 0.09 |
+| **B** (principal) | 20 | 1.6 | 0.61 ± 0.21 | 0.29 ± 0.05 | 0.40 ± 0.18 | **0.70 ± 0.15** |
+| B₀ | 20 | 1.6 | 0.83 ± 0.18 | 0.30 ± 0.07 | 0.33 ± 0.13 | 0.64 ± 0.13 |
+| B-bosque | 20 | 1.6 | 0.78 ± 0.15 | 0.26 ± 0.05 | 0.28 ± 0.10 | 0.62 ± 0.08 |
+| B-completo | 36 | 0.9 | 0.65 ± 0.24 | 0.33 ± 0.08 | 0.40 ± 0.18 | 0.71 ± 0.14 |
+| B-completo₀ | 36 | 0.9 | 0.58 ± 0.34 | 0.23 ± 0.12 | 0.30 ± 0.09 | 0.65 ± 0.10 |
+| B-completo-bosque | 36 | 0.9 | 0.79 ± 0.14 | 0.29 ± 0.07 | 0.30 ± 0.12 | 0.65 ± 0.07 |
+| **A** | 18 | 1.7 | 0.61 ± 0.21 | 0.28 ± 0.06 | 0.41 ± 0.18 | 0.70 ± 0.14 |
+| A₀ | 18 | 1.7 | 0.63 ± 0.37 | 0.24 ± 0.14 | 0.33 ± 0.13 | 0.65 ± 0.12 |
+| A-bosque | 18 | 1.7 | 0.83 ± 0.15 | 0.30 ± 0.05 | 0.26 ± 0.09 | 0.62 ± 0.07 |
+| A-completo | 34 | 0.9 | 0.61 ± 0.21 | 0.27 ± 0.04 | 0.41 ± 0.17 | 0.69 ± 0.14 |
+| A-completo₀ | 34 | 0.9 | 0.61 ± 0.28 | 0.29 ± 0.11 | 0.30 ± 0.09 | 0.66 ± 0.09 |
+| A-completo-bosque | 34 | 0.9 | 0.82 ± 0.12 | 0.29 ± 0.07 | 0.33 ± 0.12 | 0.67 ± 0.07 |
+| **D — ánimo** | 7 | 4.4 | 0.76 ± 0.18 | 0.33 ± 0.09 | 0.41 ± 0.18 | **0.72 ± 0.13** |
+| D₀ | 7 | 4.4 | 0.73 ± 0.17 | 0.32 ± 0.10 | 0.40 ± 0.17 | 0.70 ± 0.14 |
+| D-bosque | 7 | 4.4 | 0.80 ± 0.13 | 0.33 ± 0.07 | 0.33 ± 0.13 | 0.70 ± 0.08 |
+| **F — objetivo** | 27 | 1.2 | 0.96 ± 0.08 | 0.25 ± 0.04 | 0.17 ± 0.08 | **0.46 ± 0.14** |
+| F-objetivo-bosque | 27 | 1.2 | 0.97 ± 0.07 | 0.24 ± 0.04 | 0.17 ± 0.04 | 0.47 ± 0.04 |
+| **F reducida** | 4 | 7.8 | 0.96 ± 0.08 | 0.24 ± 0.05 | 0.20 ± 0.08 | **0.49 ± 0.12** |
+| F-reducida-bosque | 4 | 7.8 | 0.93 ± 0.13 | 0.24 ± 0.04 | 0.16 ± 0.05 | 0.45 ± 0.08 |
+
+> Falta en estas dos tablas la línea base **«el polaco sin reajustar»**, que se
+> añadió después de generar el ensayo. Reaparecerá en la próxima corrida.
+
+### 13.4 Qué se puede y qué no se puede leer aquí
+
+**Sí se puede:** que el pipeline corre entero, que las particiones por persona
+funcionan, que el preentrenamiento mueve los números en la dirección esperada
+(A gana a A₀, B gana a B₀ en PR-AUC y ROC-AUC) y que **el bosque no supera a la
+logística** — empata en nowcast con peor PR-AUC y pierde en pronóstico.
+
+**No se puede:** sacar ninguna conclusión sobre el burnout, ni sobre si F
+funciona. En la cohorte simulada las variables objetivas se conectan al estado
+latente solo de forma indirecta, así que **que F salga en 0.46 es una propiedad
+del simulador, no un hallazgo**. La pregunta de F se contesta con datos reales
+o no se contesta.
+
+Fíjate también en la columna `c/r`: ninguna versión llega a 10 casos por rasgo,
+y las «completas» andan por 0.9. Es exactamente el problema de potencia de §7,
+visible en la tabla.
+
+### 13.5 La columna que falta
+
+| Versión | Con la muestra del estudio |
+|---|---|
+| Todas las de arriba | **pendiente** |
+
+No va un 0: un 0 se leería como «sacó cero», y lo cierto es que no se ha
+medido. El día que haya 20 personas con semanas completas, un comando llena
+esta columna:
+
+```bash
+modelo/exploracion/venv/bin/python modelo/entrenar.py
+```
+
+Los resultados quedan en `modelo/resultados/datos-propios.json`.
