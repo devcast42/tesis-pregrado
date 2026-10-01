@@ -185,9 +185,39 @@ probabilidad = 1 / (1 + e^(−0.794)) = 0.689  →  69 %
 Eso es lo que la app muestra. Una suma de −3 da 5 %, una de 0 da 50 %, una de
 +3 da 95 %.
 
-> **¿Y de dónde salen esos pesos?** Nadie los elige: son el resultado de buscar
-> los valores que menos se equivocan sobre miles de casos con respuesta
-> conocida. El procedimiento está en §5.2.
+**Cómo leer la tabla.** Tres columnas, tres dueños distintos:
+
+| Columna | De quién es |
+|---|---|
+| Tipificado | **de la persona**: qué tan lejos de lo normal está (§3.4) |
+| Peso | **del modelo**: el mismo para todo el mundo |
+| Aporte | lo que esa variable, en esta persona, puso en la balanza |
+
+**La suma no es un porcentaje**: son *puntos de riesgo*, una moneda interna.
+Cero es «ni idea, 50/50»; positivo se inclina a *sí saldrá alto*; negativo, a
+*no*. La sigmoide es lo único que traduce puntos a porcentaje.
+
+**Un peso es un tipo de cambio**: cuántos puntos de riesgo suma esa variable
+por cada paso que te alejas de lo normal. Como todos están en la misma moneda,
+se comparan directamente — `t_ultimo` (+0.340) pesa el doble que `e_media`
+(+0.176). Lo que eso hace en la práctica, moviendo una sola variable desde una
+persona promedio:
+
+| Situación | Suma | Probabilidad |
+|---|---|---|
+| Todo en la media | −0.122 | **47 %** |
+| `t_ultimo` un paso arriba | +0.218 | **55 %** |
+| `t_ultimo` dos pasos arriba | +0.558 | **64 %** |
+| `t_media` un paso arriba | +0.049 | **51 %** |
+| `t_max` un paso arriba | −0.128 | **47 %** (no se mueve) |
+
+**El intercepto es el único que no multiplica a nada**: es el punto de partida,
+lo que marca alguien exactamente promedio en las siete variables. Sin él, el
+modelo estaría obligado a decir 50 % a esa persona aunque los datos digan otra
+cosa.
+
+Ni los pesos ni el intercepto los eligió nadie: salen todos de la misma
+búsqueda, explicada en §5.2.
 
 ### 3.6 Lo que este ejemplo ya enseña
 
