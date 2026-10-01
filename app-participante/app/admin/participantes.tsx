@@ -5,7 +5,12 @@
  *  El único lugar del panel con nombres, porque el admin fue quien inscribió
  *  a esa gente; nunca al lado de un dato de salud. Inscribe, restablece
  *  contraseñas, da de baja al que deja la empresa. La empresa se toma del
- *  servidor, no de la pantalla. */
+ *  servidor, no de la pantalla.
+ *
+ *  Escrita para quien lleva RR.HH.: antes la pastilla del encabezado decía
+ *  «AISLAMIENTO EPISTÉMICO» y la tabla tenía siete columnas en seiscientos
+ *  píxeles, con «Restablecer clave» partido en dos líneas y el estado
+ *  cortado a media palabra. */
 
 import { useCallback, useMemo, useState } from 'react'
 import { Alert, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
@@ -121,26 +126,26 @@ export default function PersonasAdmin() {
   const inscritos = resumen?.inscritos ?? filas.length
   const pctAdopcion = inscritos ? Math.round(100 * (resumen?.consintieron ?? 0) / inscritos) : 0
   const pctSeguimiento = inscritos ? Math.round(100 * (resumen?.en_seguimiento ?? 0) / inscritos) : 0
-  const ETIQUETA_FILTRO: Record<Filtro, string> = { todos: 'Todos los estados', seguimiento: 'En seguimiento', fuera: 'Fuera de seguimiento', pendiente: 'Consentimiento pendiente' }
+  const ETIQUETA_FILTRO: Record<Filtro, string> = {
+    todos: 'Todas', seguimiento: 'Las que responden', fuera: 'Las que ya no participan', pendiente: 'Las que no han aceptado',
+  }
 
   return (
     <Panel rol="admin">
       <Pantalla ancho={ancho.panel}>
         <View style={e.encabezado}>
           <View style={{ flex: 1, gap: 4, minWidth: 280 }}>
-            <View style={e.fila}>
-              <Pastilla fondo="#EDEBE7" tinta={color.textoMedio} icono={<IconoCandado tamano={11} color={color.textoMedio} />}>GESTIÓN DE ACCESO • COHORTE ACTIVA</Pastilla>
-            </View>
-            <Text style={[texto.titulo, { color: color.texto }]}>Personas y Participación</Text>
+            <Text style={[texto.etiqueta, { color: color.textoMedio }]}>Tu equipo en el estudio</Text>
+            <Text style={[texto.titulo, { color: color.texto }]}>Las personas de tu empresa</Text>
             <Text style={[texto.apoyo, { color: color.textoMedio, maxWidth: 560 }]}>
-              Gestión de credenciales corporativas y monitor de representatividad del estudio.
+              Aquí das de alta a quien entra, le restableces la contraseña si la pierde y das de baja a quien se va. Es la única pantalla del panel donde salen nombres.
             </Text>
           </View>
           <View style={e.aislamiento}>
             <IconoEscudo tamano={20} color={color.primarioProfundo} />
             <View style={{ flex: 1 }}>
-              <Text style={[texto.etiqueta, { color: color.primarioProfundo, fontSize: 11 }]}>AISLAMIENTO EPISTÉMICO</Text>
-              <Text style={[texto.dato, { color: color.textoMedio }]}>Sin acceso a datos de salud ni métricas individuales</Text>
+              <Text style={[texto.datoFuerte, { color: color.primarioProfundo }]}>Aquí no verás cómo está nadie</Text>
+              <Text style={[texto.dato, { color: color.textoMedio }]}>Sabes quién participa y quién responde, nunca qué contestó ni cómo le va.</Text>
             </View>
           </View>
         </View>
@@ -151,44 +156,60 @@ export default function PersonasAdmin() {
           <>
             {/* Indicadores (RF-008-19) */}
             <View style={e.indicadores}>
-              <Indicador rotulo="Total inscritos" icono={<IconoCredencial tamano={18} color={color.primarioProfundo} />}
-                cifra={String(inscritos)} unidad="personas" nota="Censo completo de la cohorte tech" />
-              <Indicador rotulo="Consintieron formalmente" icono={<IconoNota tamano={18} color={color.primarioProfundo} />}
-                cifra={String(resumen?.consintieron ?? 0)} unidad={`${pctAdopcion}% de adopción`} nota="Consentimiento ético validado" notaIcono="check" />
-              <Indicador rotulo="En seguimiento activo" icono={<IconoEscudoCheck tamano={18} color={color.primarioProfundo} />}
-                cifra={String(resumen?.en_seguimiento ?? 0)} unidad={`${pctSeguimiento}% del total`} nota="Interacción regular confirmada" />
-              <Indicador rotulo="Tasa de respuesta semanal" icono={<IconoBarras tamano={18} color={color.primarioProfundo} />}
-                cifra={tasa != null ? `${tasa}%` : '—'} unidad={tasa != null && tasa >= 60 ? 'estabilizada' : 'del viernes'}
-                nota={tasa != null && tasa >= 60 ? '> 60% umbral mínimo superado' : 'Se mide con el cuestionario del viernes'} notaIcono="tendencia"
+              <Indicador rotulo="Dadas de alta" icono={<IconoCredencial tamano={18} color={color.primarioProfundo} />}
+                cifra={String(inscritos)} unidad="personas" nota="Las que has inscrito desde que empezó" />
+              <Indicador rotulo="Han aceptado participar" icono={<IconoNota tamano={18} color={color.primarioProfundo} />}
+                cifra={String(resumen?.consintieron ?? 0)} unidad={`de ${inscritos}`}
+                nota={pctAdopcion === 100 ? 'Todas firmaron el consentimiento' : `${pctAdopcion}% ha firmado el consentimiento`} notaIcono="check" />
+              <Indicador rotulo="Siguen respondiendo" icono={<IconoEscudoCheck tamano={18} color={color.primarioProfundo} />}
+                cifra={String(resumen?.en_seguimiento ?? 0)} unidad={`de ${inscritos}`}
+                nota={`El resto terminó o se dio de baja (${pctSeguimiento}% sigue)`} />
+              <Indicador rotulo="Contestaron el último viernes" icono={<IconoBarras tamano={18} color={color.primarioProfundo} />}
+                cifra={tasa != null ? `${tasa}%` : '—'} unidad={tasa != null ? 'de las inscritas' : 'sin datos aún'}
+                nota={tasa == null ? 'Aparece cuando se conteste el primer viernes'
+                  : tasa >= 60 ? 'Suficiente para que las cifras se puedan leer'
+                  : 'Por debajo del 60 %: la lectura semanal es poco fiable'} notaIcono="tendencia"
                 tono={tasa != null && tasa < 60 ? color.alerta : undefined} />
             </View>
 
-            {/* Muestra */}
+            {/* Si hay suficiente gente, y quién lleva días sin contestar */}
             <View style={e.muestra}>
               <View style={e.muestraIcono}><IconoCheckCirculo tamano={22} color={color.primarioProfundo} /></View>
-              <View style={{ flex: 1, minWidth: 240, gap: 4 }}>
-                <View style={e.fila}>
-                  <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>
-                    {resumen?.reportable ? `Muestra robusta${tasa != null ? ` (${tasa}%)` : ''}` : 'Muestra en formación'}
-                  </Text>
-                  <Text style={[texto.etiqueta, { color: color.primarioProfundo, fontSize: 10 }]}>{resumen?.reportable ? `VÁLIDO PARA K ≥ ${MINIMO}` : `REQUIERE K ≥ ${MINIMO}`}</Text>
-                </View>
+              <View style={{ flex: 1, minWidth: 260, gap: 4 }}>
+                <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>
+                  {resumen?.reportable ? 'Hay suficiente gente para enseñar promedios' : 'Todavía no hay suficiente gente'}
+                </Text>
                 <Text style={[texto.apoyo, { color: color.textoMedio }]}>
                   {resumen?.reportable
                     ? tasa != null && tasa >= 60
-                      ? 'El umbral de reporte semanal está garantizado y los resultados son estadísticamente sólidos. No hay riesgo de sesgo de no-respuesta.'
-                      : 'El umbral de reporte está garantizado, pero con menos del 60 % de respuesta la lectura semanal es poco fiable. Recuerda en la reunión de equipo que las respuestas son anónimas.'
-                    : `Con menos de ${MINIMO} personas inscritas no se publican cifras semanales: un porcentaje señalaría a personas concretas.`}
+                      ? `Con ${inscritos} personas inscritas y un ${tasa} % de respuesta, las cifras de las otras pantallas se pueden leer sin reservas.`
+                      : `Hay gente de sobra, pero esta semana contestó el ${tasa ?? 0} %. Por debajo del 60 % la lectura semanal se vuelve poco fiable: recordar en la reunión de equipo que las respuestas son anónimas suele bastar.`
+                    : `Los promedios aparecen cuando hay al menos ${MINIMO} personas respondiendo la misma semana. Con menos, una cifra podría señalar a alguien concreto.`}
                 </Text>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={[texto.dato, { color: color.textoSuave }]}>Próximo cierre de ciclo</Text>
-                <Text style={[texto.apoyoFuerte, { color: color.texto }]}>Viernes, 18:00 PET</Text>
+              <View style={{ alignItems: 'flex-end', minWidth: 150 }}>
+                <Text style={[texto.dato, { color: color.textoSuave }]}>El cuestionario largo</Text>
+                <Text style={[texto.apoyoFuerte, { color: color.texto }]}>se contesta los viernes</Text>
               </View>
             </View>
 
+            {/* Lo único accionable de esta pantalla, y estaba en los datos
+                sin enseñarse: cuánta gente lleva días sin responder. */}
+            {(resumen?.sin_responder_4d ?? 0) > 0 && (
+              <View style={e.recordatorio}>
+                <IconoReloj tamano={16} color="#8A5A12" />
+                <Text style={[texto.apoyo, { color: color.texto, flex: 1, minWidth: 260 }]}>
+                  {`${resumen!.sin_responder_4d} ${resumen!.sin_responder_4d === 1 ? 'persona lleva' : 'personas llevan'} cuatro días o más sin contestar. Las tienes marcadas en la lista; puedes recordárselo sin saber nada de lo que responden.`}
+                </Text>
+              </View>
+            )}
+
             {/* Herramientas */}
-            <Caja estilo={{ padding: espacio.base }}>
+            {/* `zIndex` en la tarjeta entera, no solo en el menú: la tabla
+                viene después en el documento y, con react-native-web, eso
+                bastaba para taparlo. Del desplegable solo se veía la primera
+                opción, así que el filtro no se podía usar. */}
+            <Caja estilo={{ padding: espacio.base, zIndex: filtroAbierto ? 30 : 1 }}>
               <View style={[e.fila, { justifyContent: 'space-between', gap: espacio.md }]}>
                 <View style={[e.fila, { flex: 1, minWidth: 300 }]}>
                   <View style={e.buscador}>
@@ -199,7 +220,7 @@ export default function PersonasAdmin() {
                       style={e.buscadorEntrada} autoCapitalize="none" autoCorrect={false}
                     />
                   </View>
-                  <View>
+                  <View style={{ zIndex: filtroAbierto ? 30 : 1 }}>
                     <Pressable onPress={() => setFiltroAbierto((v) => !v)} style={e.selector} accessibilityRole="button">
                       <Text style={[texto.apoyo, { color: color.texto }]}>{ETIQUETA_FILTRO[filtro]}</Text>
                       <IconoChevronAbajo tamano={18} color={color.textoMedio} />
@@ -217,21 +238,21 @@ export default function PersonasAdmin() {
                 </View>
                 <Pressable onPress={() => setFormulario((v) => !v)} style={e.botonVerde} accessibilityRole="button">
                   <IconoAgregar tamano={18} color="#FFFFFF" />
-                  <Text style={[texto.cuerpoFuerte, { color: '#FFFFFF' }]}>{formulario ? 'Cerrar' : '+ Inscribir persona'}</Text>
+                  <Text style={[texto.cuerpoFuerte, { color: '#FFFFFF' }]}>{formulario ? 'Cerrar' : 'Dar de alta a alguien'}</Text>
                 </Pressable>
               </View>
 
               {formulario && (
                 <View style={e.alta}>
                   <View style={e.campo}>
-                    <Etiqueta>Nombre</Etiqueta>
-                    <Entrada value={nombre} onChangeText={setNombre} placeholder="Nombre y apellido" />
+                    <Etiqueta>Nombre y apellido</Etiqueta>
+                    <Entrada value={nombre} onChangeText={setNombre} placeholder="Como aparece en la nómina" />
                   </View>
                   <View style={e.campo}>
-                    <Etiqueta>Correo corporativo</Etiqueta>
+                    <Etiqueta>Su correo de trabajo</Etiqueta>
                     <Entrada value={correo} onChangeText={setCorreo} placeholder="correo@empresa.com" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
                   </View>
-                  <Boton onPress={inscribir} inhabilitado={!nombre.trim() || !correo.includes('@')} cargando={ocupado}>Inscribir</Boton>
+                  <Boton onPress={inscribir} inhabilitado={!nombre.trim() || !correo.includes('@')} cargando={ocupado}>Crear su cuenta</Boton>
                 </View>
               )}
               {error && <View style={{ marginTop: espacio.md }}><Aviso>{error}</Aviso></View>}
@@ -239,69 +260,121 @@ export default function PersonasAdmin() {
               {reseteo && <Credenciales contrasena={reseteo.contrasena} nota={`Nueva contraseña de ${reseteo.codigo}. No se vuelve a mostrar.`} />}
             </Caja>
 
-            {/* Tabla */}
+            {/* La lista. Antes eran siete columnas en seiscientos píxeles:
+                el correo truncado, «En seguimiento» cortado a media palabra
+                y «Restablecer clave» partido en dos líneas. Ahora el correo
+                va bajo el nombre y el consentimiento y el seguimiento se
+                juntan en una sola columna, que es como se leen. */}
             <Caja estilo={{ padding: 0, overflow: 'hidden' }}>
               <View style={e.tablaCabecera}>
-                {[['NOMBRE', 2], ['CORREO CORPORATIVO', 2.2], ['CÓDIGO ANÓNIMO', 1.1], ['INSCRIPCIÓN', 1], ['CONSENTIMIENTO', 1.2], ['ESTADO', 1.3], ['', 1.6]].map(([h, f]) => (
-                  <Text key={String(h) || 'acciones'} style={[texto.etiqueta, { color: color.textoMedio, flex: Number(f), fontSize: 11 }]}>{h}</Text>
+                {[['PERSONA', 2.6], ['CÓDIGO', 1], ['DESDE', 1], ['CÓMO VA', 1.8], ['', 1.5]].map(([h, f]) => (
+                  <Text key={String(h) || 'acciones'} style={[texto.etiqueta, { color: color.textoMedio, flex: Number(f), fontSize: 10.5 }]}>{h}</Text>
                 ))}
               </View>
               {enPagina.length === 0 && (
-                <Text style={[texto.apoyo, { color: color.textoMedio, padding: espacio.lg }]}>
-                  {filas.length === 0 ? 'Todavía no has inscrito a nadie.' : 'Nadie coincide con la búsqueda.'}
-                </Text>
-              )}
-              {enPagina.map((x) => (
-                <View key={x.participante_id} style={e.tablaFila}>
-                  <View style={[e.fila, { flex: 2 }]}>
-                    <Monograma nombre={x.nombre ?? x.codigo_anonimo} />
-                    <Text style={[texto.cuerpoFuerte, { color: color.texto }]} numberOfLines={1}>{x.nombre ?? '—'}</Text>
-                  </View>
-                  <Text style={[e.mono, { flex: 2.2 }]} numberOfLines={1}>{x.correo_contacto ?? '—'}</Text>
-                  <View style={{ flex: 1.1, flexDirection: 'row' }}>
-                    <View style={e.chipCodigo}><Text style={[e.mono, { color: color.texto }]}>{x.codigo_anonimo}</Text></View>
-                  </View>
-                  <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1 }]}>
-                    {new Date(x.inscrito_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' }).replace('.', '')}
+                <View style={{ padding: espacio.lg, gap: 6 }}>
+                  <Text style={[texto.apoyo, { color: color.texto }]}>
+                    {filas.length === 0 ? 'Todavía no has dado de alta a nadie.' : 'Nadie coincide con lo que buscas.'}
                   </Text>
-                  <View style={[e.fila, { flex: 1.2, gap: 4 }]}>
-                    {x.consentimiento === true
-                      ? <><IconoCheckCirculo tamano={14} color={color.primarioProfundo} /><Text style={[texto.apoyo, { color: color.primarioProfundo }]}>Sí (Firmado)</Text></>
-                      : x.consentimiento === false
-                        ? <Text style={[texto.apoyo, { color: color.textoMedio }]}>Rechazado</Text>
-                        : <><IconoReloj tamano={14} color={color.textoMedio} /><Text style={[texto.apoyo, { color: color.textoMedio }]}>Pendiente</Text></>}
-                  </View>
-                  <View style={{ flex: 1.3, flexDirection: 'row' }}>
-                    {x.en_seguimiento
-                      ? <Pastilla fondo="#DDF3EA" tinta={color.primarioProfundo} punto={color.primario}>En seguimiento</Pastilla>
-                      : <Pastilla fondo="#EDEBE7" tinta={color.textoMedio}>Fuera de seguimiento</Pastilla>}
-                  </View>
-                  <View style={{ flex: 1.6, alignItems: 'flex-end', gap: 4 }}>
-                    <Pressable onPress={() => restablecer(x)} style={e.accion} accessibilityRole="button"><Text style={[texto.dato, { color: color.texto }]}>Restablecer clave</Text></Pressable>
-                    {x.en_seguimiento && (
-                      <Pressable onPress={() => confirmarBaja(x)} style={e.accion} accessibilityRole="button"><Text style={[texto.dato, { color: color.textoMedio }]}>Dar de baja</Text></Pressable>
-                    )}
-                  </View>
+                  <Text style={[texto.dato, { color: color.textoMedio }]}>
+                    {filas.length === 0
+                      ? 'Usa «Dar de alta a alguien»: se le crea la cuenta y te damos su contraseña para entregársela.'
+                      : 'Prueba con otro nombre, o quita el filtro de estado.'}
+                  </Text>
                 </View>
-              ))}
-              <View style={e.tablaPie}>
-                <Text style={[texto.dato, { color: color.textoMedio, flex: 1 }]}>Mostrando {enPagina.length} de {visibles.length} integrantes registrados</Text>
-                <Pressable disabled={pag === 0} onPress={() => setPagina(pag - 1)}><Text style={[texto.dato, { color: pag === 0 ? color.textoSuave : color.texto }]}>Anterior</Text></Pressable>
-                <View style={e.numeroPagina}><Text style={[texto.datoFuerte, { color: '#FFFFFF' }]}>{pag + 1}</Text></View>
-                <Pressable disabled={pag >= paginas - 1} onPress={() => setPagina(pag + 1)}><Text style={[texto.dato, { color: pag >= paginas - 1 ? color.textoSuave : color.texto }]}>Siguiente</Text></Pressable>
-              </View>
+              )}
+              {enPagina.map((x) => {
+                const callada = x.en_seguimiento && x.dias_sin_responder != null && x.dias_sin_responder >= 4
+                return (
+                  <View key={x.participante_id} style={e.tablaFila}>
+                    <View style={[e.fila, { flex: 2.6, flexWrap: 'nowrap' }]}>
+                      <Monograma nombre={x.nombre ?? x.codigo_anonimo} />
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={[texto.cuerpoFuerte, { color: color.texto }]} numberOfLines={1}>{x.nombre ?? '—'}</Text>
+                        <Text style={[e.mono, { fontSize: 11 }]} numberOfLines={1}>{x.correo_contacto ?? 'sin correo'}</Text>
+                      </View>
+                    </View>
+                    <View style={{ flex: 1, flexDirection: 'row' }}>
+                      <View style={e.chipCodigo}><Text style={[e.mono, { color: color.texto }]}>{x.codigo_anonimo}</Text></View>
+                    </View>
+                    <Text style={[texto.dato, { color: color.textoMedio, flex: 1 }]}>
+                      {new Date(x.inscrito_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' }).replace('.', '')}
+                    </Text>
+                    {/* Consentimiento y seguimiento son una sola idea para
+                        quien lee: en qué punto está esta persona. */}
+                    <View style={{ flex: 1.8, gap: 2 }}>
+                      {x.consentimiento !== true ? (
+                        <>
+                          <View style={{ flexDirection: 'row' }}>
+                            <Pastilla fondo="#EDEBE7" tinta={color.textoMedio}>{x.consentimiento === false ? 'No quiso participar' : 'Falta que acepte'}</Pastilla>
+                          </View>
+                          <Text style={[texto.dato, { color: color.textoSuave, fontSize: 11 }]}>
+                            {x.consentimiento === false ? 'Rechazó el consentimiento' : 'No ha abierto el enlace'}
+                          </Text>
+                        </>
+                      ) : x.en_seguimiento ? (
+                        <>
+                          <View style={{ flexDirection: 'row' }}>
+                            <Pastilla fondo={callada ? '#FBEFD9' : '#DDF3EA'} tinta={callada ? '#8A5A12' : color.primarioProfundo} punto={callada ? '#8A5A12' : color.primario}>
+                              {callada ? 'Lleva días sin contestar' : 'Respondiendo'}
+                            </Pastilla>
+                          </View>
+                          <Text style={[texto.dato, { color: callada ? '#8A5A12' : color.textoSuave, fontSize: 11 }]}>
+                            {x.dias_sin_responder == null ? 'sin check-ins todavía'
+                              : x.dias_sin_responder === 0 ? 'contestó hoy'
+                              : `hace ${x.dias_sin_responder} ${x.dias_sin_responder === 1 ? 'día' : 'días'}`}
+                          </Text>
+                        </>
+                      ) : (
+                        <>
+                          <View style={{ flexDirection: 'row' }}>
+                            <Pastilla fondo="#EDEBE7" tinta={color.textoMedio}>Ya no participa</Pastilla>
+                          </View>
+                          <Text style={[texto.dato, { color: color.textoSuave, fontSize: 11 }]}>terminó o se dio de baja</Text>
+                        </>
+                      )}
+                    </View>
+                    <View style={{ flex: 1.5, alignItems: 'flex-end', gap: 4 }}>
+                      <Pressable onPress={() => restablecer(x)} style={e.accion} accessibilityRole="button">
+                        <Text style={[texto.dato, { color: color.texto }]} numberOfLines={1}>Nueva contraseña</Text>
+                      </Pressable>
+                      {x.en_seguimiento && (
+                        <Pressable onPress={() => confirmarBaja(x)} style={e.accion} accessibilityRole="button">
+                          <Text style={[texto.dato, { color: color.textoMedio }]} numberOfLines={1}>Dar de baja</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  </View>
+                )
+              })}
+              {visibles.length > 0 && (
+                <View style={e.tablaPie}>
+                  <Text style={[texto.dato, { color: color.textoMedio, flex: 1 }]}>
+                    {visibles.length <= POR_PAGINA
+                      ? `${visibles.length} ${visibles.length === 1 ? 'persona' : 'personas'}`
+                      : `${pag * POR_PAGINA + 1}–${pag * POR_PAGINA + enPagina.length} de ${visibles.length}`}
+                    {visibles.length !== filas.length ? ` (de ${filas.length} en total)` : ''}
+                  </Text>
+                  {paginas > 1 && (
+                    <>
+                      <Pressable disabled={pag === 0} onPress={() => setPagina(pag - 1)}><Text style={[texto.dato, { color: pag === 0 ? color.textoSuave : color.texto }]}>Anterior</Text></Pressable>
+                      <View style={e.numeroPagina}><Text style={[texto.datoFuerte, { color: '#FFFFFF' }]}>{pag + 1}</Text></View>
+                      <Pressable disabled={pag >= paginas - 1} onPress={() => setPagina(pag + 1)}><Text style={[texto.dato, { color: pag >= paginas - 1 ? color.textoSuave : color.texto }]}>Siguiente</Text></Pressable>
+                    </>
+                  )}
+                </View>
+              )}
             </Caja>
 
             {/* Garantía */}
             <View style={e.garantia}>
               <View style={e.muestraIcono}><IconoEscudoCheck tamano={20} color={color.primarioProfundo} /></View>
               <View style={{ flex: 1, minWidth: 240, gap: 4 }}>
-                <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Garantía ética de desconexión de datos</Text>
+                <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Dónde termina lo que puedes ver</Text>
                 <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-                  El administrador gestiona la nómina de participantes pero jamás tiene acceso a respuestas individuales, puntajes OLBI o uso del servicio de apoyo. Mínimo de reporte por grupo: {MINIMO} personas. «Fuera de seguimiento» no dice por qué: puede ser fin de participación, retiro del consentimiento o acompañamiento.
+                  Puedes dar de alta, dar de baja y restablecer contraseñas, pero no ves ni una respuesta, ni una puntuación, ni si alguien ha hablado con un psicólogo. Y «ya no participa» no dice por qué: puede ser que terminara, que retirara su consentimiento o que esté en acompañamiento. Para enseñar cualquier promedio hacen falta {MINIMO} respuestas.
                 </Text>
               </View>
-              <View style={e.chipMono}><Text style={[e.mono, { color: color.primarioProfundo }]}>k-anonymity ≥ {MINIMO} • Agregación activa</Text></View>
             </View>
 
             <NotaAgregacion minimo={MINIMO} />
@@ -346,10 +419,11 @@ const e = StyleSheet.create({
   puntoNota: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.primario },
   muestra: { flexDirection: 'row', alignItems: 'center', gap: espacio.base, backgroundColor: '#F1EFEB', borderRadius: radio.lg, padding: espacio.lg, flexWrap: 'wrap' },
   muestraIcono: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#DDF3EA', alignItems: 'center', justifyContent: 'center' },
+  recordatorio: { flexDirection: 'row', alignItems: 'flex-start', gap: espacio.sm, backgroundColor: '#FBEFD9', borderRadius: radio.md, padding: espacio.base, flexWrap: 'wrap' },
   buscador: { flex: 1, minWidth: 220, flexDirection: 'row', alignItems: 'center', gap: espacio.sm, backgroundColor: '#F5F4F1', borderRadius: radio.md, paddingHorizontal: espacio.md, height: 44 },
   buscadorEntrada: { flex: 1, ...texto.apoyo, color: color.texto, paddingVertical: 8 },
   selector: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, backgroundColor: '#F5F4F1', borderRadius: radio.md, paddingHorizontal: espacio.md, height: 44, minWidth: 190, justifyContent: 'space-between' },
-  menu: { position: 'absolute', top: 48, left: 0, right: 0, backgroundColor: color.superficie, borderRadius: radio.md, borderWidth: 1, borderColor: color.borde, paddingVertical: 4, zIndex: 10, elevation: 4 },
+  menu: { position: 'absolute', top: 48, left: 0, right: 0, minWidth: 210, backgroundColor: color.superficie, borderRadius: radio.md, borderWidth: 1, borderColor: color.borde, paddingVertical: 4, zIndex: 30, elevation: 8, shadowColor: '#1C1917', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
   menuItem: { paddingHorizontal: espacio.md, paddingVertical: 10 },
   botonVerde: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, backgroundColor: color.primario, borderRadius: radio.md, paddingHorizontal: espacio.base, height: 44 },
   alta: { flexDirection: 'row', gap: espacio.md, alignItems: 'flex-end', flexWrap: 'wrap', marginTop: espacio.base, paddingTop: espacio.base, borderTopWidth: 1, borderTopColor: color.borde },
