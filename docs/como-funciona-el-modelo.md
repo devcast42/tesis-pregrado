@@ -185,6 +185,10 @@ probabilidad = 1 / (1 + e^(−0.794)) = 0.689  →  69 %
 Eso es lo que la app muestra. Una suma de −3 da 5 %, una de 0 da 50 %, una de
 +3 da 95 %.
 
+> **¿Y de dónde salen esos pesos?** Nadie los elige: son el resultado de buscar
+> los valores que menos se equivocan sobre miles de casos con respuesta
+> conocida. El procedimiento está en §5.2.
+
 ### 3.6 Lo que este ejemplo ya enseña
 
 El **71 %** de la señal vino de `t_ultimo` (+0.563 de +0.794): cómo estaba el
@@ -219,8 +223,9 @@ anticipar dos días es menos impresionante que anticipar una semana.
 
 ## 5. De dónde salen los pesos
 
-Aquí hay un truco que vale la pena entender, porque es una contribución propia
-de la tesis.
+### 5.1 El truco: preentrenar con datos ajenos
+
+Esto vale la pena entenderlo, porque es una contribución propia de la tesis.
 
 **El problema:** el primer día de estudio no hay datos propios, así que no
 habría nada que mostrarle al participante.
@@ -234,8 +239,84 @@ Las 4 preguntas diarias se eligieron a propósito para que coincidan con 4 de
 las 8 del estudio polaco. Si se cambian, se rompe el truco.
 
 **Después**, cuando haya datos propios, el modelo se reentrena partiendo de esos
-pesos: puede cambiarlos, pero le cuesta. Si los datos peruanos no dicen nada
-distinto, se queda cerca de lo que ya se sabía.
+pesos: puede cambiarlos, pero le cuesta (§5.4).
+
+### 5.2 Cómo se encuentran, en concreto
+
+Un peso no se elige: se busca. La idea completa cabe en una frase.
+
+> Prueba unos pesos, mira cuánto se equivoca, ajústalos, repite hasta que no
+> mejore.
+
+**Hacen falta casos con respuesta conocida.** Del estudio de referencia salen
+**1 880 ejemplos** (persona-semana, con 1 a 4 días respondidos) de los que ya se
+sabe el final: 492 terminaron altos, 1 388 no.
+
+**Equivocarse se cobra según la confianza.** No es «acertó o no»: el modelo
+entrega una probabilidad y paga por ella.
+
+| Dijo | Pasó | Castigo |
+|---|---|---|
+| 90 % | fue alto | casi nada |
+| 55 % | cualquiera | poco |
+| 90 % | **no** fue alto | **mucho** |
+
+La suma de ese castigo sobre los 1 880 ejemplos es **el coste**. Los pesos
+buenos son los que lo dejan más bajo.
+
+**La búsqueda.** Se arranca con todos los pesos en cero —el modelo dice 50 % a
+todo— y se repite: calcular el coste, ver en qué dirección baja cada peso,
+moverlo un poco. Miles de veces, hasta que ningún movimiento mejora. Es
+**descenso de gradiente**, y `scikit-learn` lo resuelve en una línea.
+
+**Se puede comprobar.** Dejando fijos los otros seis pesos y moviendo solo el de
+`t_ultimo` sobre los datos reales:
+
+| Peso de `t_ultimo` | Coste |
+|---|---|
+| al revés (−0.34) | 643.20 |
+| cero, se ignora | 604.72 |
+| el doble (+0.68) | 603.00 |
+| la mitad (+0.17) | 595.67 |
+| **el aprendido (+0.340)** | **592.79** ← el mínimo |
+
+El 0.340 no es una preferencia de nadie: es donde el coste toca fondo. Y el
+peso negativo es con diferencia lo peor, así que ni siquiera el signo lo puso
+una persona: los datos dicen que estar peor el jueves se asocia a terminar
+alto.
+
+### 5.3 Dos ajustes que cambian el resultado
+
+**Clases desbalanceadas.** Solo el 26 % de los ejemplos son altos; un modelo que
+dijera «nunca» acertaría el 74 % de las veces y sería inútil. Por eso cada
+ejemplo alto vale casi el triple al calcular el coste (`class_weight='balanced'`).
+Sin esto el modelo aprende a callarse.
+
+**Penalización por pesos grandes.** Al coste se le suma la suma de los pesos al
+cuadrado. Un peso enorme suele ser el modelo aferrándose a una casualidad de
+estos 1 880 ejemplos; la penalización lo frena, y una variable que no gana su
+sitio se queda en casi cero sola. Es la **regularización L2** (`C = 0.5`).
+
+> Por eso `t_max` acabó en −0.006: sabiendo ya el promedio y el último día, el
+> peor día no añade lo suficiente como para compensar la penalización. **El
+> modelo lo apagó solo.**
+
+### 5.4 Y con datos propios, el giro
+
+Todo lo anterior arranca con los pesos en cero. Con muestra propia el
+entrenamiento arranca **desde los pesos de referencia `w₀`**, y la penalización
+no empuja hacia cero sino **hacia `w₀`**:
+
+```
+coste = error + λ · (cuánto me alejé de w₀)
+```
+
+Es decir: *puedes cambiar lo que ya sabíamos, pero tienes que pagar por ello.*
+
+`λ` no se elige a dedo: se prueban cinco valores (0.1, 0.3, 1, 3, 10) y gana el
+que mejor funcione **en gente que el modelo no vio**. Un λ grande significa «me
+fío del estudio de referencia»; uno chico, «mandan mis datos». Cuál ganó es un
+resultado reportable.
 
 **Cuidado:** los polacos son administración pública, no gente de tecnología en
 Perú. Por eso el modelo se reporta siempre en dos versiones —con y sin ese
