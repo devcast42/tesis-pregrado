@@ -9,8 +9,8 @@ import { supabase } from '../nucleo/supabase'
 // ----------------------------------------------------------- Filtro global
 
 /** Empresa y rango de semanas del estudio; persiste en la URL (RF-009-06). */
-export type FiltroGlobal = { organizacion_id: string | null; semanaDesde: number; semanaHasta: number }
-export const FILTRO_POR_DEFECTO: FiltroGlobal = { organizacion_id: null, semanaDesde: 1, semanaHasta: 6 }
+export type FiltroGlobal = { organizacion_id: string | null }
+export const FILTRO_POR_DEFECTO: FiltroGlobal = { organizacion_id: null }
 
 // ----------------------------------------------------------------- Bandeja
 
@@ -83,6 +83,18 @@ export async function participantes(filtro?: FiltroGlobal): Promise<FilaParticip
     if (na !== nb) return nb - na
     return (b.dias_sin_checkin ?? 0) - (a.dias_sin_checkin ?? 0)
   })
+}
+
+/** Cuántos participantes siguen activos. Es lo único que necesita la barra
+ *  superior, que la pintaba trayéndose `panel_participantes_v2` entera —58
+ *  filas anchas con seis CTE materializadas, la consulta más cara del panel—
+ *  en cada pantalla, para después contar en el navegador. Aquí cuenta la
+ *  base sobre `participantes`, que el investigador ya puede leer. */
+export async function cuantosActivos(filtro?: FiltroGlobal): Promise<number | null> {
+  let q = supabase.from('participantes').select('id', { count: 'exact', head: true }).eq('estado', 'activo')
+  if (filtro?.organizacion_id) q = q.eq('organizacion_id', filtro.organizacion_id)
+  const { count, error } = await q
+  return error ? null : count ?? 0
 }
 
 // -------------------------------------------------------------------- Ficha
@@ -199,7 +211,15 @@ export async function reasignarDerivacion(derivacionId: string, psicologoId: str
 
 export type VersionModelo = {
   version: string; tarea: 'nowcast' | 'pronostico'; origen: string; activa: boolean
-  umbral_decision: number; visible_para: string[]; metricas: Record<string, any>; entrenada_en: string | null; notas: string | null
+  umbral_decision: number; visible_para: string[]; metricas: Record<string, any>
+  /** Ojo con el nombre: la columna es `entrenado_en`. El tipo decía
+   *  `entrenada_en`, que no existe, así que la fecha salía siempre vacía en
+   *  Versiones, Desempeño y Auditoría; el `as VersionModelo[]` del select lo
+   *  tapaba y TypeScript no podía avisar. */
+  entrenado_en: string | null
+  /** De dónde salen los datos con que se entrenó. Tampoco se veía: el código
+   *  pedía `notas`, que no es columna de esta tabla. */
+  fuente: string | null
 }
 export async function versiones(): Promise<VersionModelo[]> {
   const { data } = await supabase.from('modelo_versiones').select('*').order('tarea').order('activa', { ascending: false })
@@ -286,13 +306,32 @@ export async function exportaciones(): Promise<ExportacionRegistrada[]> {
 
 export type CitaEstudio = {
   id: string; participante_id: string; codigo_anonimo: string; organizacion_id: string; derivacion_id: string; psicologo_id: string
-  propuesta_para: string; estado: 'solicitada' | 'confirmada' | 'cancelada' | 'realizada'; cancelada_por: string | null; creada_en: string; actualizada_en: string
+  propuesta_para: string
+  /** El enum de la base es `atendida`, no `realizada`. El tipo decía la
+   *  segunda y el `as CitaEstudio[]` lo tapaba: el desglose de Derivaciones
+   *  contaba cero sesiones hechas habiendo dos, y los porcentajes no sumaban
+   *  100 porque un estado entero quedaba fuera del reparto. */
+  estado: 'solicitada' | 'confirmada' | 'cancelada' | 'atendida'
+  cancelada_por: string | null; creada_en: string; actualizada_en: string
 }
 /** Citas sin el motivo escrito (§9.4): el hecho y su estado. */
 export async function citasEstudio(filtro?: FiltroGlobal): Promise<CitaEstudio[]> {
   let q = supabase.from('citas_estudio').select('*').order('propuesta_para', { ascending: false })
   if (filtro?.organizacion_id) q = q.eq('organizacion_id', filtro.organizacion_id)
   const { data } = await q
+  return (data ?? []) as CitaEstudio[]
+}
+
+/** Las citas de una persona, para su ficha.
+ *
+ *  `ficha_participante` no las trae: la función no es SECURITY DEFINER y
+ *  `citas` no tiene ninguna política de RLS para el investigador —solo el
+ *  participante y su psicólogo la leen—, así que el campo `cita` de la ficha
+ *  llegaba siempre en nulo y la pantalla decía «sin cita pedida» de alguien
+ *  que la tenía confirmada. La vista `citas_estudio` es la puerta que sí le
+ *  corresponde (RF-009-10), y es la que se usa aquí. */
+export async function citasDelParticipante(id: string): Promise<CitaEstudio[]> {
+  const { data } = await supabase.from('citas_estudio').select('*').eq('participante_id', id).order('propuesta_para', { ascending: false })
   return (data ?? []) as CitaEstudio[]
 }
 

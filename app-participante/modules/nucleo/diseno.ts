@@ -1,3 +1,4 @@
+import { Platform } from 'react-native'
 /** Sistema de diseño.
  *
  *  Un solo lugar para color, tipografía, espaciado y forma. Las pantallas no
@@ -112,3 +113,21 @@ export const sombra = {
 export const ancho = { formulario: 560, panel: 960 } as const
 
 export const TOQUE_MINIMO = 52
+
+/** Fondo de un diálogo abierto con `Modal`.
+ *
+ *  `flex: 1` no sirve aquí. En react-native-web 0.21 el `Modal` se monta en un
+ *  div suelto al final del body, sin posición ni altura, así que un hijo con
+ *  `flex: 1` mide cero y el diálogo existe en el DOM pero no se ve en ninguna
+ *  parte. Pasaba con los cuatro de la aplicación: el buscador de la barra
+ *  lateral, la reasignación de psicólogo, la desactivación y el cierre del día
+ *  del participante.
+ *
+ *  Se posiciona el fondo él mismo. En web `fixed` lo ancla a la ventana; en
+ *  iOS y Android el `Modal` ya ocupa la pantalla y `absolute` con los cuatro
+ *  lados a cero hace lo mismo. */
+export const veloModal = {
+  position: (Platform.OS === 'web' ? 'fixed' : 'absolute') as 'absolute',
+  top: 0, left: 0, right: 0, bottom: 0,
+  zIndex: 1000,
+} as const

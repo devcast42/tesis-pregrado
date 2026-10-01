@@ -59,14 +59,37 @@ ADMIN = 'test+admin@tesis.local'
 # esa misma persona en el panel del investigador.
 PARTICIPANTE_EN_VIVO = 'user.prueba2@gmail.com'
 
+# Nombres inventados para la tabla `identidades`. Sin ellos «Ver identidad»
+# no tiene nada que devolver y el botón falla: es la única tabla con datos
+# personales y la semilla la dejaba vacía.
+#
+# El correo va a `ejemplo.test`. `.test` está reservado por la RFC 2606 y no
+# resuelve en ningún sitio, así que ni por accidente se le escribe a nadie.
+NOMBRES = ['Ana', 'Luis', 'Carmen', 'Jorge', 'Rocío', 'Diego', 'Patricia', 'Miguel',
+           'Elena', 'Andrés', 'Lucía', 'Fernando', 'Sofía', 'Ricardo', 'Valeria',
+           'Gonzalo', 'Isabel', 'Rodrigo', 'Daniela', 'Sebastián', 'Mariana', 'Álvaro']
+APELLIDOS = ['Quispe', 'Ramírez', 'Torres', 'Salazar', 'Mendoza', 'Vargas', 'Castillo',
+             'Huamán', 'Rojas', 'Ponce', 'Delgado', 'Chávez', 'Núñez', 'Aguilar',
+             'Bustamante', 'Espinoza', 'Cárdenas', 'Paredes', 'Ibáñez', 'Zavala']
+
+
+def identidad_inventada(rng, codigo: str) -> tuple[str, str]:
+    """Un nombre y un correo de mentira, estables para un mismo código."""
+    nombre = f"{NOMBRES[rng.integers(len(NOMBRES))]} {APELLIDOS[rng.integers(len(APELLIDOS))]}"
+    usuario = (nombre.lower()
+               .replace(' ', '.')
+               .translate(str.maketrans('áéíóúñ', 'aeioun')))
+    return nombre, f"{usuario}.{codigo.lower()}@ejemplo.test"
+
+
 # Etapas del circuito, repartidas entre los detectados en este orden.
 ETAPAS = ['informe_por_aprobar', 'cita_solicitada', 'sin_cita', 'cita_confirmada', 'completo']
 
 EMPRESAS = [
-    {'nombre': 'Nexa Software',   'prefijo': 'NX', 'n': 22, 'semanas': 6, 'sesgo':  0.00, 'det': 2, 'admin': True},
-    {'nombre': 'Andes Data Labs', 'prefijo': 'AD', 'n': 16, 'semanas': 4, 'sesgo':  0.45, 'det': 3, 'admin': False},
-    {'nombre': 'Marea Studio',    'prefijo': 'MS', 'n': 13, 'semanas': 6, 'sesgo': -0.40, 'det': 0, 'admin': False},
-    {'nombre': 'Kuntur Fintech',  'prefijo': 'KF', 'n':  7, 'semanas': 2, 'sesgo':  0.15, 'det': 0, 'admin': False},
+    {'nombre': 'Nexa Software',   'prefijo': 'NEX', 'n': 22, 'semanas': 6, 'sesgo':  0.00, 'det': 2, 'admin': True},
+    {'nombre': 'Andes Data Labs', 'prefijo': 'AND', 'n': 16, 'semanas': 4, 'sesgo':  0.45, 'det': 3, 'admin': False},
+    {'nombre': 'Marea Studio',    'prefijo': 'MAR', 'n': 13, 'semanas': 6, 'sesgo': -0.40, 'det': 0, 'admin': False},
+    {'nombre': 'Kuntur Fintech',  'prefijo': 'KUN', 'n':  7, 'semanas': 2, 'sesgo':  0.15, 'det': 0, 'admin': False},
 ]
 
 TRANSCRIPCION = """Psicólogo: Cuéntame cómo han sido estas últimas semanas.
@@ -156,6 +179,14 @@ def limpiar(cx, borrar_empresas: bool) -> tuple[int, list]:
 
     viejas = [r[0] for r in cx.execute("select id from organizaciones").fetchall()]
     cx.execute("delete from administradores")
+    if not borrar_empresas and viejas:
+        # El nombre y el prefijo son únicos, y las empresas nuevas se llaman
+        # igual que las viejas. Como estas se van en cuanto el admin cambie de
+        # sitio, se les suelta el nombre y las letras antes de crear las otras.
+        cx.execute("""update organizaciones
+                      set nombre = 'zz-retirada-' || left(id::text, 8),
+                          prefijo = upper('Z' || left(replace(id::text, '-', ''), 2))
+                      where id = any(%s)""", (viejas,))
     if borrar_empresas:
         # Un admin sin empresa viola el check, así que en el borrado total su
         # rol también se va: hay que volver a darlo de alta con la empresa nueva.
@@ -225,8 +256,10 @@ def main() -> None:
     todos = []
 
     for emp in EMPRESAS:
-        org = cx.execute("insert into organizaciones (nombre) values (%s) returning id",
-                         (emp['nombre'],)).fetchone()[0]
+        # El prefijo se fija aquí, igual que en el alta real: forma parte de la
+        # empresa, no del bucle que numera a su gente.
+        org = cx.execute("insert into organizaciones (nombre, prefijo) values (%s, %s) returning id",
+                         (emp['nombre'], emp['prefijo'])).fetchone()[0]
         if emp['admin'] and admin_uid:
             cx.execute("""insert into administradores (auth_user_id, organizacion_id, nombre, activo)
                           values (%s, %s, 'Admin Institucional', true)""", (admin_uid[0], org))
@@ -239,10 +272,11 @@ def main() -> None:
 
         creados = []
         for k, (p, ss) in enumerate(sin + con, start=1):
-            codigo = f"{emp['prefijo']}-{k:02d}"
+            codigo = f"{emp['prefijo']}-{k:03d}"
             cruza = any(s['alto'] for s in ss)
             auth = cuenta_viva[0] if (emp['admin'] and k == 1 and cuenta_viva) else None
-            pid = escribir_participante(cx, org, codigo, auth, lunes0, p, ss, cruza)
+            pid = escribir_participante(cx, org, codigo, auth, lunes0, p, ss, cruza,
+                                        rng, en_vivo=auth is not None)
             creados.append({'pid': pid, 'codigo': codigo, 'cruza': cruza,
                             'empresa': emp['nombre'], 'lunes0': lunes0, 'semanas': emp['semanas'],
                             'etapa': None})
@@ -269,12 +303,13 @@ def main() -> None:
         if c['etapa']:
             print(f"  {c['codigo']:7s} {c['empresa']:18s} detectado -> {c['etapa']}")
     if cuenta_viva:
-        print(f"\n  {EMPRESAS[0]['prefijo']}-01 usa la cuenta {PARTICIPANTE_EN_VIVO}: se puede entrar en vivo.")
+        print(f"\n  {EMPRESAS[0]['prefijo']}-001 usa la cuenta {PARTICIPANTE_EN_VIVO}: se puede entrar en vivo.")
     print(f"  {n_pred} predicciones retrospectivas registradas.")
     print(f"  admin {ADMIN} -> {EMPRESAS[0]['nombre']}")
 
 
-def escribir_participante(cx, org, codigo, auth_user_id, lunes0, persona, semanas, cruza) -> str:
+def escribir_participante(cx, org, codigo, auth_user_id, lunes0, persona, semanas, cruza,
+                          rng, en_vivo: bool = False) -> str:
     estado = 'detectado' if cruza else 'activo'
     # La inscripción es el lunes de la primera semana, no antes: si cayera en
     # un viernes previo, el panel contaría ese viernes como un OLBI omitido.
@@ -282,6 +317,18 @@ def escribir_participante(cx, org, codigo, auth_user_id, lunes0, persona, semana
     pid = cx.execute("""insert into participantes (organizacion_id, auth_user_id, codigo_anonimo, estado, inscrito_en)
                         values (%s, %s, %s, %s, %s) returning id""",
                      (org, auth_user_id, codigo, estado, inscrito)).fetchone()[0]
+
+    # RN-006-03: los datos personales viven aquí y solo aquí. El panel del
+    # investigador nunca los lee; se abren uno a uno por `obtener_identidad`,
+    # que deja el acceso anotado.
+    nombre, correo = identidad_inventada(rng, codigo)
+    # Quien presta su cuenta para entrar en vivo lleva su correo de verdad: si
+    # no, el psicólogo abriría la identidad y vería un contacto que no es el de
+    # la persona que está delante.
+    if en_vivo:
+        correo = PARTICIPANTE_EN_VIVO
+    cx.execute("""insert into identidades (participante_id, nombre, correo_contacto, registrado_en)
+                  values (%s, %s, %s, %s)""", (pid, nombre, correo, inscrito))
 
     cx.execute("insert into eventos (participante_id, tipo, ocurrido_en) values (%s, 'inicio_seguimiento', %s)",
                (pid, inscrito))
@@ -293,6 +340,10 @@ def escribir_participante(cx, org, codigo, auth_user_id, lunes0, persona, semana
              {**persona['estable'], 'rol': persona['rol'], 'modalidad': persona['modalidad']})
 
     ahora = datetime.now(TZ)
+    # A quien presta su cuenta para la demostración se le deja el check-in de
+    # hoy sin responder: es lo primero que se enseña en vivo, y con la
+    # respuesta ya escrita la app dice «registrado» y no hay nada que mostrar.
+    hoy = ahora.date()
     for s in semanas:
         lunes = lunes0 + timedelta(weeks=s['semana'])
         for d in s['dias']:
@@ -301,6 +352,8 @@ def escribir_participante(cx, org, codigo, auth_user_id, lunes0, persona, semana
             # que en el estudio real. Si no, el panel marca a todo el mundo
             # como «sin viernes» por un OLBI que todavía no toca responder.
             if cuando > ahora:
+                continue
+            if en_vivo and cuando.date() == hoy:
                 continue
             insertar(cx, pid, 'diario', 3, cuando, {k: v for k, v in d.items() if k != 'dow'})
         viernes = datetime.combine(lunes + timedelta(days=4), datetime.min.time(), TZ) + timedelta(hours=17)
@@ -358,6 +411,16 @@ def circuito(cx, c, psi, etapa: str) -> None:
     if etapa == 'sin_cita':
         return
 
+    # Antes de escribirle hay que saber a quién: el psicólogo abre la identidad
+    # y `obtener_identidad` lo deja anotado. Es la única forma de que existan
+    # datos personales a la vista, y lo que llena la pantalla de Auditoría.
+    # Solo desde `cita_solicitada`: quien sigue «sin cita» aún no ha contactado.
+    cx.execute("""insert into eventos (participante_id, tipo, ocurrido_en, metadata)
+                  values (%s, 'acceso_identidad', %s, %s)""",
+               (pid, detectado_en + timedelta(hours=2),
+                psycopg.types.json.Jsonb({'psicologo_id': str(psi), 'por': 'psicologo',
+                                          'motivo': 'Obtener el correo para proponer la primera cita.'})))
+
     para = (detectado_en + timedelta(days=3)).replace(hour=16, minute=0, second=0, microsecond=0)
     estado_cita = 'solicitada' if etapa == 'cita_solicitada' else 'confirmada'
     cita = cx.execute("""insert into citas (participante_id, derivacion_id, psicologo_id, propuesta_para, motivo, estado, creada_en)
@@ -367,6 +430,20 @@ def circuito(cx, c, psi, etapa: str) -> None:
                        estado_cita, detectado_en + timedelta(hours=3))).fetchone()[0]
     cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'cita_solicitada', %s, %s)",
                (pid, detectado_en + timedelta(hours=3), psycopg.types.json.Jsonb({'cita_id': str(cita)})))
+
+    # Confirmar la cita deja su propio hito. En la app lo escribe
+    # `confirmar_cita()`; aquí la fila de `citas` nace ya confirmada, sin pasar
+    # por esa función, así que el evento hay que ponerlo a mano.
+    #
+    # Sin él, `circuito_apoyo.cita_confirmada_en` quedaba en nulo para todo el
+    # mundo —esa vista se calcula desde `eventos`— y los dos tramos que
+    # dependen de él, «conseguir cita» y «llegar a la sesión», decían «sin
+    # casos todavía» en Derivaciones aunque hubiera citas confirmadas y
+    # sesiones hechas. El embudo del Resumen contaba cero citas por lo mismo.
+    if etapa != 'cita_solicitada':
+        confirmada_en = detectado_en + timedelta(hours=5)
+        cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'cita_confirmada', %s, %s)",
+                   (pid, confirmada_en, psycopg.types.json.Jsonb({'cita_id': str(cita)})))
     if etapa in ('cita_solicitada', 'cita_confirmada'):
         return
 

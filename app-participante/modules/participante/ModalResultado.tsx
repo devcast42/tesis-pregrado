@@ -18,7 +18,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import Svg, { Circle } from 'react-native-svg'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Boton } from '../nucleo/ui'
-import { color, espacio, radio, texto } from '../nucleo/diseno'
+import { color, espacio, radio, texto, veloModal } from '../nucleo/diseno'
 import {
   IconoCerrar, IconoCheck, IconoCorazon, IconoEscudo, IconoInfo,
 } from '../nucleo/iconos'
@@ -365,7 +365,7 @@ function Titular({ children }: { children: string }) {
 }
 
 const e = StyleSheet.create({
-  fondo: { flex: 1, backgroundColor: 'rgba(28, 25, 23, 0.55)', justifyContent: 'flex-end' },
+  fondo: { ...veloModal, backgroundColor: 'rgba(28, 25, 23, 0.55)', justifyContent: 'flex-end' },
   hoja: {
     maxHeight: '92%', backgroundColor: color.fondo,
     borderTopLeftRadius: 28, borderTopRightRadius: 28,

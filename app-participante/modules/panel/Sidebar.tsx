@@ -109,8 +109,32 @@ export function Panel({
   rol: Extract<Rol, 'investigador' | 'admin'>
   children: ReactNode
 }) {
+  useSesionViva()
   if (rol === 'investigador') return <PanelInvestigador>{children}</PanelInvestigador>
   return <PanelAdmin>{children}</PanelAdmin>
+}
+
+/** Sin sesión, a la pantalla de acceso.
+ *
+ *  El panel solo leía la sesión para poner el correo en la barra. Cuando el
+ *  token caducaba —pasa a la hora— seguía pintándolo todo, pero RLS ya no
+ *  devolvía ni una fila: «0 profesionales», «ninguna versión activa», cada
+ *  pantalla en ceros como si el estudio estuviera vacío. Parece un fallo de
+ *  datos y no lo es, y en una demostración es peor todavía.
+ *
+ *  También se escucha el cierre de sesión: si el token expira estando dentro,
+ *  la redirección ocurre sola en vez de esperar a la siguiente navegación. */
+function useSesionViva() {
+  useEffect(() => {
+    let vivo = true
+    supabase.auth.getSession().then(({ data }) => {
+      if (vivo && !data.session) router.replace('/acceso')
+    })
+    const { data: sub } = supabase.auth.onAuthStateChange((_evento, sesion) => {
+      if (vivo && !sesion) router.replace('/acceso')
+    })
+    return () => { vivo = false; sub.subscription.unsubscribe() }
+  }, [])
 }
 
 function PanelAdmin({ children }: { children: ReactNode }) {

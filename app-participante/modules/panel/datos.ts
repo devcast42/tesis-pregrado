@@ -6,7 +6,25 @@
 
 import { idUsuario, supabase } from '../nucleo/supabase'
 
-export type Empresa = { id: string; nombre: string; creado_en: string }
+export type TamanoEmpresa = '1-50' | '51-200' | '201-1000' | '1000+'
+export type ModalidadEmpresa = 'remoto' | 'hibrido' | 'presencial'
+
+/** La ficha de una empresa. Todo menos el nombre es opcional: se da de alta
+ *  el día que firma, no el día que se tienen todos sus datos. */
+export type DatosEmpresa = {
+  nombre: string
+  /** Tres letras del código de su gente (AND -> AND-001). Vacío = lo sugiere la base. */
+  prefijo?: string | null
+  sector?: string | null
+  tamano?: TamanoEmpresa | null
+  ciudad?: string | null
+  modalidad?: ModalidadEmpresa | null
+  contacto_nombre?: string | null
+  contacto_correo?: string | null
+  notas?: string | null
+}
+
+export type Empresa = { id: string; nombre: string; creado_en: string } & Omit<DatosEmpresa, 'nombre'>
 
 /** La empresa con sus conteos, tal como aparece en el maestro. */
 export type FilaEmpresa = Empresa & {
@@ -136,13 +154,38 @@ export async function listarEmpresasConResumen(): Promise<EmpresaConResumen[]> {
   }))
 }
 
-export async function crearEmpresa(nombre: string): Promise<Empresa> {
+export async function crearEmpresa(datos: DatosEmpresa): Promise<Empresa> {
+  // Los opcionales vacíos van como null, no como cadena vacía: en la base
+  // «no lo sabemos» y «está en blanco» tienen que ser lo mismo.
+  const limpio = (v: string | null | undefined) => { const t = (v ?? '').trim(); return t === '' ? null : t }
   const { data, error } = await supabase
     .from('organizaciones')
-    .insert({ nombre: nombre.trim() })
-    .select('id, nombre, creado_en')
+    .insert({
+      nombre: datos.nombre.trim(),
+      // Vacío deja que el disparador ponga el sugerido y lo desambigüe.
+      prefijo: limpio(datos.prefijo)?.toUpperCase() ?? null,
+      sector: limpio(datos.sector),
+      tamano: datos.tamano ?? null,
+      ciudad: limpio(datos.ciudad),
+      modalidad: datos.modalidad ?? null,
+      contacto_nombre: limpio(datos.contacto_nombre),
+      contacto_correo: limpio(datos.contacto_correo)?.toLowerCase() ?? null,
+      notas: limpio(datos.notas),
+    })
+    .select('id, nombre, prefijo, creado_en, sector, tamano, ciudad, modalidad, contacto_nombre, contacto_correo, notas')
     .single()
-  if (error) throw error
+  if (error) {
+    // 23505 es el índice único sobre lower(nombre).
+    const codigo = (error as { code?: string; message?: string }).code
+    const msg = (error as { message?: string }).message ?? ''
+    if (codigo === '23505') {
+      throw new Error(msg.includes('prefijo')
+        ? `Las letras «${(datos.prefijo ?? '').toUpperCase()}» ya son de otra empresa.`
+        : `Ya hay una empresa llamada «${datos.nombre.trim()}».`)
+    }
+    if (codigo === '23514' && msg.includes('prefijo')) throw new Error('Las letras deben ser tres, empezando por letra.')
+    throw error
+  }
   return data as Empresa
 }
 

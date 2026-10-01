@@ -12,34 +12,65 @@ import { supabase } from '../nucleo/supabase'
 import type { FiltroGlobal } from './panel'
 
 export const TABLAS = [
-  { clave: 'respuestas', archivo: 'tbl_respuestas.csv', titulo: 'tbl_respuestas', descripcion: 'Un envío por formulario y fecha (diario, OLBI, semanal, estable), con inicio y fin.' },
-  { clave: 'respuestas_items', archivo: 'tbl_respuestas_items.csv', titulo: 'tbl_respuestas_items', descripcion: 'Respuesta ítem a ítem de cada envío: clave del ítem, valor numérico o de texto.' },
-  { clave: 'puntajes_olbi', archivo: 'tbl_puntajes_olbi.csv', titulo: 'tbl_puntajes_olbi', descripcion: 'Media por dimensión del OLBI de cada aplicación, con la inversión aplicada (fuente única de la fórmula).' },
+  { clave: 'respuestas', archivo: 'tbl_respuestas.csv', orden: ['id'], titulo: 'tbl_respuestas', descripcion: 'Un envío por formulario y fecha (diario, OLBI, semanal, estable), con inicio y fin.' },
+  { clave: 'respuestas_items', archivo: 'tbl_respuestas_items.csv', orden: ['id'], titulo: 'tbl_respuestas_items', descripcion: 'Respuesta ítem a ítem de cada envío: clave del ítem, valor numérico o de texto.' },
+  { clave: 'puntajes_olbi', archivo: 'tbl_puntajes_olbi.csv', orden: ['respuesta_id', 'dimension'], titulo: 'tbl_puntajes_olbi', descripcion: 'Media por dimensión del OLBI de cada aplicación, con la inversión aplicada (fuente única de la fórmula).' },
   // ESP-005 §8: `semanas_modelo` es el contrato de datos del modelo. Sustituye
   // a `ventanas_modelo`, que implementaba la formulación de ventanas de 14 días
   // de la revisión 1 (§3.4) y ya no es con lo que se entrena: exportarla daba
   // un dataset con el que los resultados de la tesis no se pueden reproducir.
-  { clave: 'semanas_modelo', archivo: 'tbl_semanas_modelo.csv', titulo: 'tbl_semanas_modelo', descripcion: 'Contrato de entrenamiento: una fila por participante y semana con los rasgos de ESP-005 §4 y ambas etiquetas (nowcast y pronóstico), censurada en el primer cruce.' },
-  { clave: 'predicciones_participante', archivo: 'tbl_predicciones.csv', titulo: 'tbl_predicciones', descripcion: 'Predicciones registradas en su momento (nowcast y pronóstico) confrontadas con el OLBI objetivo.' },
-  { clave: 'eventos', archivo: 'tbl_eventos.csv', titulo: 'tbl_eventos', descripcion: 'Eventos de proceso: inicio, detección, derivación, sesión, informe aprobado, accesos a identidad.' },
+  { clave: 'semanas_modelo', archivo: 'tbl_semanas_modelo.csv', orden: ['participante_id', 'semana'], titulo: 'tbl_semanas_modelo', descripcion: 'Contrato de entrenamiento: una fila por participante y semana con los rasgos de ESP-005 §4 y ambas etiquetas (nowcast y pronóstico), censurada en el primer cruce.' },
+  { clave: 'predicciones_participante', archivo: 'tbl_predicciones.csv', orden: ['evento_id'], titulo: 'tbl_predicciones', descripcion: 'Predicciones registradas en su momento (nowcast y pronóstico) confrontadas con el OLBI objetivo.' },
+  { clave: 'eventos', archivo: 'tbl_eventos.csv', orden: ['id'], titulo: 'tbl_eventos', descripcion: 'Eventos de proceso: inicio, detección, derivación, sesión, informe aprobado, accesos a identidad.' },
 ] as const
 
 export type ClaveTabla = (typeof TABLAS)[number]['clave']
 
-/** Conteos por tabla con el filtro aplicado, para mostrar antes de exportar. */
-export async function conteos(filtro: FiltroGlobal): Promise<Record<ClaveTabla, number>> {
+/** Cuántas filas entrarían en el paquete, por tabla y con el filtro puesto.
+ *
+ *  Un conteo que no se pudo obtener vale `null` y la pantalla lo enseña como
+ *  «?». Nunca 0: cuando esto devolvía 0 al fallar, el resumen anunciaba 1 913
+ *  filas para un paquete de 14 327, y ese número es el que cita la tesis.
+ *
+ *  Van en serie porque cuatro de las seis fuentes son vistas y cada una cuesta
+ *  unos segundos; en paralelo se estorban.
+ *  La página no espera este cálculo, así que la demora no se nota. */
+export async function conteos(filtro: FiltroGlobal): Promise<Record<ClaveTabla, number | null>> {
   const ids = await participantesDelFiltro(filtro)
-  const out = {} as Record<ClaveTabla, number>
-  await Promise.all(TABLAS.map(async (t) => {
-    // respuestas_items no tiene participante_id: se filtra a través de su envío.
-    let q = t.clave === 'respuestas_items'
-      ? supabase.from(t.clave).select('respuesta_id, respuestas!inner(participante_id)', { count: 'exact', head: true })
-      : supabase.from(t.clave).select('participante_id', { count: 'exact', head: true })
-    if (ids) q = q.in(t.clave === 'respuestas_items' ? 'respuestas.participante_id' : 'participante_id', ids)
-    const { count } = await q
-    out[t.clave] = count ?? 0
-  }))
+  const out = {} as Record<ClaveTabla, number | null>
+  for (const t of TABLAS) out[t.clave] = await contar(t.clave, ids)
   return out
+}
+
+/** Tope del recuento manual. Muy por encima de lo que dan las vistas, que es
+ *  donde hace falta; si alguna vez se alcanza, no se adivina: vale `null`. */
+const TOPE_RECUENTO = 20000
+
+async function contar(tabla: ClaveTabla, ids: string[] | null): Promise<number | null> {
+  // respuestas_items no tiene participante_id: se filtra a través de su envío.
+  // Sin filtro de empresa esa unión no hace falta.
+  const porEnvio = tabla === 'respuestas_items' && !!ids
+  const columna = porEnvio ? 'respuesta_id, respuestas!inner(participante_id)'
+    : tabla === 'respuestas_items' ? 'respuesta_id' : 'participante_id'
+  const clave = porEnvio ? 'respuestas.participante_id' : 'participante_id'
+
+  let q = supabase.from(tabla).select(columna, { count: 'exact', head: true })
+  if (ids) q = q.in(clave, ids)
+  const exacto = await q
+  if (!exacto.error) return exacto.count ?? 0
+
+  // `count=exact` hace que PostgREST evalúe la consulta dos veces, una para la
+  // página y otra para el total. En una vista cara eso dobla el coste y pasa
+  // del `statement_timeout`: `semanas_modelo` tarda 8,4 s contándose y 5,6 s
+  // si solo se piden las filas. Así que cuando el conteo falla se traen las
+  // claves y se cuentan aquí, que evalúa la vista una sola vez.
+  let m = supabase.from(tabla).select(columna).range(0, TOPE_RECUENTO)
+  if (ids) m = m.in(clave, ids)
+  const manual = await m
+  if (manual.error || !manual.data) return null
+  // Si vino justo el tope, la lista está cortada y el número sería menor que
+  // el real: más vale decir que no se sabe.
+  return manual.data.length > TOPE_RECUENTO ? null : manual.data.length
 }
 
 async function participantesDelFiltro(filtro: FiltroGlobal): Promise<string[] | null> {
@@ -48,12 +79,21 @@ async function participantesDelFiltro(filtro: FiltroGlobal): Promise<string[] | 
   return (data ?? []).map((p) => p.id as string)
 }
 
+/** Vuelca una tabla entera, de mil en mil.
+ *
+ *  El orden es obligatorio, no cosmético: sin `order by`, Postgres no promete
+ *  que dos consultas con distinto `offset` recorran las filas en el mismo
+ *  orden, y una fila puede salir dos veces mientras otra no sale ninguna. El
+ *  paquete es la base de los resultados de la tesis: tiene que ser el mismo
+ *  cada vez que se genere. */
 async function filas(tabla: ClaveTabla, ids: string[] | null): Promise<Record<string, unknown>[]> {
   const out: Record<string, unknown>[] = []
   const PAGINA = 1000
+  const orden = TABLAS.find((t) => t.clave === tabla)!.orden
   for (let desde = 0; ; desde += PAGINA) {
     const anidada = tabla === 'respuestas_items'
     let q = supabase.from(tabla).select(anidada ? '*, respuestas!inner(participante_id)' : '*').range(desde, desde + PAGINA - 1)
+    for (const col of orden) q = q.order(col)
     if (ids) q = q.in(anidada ? 'respuestas.participante_id' : 'participante_id', ids)
     const { data, error } = await q
     if (error) throw error
@@ -144,12 +184,13 @@ async function sha256(texto: string): Promise<string> {
 // ------------------------------------------------------------ Diccionario
 
 export const DICCIONARIO = [
-  { variable: 'olbi_exhaustion_score', tipo: 'float64', texto: 'Promedio de los 8 ítems de la subescala de Agotamiento del Oldenburg Burnout Inventory (OLBI).', rango: 'Rango teórico: [1.0 – 4.0] · Corte clínico: ≥ 2.875 (Leclercq)' },
-  { variable: 'olbi_disengagement_score', tipo: 'float64', texto: 'Promedio de los 8 ítems de la subescala de Desvinculación con el Trabajo del OLBI.', rango: 'Rango teórico: [1.0 – 4.0] · Corte clínico: ≥ 2.75 (Leclercq)' },
-  { variable: 'od_04 … od_06', tipo: 'int8', texto: 'Los cuatro ítems negativos del OLBI aplicados a diario (lunes a jueves), escala 1–5.', rango: 'Rango: [1 – 5] · Fuente: Gruszczynska et al. (2021)' },
-  { variable: 'weekend_hours', tipo: 'float32', texto: 'Horas de trabajo registradas entre el sábado 00:00 y el domingo 23:59 PET, declaradas el lunes.', rango: 'Rango observado: [0.0 – 18.5] h · Ventana: S1..S6' },
-  { variable: 'model_probability', tipo: 'float64', texto: 'Probabilidad calibrada de que el OLBI de la semana objetivo esté sobre el umbral (nowcast: misma semana; pronóstico: siguiente).', rango: 'Registrada en su momento (RN-009-05) · Versión en cada fila' },
-  { variable: 'senalado / resultado_real / acierto', tipo: 'bool', texto: 'Decisión del modelo (probabilidad ≥ umbral), resultado real del viernes objetivo, y si coincidieron.', rango: 'acierto nulo = sin resultado aún o nowcast tardío' },
+  { variable: 'puntajes_olbi.puntaje', tipo: 'numeric', texto: 'Media de los 8 ítems de una subescala del OLBI, con la inversión ya aplicada. La columna `dimension` dice cuál: agotamiento o desvinculacion. Formato largo: dos filas por aplicación.', rango: 'Escala 1–4 · Corte: ≥ 2.875 agotamiento, ≥ 2.75 desvinculación (Leclercq)' },
+  { variable: 'respuestas_items.item_clave', tipo: 'text', texto: 'Qué se preguntó. Diario: od_04, od_12, od_03, od_06 (ítems del OLBI en versión diaria), horas_trabajadas, horas_sueno, desconexion, contacto_fuera_horario, horas_fin_de_semana. Viernes: olbi_01…olbi_16, horas_sobretiempo, guardias, apoyo_lider. Al inscribirse: edad, antiguedad_empresa, antiguedad_sector, tamano_equipo, personas_a_cargo, minutos_traslado, rol, modalidad.', rango: 'El valor va en valor_num, salvo rol y modalidad, que van en valor_texto' },
+  { variable: 'respuestas_items.valor_num', tipo: 'numeric', texto: 'El valor respondido. Los ítems diarios del OLBI van en escala 1–5; los 16 del viernes en escala 1–4; contacto_fuera_horario y guardias son 0 o 1; el resto son horas o cuentas.', rango: 'od_*: [1–5] · olbi_*: [1–4] · horas_sueno: [4.3–10.0] h observado' },
+  { variable: 'semanas_modelo.t_media … t_pendiente', tipo: 'numeric', texto: 'Resumen semanal de los cuatro ítems diarios: media, último día, peor día y pendiente dentro de la semana. Son las entradas del modelo (ESP-005 §4.1). La columna `semana` es el lunes de esa semana ISO, no un número de 1 a 6.', rango: 'Una fila por participante y semana, censurada en el primer cruce' },
+  { variable: 'semanas_modelo.alto_t / alto_t1', tipo: 'bool', texto: 'Las dos etiquetas. alto_t es el OLBI del viernes de esa misma semana (nowcast); alto_t1 el del viernes siguiente (pronóstico). alto_t1 es nulo en la semana del cruce: esa persona ya salió del seguimiento.', rango: 'ESP-005 §3.5 · usar e_previo/d_previo solo con alto_t1' },
+  { variable: 'predicciones_participante.probabilidad', tipo: 'numeric', texto: 'Lo que el modelo dijo en su momento, no recalculado después. `tarea` distingue nowcast de pronostico y `version` dice qué modelo lo produjo.', rango: '[0.0 – 1.0] · RN-009-05' },
+  { variable: 'predicciones_participante.senalado / resultado_real / acierto', tipo: 'bool', texto: 'Si el modelo levantó la mano (probabilidad ≥ umbral), qué pasó de verdad el viernes objetivo, y si coincidieron.', rango: 'acierto nulo = todavía sin resultado, o nowcast respondido tarde' },
 ]
 
 // ------------------------------------------------------------- Exportar
@@ -178,7 +219,11 @@ export async function exportarZip(filtro: FiltroGlobal, tablas: ClaveTabla[], fo
   const hash = await sha256(contenidoParaHash)
   const manifest = {
     generado_en: new Date().toISOString(),
-    filtros: { organizacion_id: filtro.organizacion_id, semanas: [filtro.semanaDesde, filtro.semanaHasta] },
+    // Solo se declara lo que de verdad se aplicó. El rango de semanas de la
+    // barra lateral no filtra ninguna consulta (las semanas se guardan como
+    // fecha del lunes, no como número de 1 a 6), así que anotarlo aquí haría
+    // que el manifiesto describiera un corte que nadie hizo.
+    filtros: { organizacion_id: filtro.organizacion_id, periodo: 'todo el seguimiento' },
     esquema: 'ESP-009 v1',
     formato,
     tablas: tablas,

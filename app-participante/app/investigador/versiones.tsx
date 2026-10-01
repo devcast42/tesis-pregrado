@@ -1,9 +1,10 @@
 /** Versiones del modelo — implementa ESP-009 RF-009-11.
  *
- *  Registro de cada versión (nowcast y pronóstico): origen, umbral de
- *  decisión, para quién es visible, métricas guardadas al entrenar y si es
- *  la activa. Activar una versión no toca las predicciones ya registradas:
- *  cada una lleva la suya (RN-009-05). */
+ *  Una tarjeta por tarea, no una tabla: hay una versión de cada, y siete
+ *  columnas para una fila no dicen nada que no quepa en cuatro líneas.
+ *
+ *  Activar una versión no toca las predicciones ya registradas: cada una
+ *  lleva la suya (RN-009-05). */
 
 import { useCallback, useState } from 'react'
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -14,7 +15,15 @@ import { activarVersion, versiones as cargarVersiones, type VersionModelo } from
 import { BotonChico, Caja, Encabezado, Mono, Pastilla, Rotulo, TONO } from '../../modules/investigador/piezas'
 import { Cargando } from '../../modules/nucleo/ui'
 import { color, espacio, radio, texto } from '../../modules/nucleo/diseno'
-import { IconoCheckCirculo, IconoGrafica } from '../../modules/nucleo/iconos'
+import { IconoCheckCirculo, IconoGrafica, IconoHoja } from '../../modules/nucleo/iconos'
+
+const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
+
+/** Qué predice cada tarea, dicho sin jerga. */
+const TAREAS = [
+  { tarea: 'nowcast' as const, titulo: 'El viernes de esta semana', nota: 'Con los check-ins de lunes a jueves, estima si el OLBI del viernes cruzará el umbral.' },
+  { tarea: 'pronostico' as const, titulo: 'El viernes de la próxima', nota: 'Con la semana ya cerrada, proyecta el OLBI del viernes siguiente.' },
+]
 
 export default function Versiones() {
   const { filtro } = useFiltro()
@@ -25,92 +34,143 @@ export default function Versiones() {
 
   const aviso = (t: string, m: string) => Platform.OS === 'web' ? window.alert(`${t}\n\n${m}`) : Alert.alert(t, m)
   async function activar(v: VersionModelo) {
-    const ok = Platform.OS === 'web' ? window.confirm(`Activar ${v.version} para ${v.tarea}.\n\nDesde ahora las predicciones nuevas de esta tarea se registran con ${v.version}. Las ya registradas conservan su versión.`) : true
+    const ok = Platform.OS === 'web' ? window.confirm(`Activar ${v.version}.\n\nDesde ahora las predicciones nuevas de esta tarea se registran con ella. Las ya registradas conservan la suya.`) : true
     if (!ok) return
     try { await activarVersion(v.version, v.tarea); cargar() } catch (e) { aviso('No se pudo activar', e instanceof Error ? e.message : '') }
   }
 
   if (!lista) return <Panel rol="investigador"><Cargando /></Panel>
 
-  const grupos: { tarea: VersionModelo['tarea']; titulo: string; nota: string }[] = [
-    { tarea: 'nowcast', titulo: 'Nowcast intra-semanal (L–J → viernes)', nota: 'Con los check-ins de lunes a jueves estima si el OLBI del viernes cruzará el umbral.' },
-    { tarea: 'pronostico', titulo: 'Pronóstico inter-semanal (viernes → semana siguiente)', nota: 'Con la semana cerrada proyecta el OLBI del viernes siguiente.' },
-  ]
-
   return (
     <Panel rol="investigador">
       <ScrollView style={{ flex: 1 }} contentContainerStyle={e.contenido}>
-        <Encabezado eyebrow="Modelo · registro de versiones" titulo="Versiones del Modelo Predictivo"
-          subtitulo="Cada versión lleva su origen, umbral de decisión, visibilidad y métricas de entrenamiento. Solo una está activa por tarea."
-          derecha={<BotonChico onPress={() => router.push(conFiltro('/investigador/desempeno', filtro) as never)} icono={<IconoGrafica tamano={13} color={color.texto} />}>Ver desempeño en vivo</BotonChico>} />
+        <Encabezado eyebrow="Modelo · ESP-009" titulo="Versiones del modelo"
+          subtitulo="Cuál está en uso para cada predicción, con qué se entrenó y qué tal le fue entonces."
+          derecha={<BotonChico onPress={() => router.push(conFiltro('/investigador/desempeno', filtro) as never)} icono={<IconoGrafica tamano={13} color={color.texto} />}>Ver cómo va ahora</BotonChico>} />
 
-        {grupos.map((g) => {
-          const filas = lista.filter((v) => v.tarea === g.tarea)
+        {TAREAS.map((t) => {
+          const filas = lista.filter((v) => v.tarea === t.tarea)
+          const activa = filas.find((v) => v.activa)
+          const otras = filas.filter((v) => !v.activa)
           return (
-            <Caja key={g.tarea} estilo={{ gap: espacio.sm }}>
-              <View style={[e.fila, { justifyContent: 'space-between', alignItems: 'flex-start' }]}>
-                <View style={{ flex: 1 }}>
-                  <Rotulo>{g.tarea}</Rotulo>
-                  <Text style={[texto.seccion, { color: color.texto }]}>{g.titulo}</Text>
-                  <Text style={[texto.dato, { color: color.textoMedio }]}>{g.nota}</Text>
+            <Caja key={t.tarea} estilo={{ gap: espacio.base }}>
+              <View>
+                <Rotulo>Predice</Rotulo>
+                <Text style={[texto.seccion, { color: color.texto }]}>{t.titulo}</Text>
+                <Text style={[texto.dato, { color: color.textoMedio }]}>{t.nota}</Text>
+              </View>
+
+              {!activa ? (
+                <View style={e.sinActiva}>
+                  <Text style={[texto.cuerpoFuerte, { color: '#8C4A2B' }]}>Ninguna versión activa</Text>
+                  <Text style={[texto.dato, { color: '#8C4A2B' }]}>Sin una versión activa no se registran predicciones nuevas para esta tarea.</Text>
                 </View>
-                <Pastilla tono={TONO.gris} mono>{`${filas.length} versión${filas.length === 1 ? '' : 'es'}`}</Pastilla>
-              </View>
-              <View style={e.tablaCab}>
-                {[['Versión', 2], ['Origen', 1], ['Umbral τ', 0.8], ['Entrenada', 1], ['Visible para', 1.4], ['Métricas', 1.6], ['Estado', 1.2]].map(([h, f]) => (
-                  <Text key={String(h)} style={[texto.etiqueta, { color: color.textoMedio, fontSize: 9.5, flex: Number(f) }]}>{String(h).toUpperCase()}</Text>
-                ))}
-              </View>
-              {filas.length === 0 && <Text style={[texto.apoyo, { color: color.textoMedio, paddingVertical: 10 }]}>Sin versiones registradas para esta tarea.</Text>}
-              {filas.map((v) => {
-                const m = v.metricas ?? {}
-                // Las métricas de entrenamiento viven en metricas.global (ESP-005); se aceptan también planas.
-                const g: Record<string, unknown> = (m.global as Record<string, unknown>) ?? m
-                const resumen = ['roc_auc', 'precision', 'recall', 'f1', 'n'].filter((k) => g[k] != null).map((k) => `${k === 'n' ? 'n' : k.replace('_', '-')} ${typeof g[k] === 'number' ? Number(g[k]).toFixed(k === 'n' ? 0 : 3) : String(g[k])}`).join(' · ')
-                const desplegada = abierta === v.version
-                return (
-                  <View key={v.version}>
-                    <Pressable onPress={() => setAbierta(desplegada ? null : v.version)} style={[e.tablaFila, v.activa && { backgroundColor: '#F5F4F1' }]}>
-                      <View style={{ flex: 2, gap: 2 }}>
-                        <View style={[e.fila, { gap: 6 }]}><View style={[e.punto, { backgroundColor: v.activa ? color.primarioProfundo : '#BDB8B1' }]} /><Mono tono={color.texto} tamano={12}>{v.version}</Mono></View>
-                        {v.notas ? <Text style={[texto.dato, { color: color.textoMedio, paddingLeft: 13 }]} numberOfLines={desplegada ? undefined : 1}>{v.notas}</Text> : null}
-                      </View>
-                      <Text style={[texto.dato, { color: color.texto, flex: 1 }]}>{v.origen}</Text>
-                      <Mono tono={color.texto}>{Number(v.umbral_decision).toFixed(2)}</Mono>
-                      <Text style={[texto.dato, { color: color.texto, flex: 1 }]}>{v.entrenada_en ? new Date(v.entrenada_en).toLocaleDateString('es-PE') : '—'}</Text>
-                      <View style={[e.fila, { flex: 1.4, gap: 4 }]}>{(v.visible_para ?? []).map((q) => <Pastilla key={q} tono={TONO.gris}>{q}</Pastilla>)}</View>
-                      <Mono tono={color.textoMedio}>{resumen || '—'}</Mono>
-                      <View style={{ flex: 1.2, alignItems: 'flex-end' }}>
-                        {v.activa ? <View style={[e.fila, { gap: 4 }]}><IconoCheckCirculo tamano={13} color={color.primarioProfundo} /><Text style={[texto.datoFuerte, { color: color.primarioProfundo }]}>Activa</Text></View>
-                          : <BotonChico onPress={() => activar(v)}>Activar</BotonChico>}
-                      </View>
-                    </Pressable>
-                    {desplegada && (
-                      <View style={e.detalle}>
-                        <Rotulo>Métricas registradas al entrenar</Rotulo>
-                        <Text style={{ fontFamily: MONO, fontSize: 11, color: color.texto }} selectable>{Object.keys(m).length ? JSON.stringify(m, null, 2) : 'Sin métricas registradas.'}</Text>
-                        <Text style={[texto.dato, { color: color.textoSuave }]}>Las métricas en vivo (sobre predicciones registradas y confrontadas) están en Desempeño.</Text>
-                      </View>
-                    )}
+              ) : (
+                <View style={e.activa}>
+                  <View style={[e.fila, { justifyContent: 'space-between' }]}>
+                    <View style={[e.fila, { gap: 8 }]}>
+                      <IconoCheckCirculo tamano={15} color={color.primarioProfundo} />
+                      <Mono tono={color.texto} tamano={14}>{activa.version}</Mono>
+                      <Pastilla tono={TONO.verde}>En uso</Pastilla>
+                    </View>
+                    <Mono>{activa.entrenado_en ? `Entrenada el ${new Date(activa.entrenado_en).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}` : 'Sin fecha de entrenamiento'}</Mono>
                   </View>
-                )
-              })}
+
+                  <View style={[e.fila, { gap: espacio.lg, alignItems: 'flex-start' }]}>
+                    <Cifra rotulo="Avisa a partir de" valor={Number(activa.umbral_decision).toFixed(2)}
+                      apoyo="probabilidad mínima para levantar la mano" />
+                    <Metricas m={(activa.metricas?.global as Record<string, unknown>) ?? activa.metricas ?? {}} />
+                  </View>
+
+                  {activa.fuente && (
+                    <View style={e.fuente}>
+                      <IconoHoja tamano={14} color={color.primarioProfundo} />
+                      <View style={{ flex: 1, minWidth: 220 }}>
+                        <Rotulo>Entrenada con</Rotulo>
+                        <Text style={[texto.dato, { color: color.texto }]}>{activa.fuente}</Text>
+                      </View>
+                    </View>
+                  )}
+
+                  <Pressable onPress={() => setAbierta(abierta === activa.version ? null : activa.version)}>
+                    <Text style={[texto.datoFuerte, { color: color.primarioProfundo }]}>
+                      {abierta === activa.version ? 'Ocultar todas las métricas ⌃' : 'Ver todas las métricas ⌄'}
+                    </Text>
+                  </Pressable>
+                  {abierta === activa.version && (
+                    <View style={e.detalle}>
+                      <Text style={{ fontFamily: MONO, fontSize: 11, color: color.texto }} selectable>
+                        {Object.keys(activa.metricas ?? {}).length ? JSON.stringify(activa.metricas, null, 2) : 'Sin métricas registradas.'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {otras.length > 0 && (
+                <View style={{ gap: 6 }}>
+                  <Rotulo>{`${otras.length} ${otras.length === 1 ? 'versión guardada' : 'versiones guardadas'}, sin usar`}</Rotulo>
+                  {otras.map((v) => (
+                    <View key={v.version} style={e.otra}>
+                      <Mono tono={color.texto} tamano={12}>{v.version}</Mono>
+                      <Text style={[texto.dato, { color: color.textoMedio, flex: 1, minWidth: 120 }]}>{v.origen}</Text>
+                      <Mono>{v.entrenado_en ? new Date(v.entrenado_en).toLocaleDateString('es-PE') : '—'}</Mono>
+                      <BotonChico onPress={() => activar(v)}>Poner en uso</BotonChico>
+                    </View>
+                  ))}
+                </View>
+              )}
             </Caja>
           )
         })}
-        <Text style={[texto.dato, { color: color.textoSuave }]}>Activar una versión no recalcula nada: cada predicción registrada conserva la versión con la que se hizo (RN-009-05). El cambio queda en la tabla de versiones con su fecha.</Text>
+
+        <Text style={[texto.dato, { color: color.textoSuave }]}>
+          Cambiar de versión no recalcula nada hacia atrás: cada predicción conserva la versión con la que se hizo (RN-009-05). Las cifras de aquí son las del entrenamiento; cómo va con datos reales está en Desempeño.
+        </Text>
       </ScrollView>
     </Panel>
   )
 }
 
-const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
+/** Las métricas que dejó el entrenamiento, con su nombre en llano. */
+function Metricas({ m }: { m: Record<string, unknown> }) {
+  const num = (k: string) => (typeof m[k] === 'number' ? Number(m[k]) : null)
+  const campos: { k: string; rotulo: string; apoyo: string; dec?: number }[] = [
+    { k: 'roc_auc', rotulo: 'Ordena bien', apoyo: '1 es perfecto, 0,5 es azar' },
+    { k: 'recall', rotulo: 'Pilla a', apoyo: 'de los que sí cruzaron' },
+    { k: 'precision', rotulo: 'Acierta en', apoyo: 'de los que señaló' },
+    { k: 'n', rotulo: 'Con', apoyo: 'semanas de entrenamiento', dec: 0 },
+  ]
+  const hay = campos.filter((c) => num(c.k) != null)
+  if (hay.length === 0) return <Text style={[texto.dato, { color: color.textoSuave }]}>Sin métricas de entrenamiento.</Text>
+  return (
+    <View style={[e.fila, { gap: espacio.lg, flex: 1, minWidth: 260 }]}>
+      {hay.map((c) => {
+        const v = num(c.k) as number
+        const esPct = c.k === 'recall' || c.k === 'precision'
+        return <Cifra key={c.k} rotulo={c.rotulo} apoyo={c.apoyo}
+          valor={c.dec === 0 ? v.toLocaleString('es-PE') : esPct ? `${Math.round(v * 100)}%` : v.toFixed(3)} />
+      })}
+    </View>
+  )
+}
+
+function Cifra({ rotulo, valor, apoyo }: { rotulo: string; valor: string; apoyo: string }) {
+  return (
+    <View style={{ minWidth: 92, gap: 1 }}>
+      <Rotulo>{rotulo}</Rotulo>
+      <Text style={[texto.cuerpoFuerte, { color: color.texto, fontFamily: MONO }]}>{valor}</Text>
+      <Text style={[texto.dato, { color: color.textoMedio, fontSize: 12 }]}>{apoyo}</Text>
+    </View>
+  )
+}
 
 const e = StyleSheet.create({
-  contenido: { padding: espacio.lg, gap: espacio.lg, width: '100%', maxWidth: 1100, alignSelf: 'center' },
+  contenido: { padding: espacio.lg, gap: espacio.base, width: '100%', maxWidth: 1040, alignSelf: 'center' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap' },
-  punto: { width: 7, height: 7, borderRadius: 4 },
-  tablaCab: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 8, backgroundColor: '#F5F4F1', borderRadius: 6 },
-  tablaFila: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: '#EEECE8', borderRadius: radio.sm },
-  detalle: { backgroundColor: '#F5F4F1', borderRadius: 8, padding: 12, gap: 6, marginTop: 4 },
+  activa: { backgroundColor: '#F7F6F3', borderRadius: radio.md, borderWidth: 1, borderColor: '#E6E3DE', padding: espacio.base, gap: espacio.sm },
+  sinActiva: { backgroundColor: '#FBEDE6', borderRadius: radio.md, padding: espacio.base, gap: 2 },
+  fuente: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: color.superficie, borderRadius: 8, padding: 10, flexWrap: 'wrap' },
+  detalle: { backgroundColor: color.superficie, borderRadius: 8, borderWidth: 1, borderColor: '#E6E3DE', padding: 12, maxHeight: 280 },
+  otra: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#F7F6F3', flexWrap: 'wrap' },
 })
