@@ -577,3 +577,124 @@ modelo/exploracion/venv/bin/python modelo/entrenar.py
 modelo/exploracion/venv/bin/python modelo/simular.py --cargar
 modelo/exploracion/venv/bin/python modelo/entrenar.py --origen simulada
 ```
+
+---
+
+## 13. Resultados, hasta hoy
+
+> **Ninguna cifra de esta sección es un resultado del estudio.** No hay muestra:
+> hoy no existe una sola persona real que aporte una fila entrenable. Lo que
+> sigue prueba que la maquinaria funciona, nada más.
+
+Hay dos fuentes, y conviene no confundirlas:
+
+| Fuente | Qué es | Qué vale |
+|---|---|---|
+| **Datos de referencia** | 235 empleados polacos, personas reales | Los pesos que hoy están en producción |
+| **Cohorte simulada** | 80 personas inventadas por `simular.py` | Ensayo del *pipeline*. No dice nada sobre el burnout |
+
+### 13.1 El preentrenamiento, sobre los datos de referencia
+
+Lo único de esta sección medido con personas de verdad. Validado por persona.
+
+**Nowcast**, según cuántos días lleva respondidos la semana:
+
+| Días respondidos | ROC-AUC | Precisión | Recall |
+|---|---|---|---|
+| 1 (solo lunes) | 0.65 | 0.37 | 0.63 |
+| 2 | 0.68 | 0.38 | 0.63 |
+| 3 | 0.70 | 0.38 | 0.63 |
+| 4 (jueves) | 0.75 | 0.43 | 0.67 |
+
+Es lo que la app traduce a «confianza baja/media» y a «de cada 10 avisos se
+confirman unos 4».
+
+**Pronóstico:** ROC-AUC 0.88 · PR-AUC 0.50 · recall 0.74 · precisión 0.32 ·
+Brier 0.135, con n = 235 y 11.5 % de positivos.
+
+### 13.2 Ensayo con la cohorte simulada — nowcast
+
+300 filas, 78 personas, 16 % de semanas altas. `c/r` = casos positivos por
+rasgo; la regla pide 10.
+
+| Versión | Rasgos | c/r | Recall | F1 | PR-AUC | ROC-AUC |
+|---|---|---|---|---|---|---|
+| *base* clase mayoritaria | | | 0.00 | 0.00 | 0.16 | 0.50 |
+| **A** (principal) | 15 | 3.3 | 0.92 ± 0.08 | 0.29 ± 0.02 | 0.32 ± 0.08 | **0.63 ± 0.11** |
+| A₀ | 15 | 3.3 | 0.85 ± 0.14 | 0.28 ± 0.04 | 0.29 ± 0.10 | 0.61 ± 0.10 |
+| A-bosque | 15 | 3.3 | 0.96 ± 0.05 | 0.30 ± 0.04 | 0.25 ± 0.09 | 0.59 ± 0.13 |
+| A-completo | 31 | 1.6 | 0.84 ± 0.10 | 0.29 ± 0.03 | 0.32 ± 0.06 | 0.63 ± 0.10 |
+| A-completo₀ | 31 | 1.6 | 0.88 ± 0.19 | 0.26 ± 0.03 | 0.28 ± 0.12 | 0.58 ± 0.11 |
+| A-completo-bosque | 31 | 1.6 | 0.92 ± 0.12 | 0.29 ± 0.03 | 0.27 ± 0.13 | 0.55 ± 0.15 |
+| **D — ánimo** | 7 | 7.0 | 0.96 ± 0.05 | 0.30 ± 0.03 | 0.32 ± 0.07 | **0.64 ± 0.10** |
+| D₀ | 7 | 7.0 | 0.92 ± 0.07 | 0.30 ± 0.01 | 0.29 ± 0.08 | 0.62 ± 0.09 |
+| D-bosque | 7 | 7.0 | 0.86 ± 0.14 | 0.28 ± 0.01 | 0.25 ± 0.06 | 0.61 ± 0.08 |
+| **F — objetivo** | 24 | 2.0 | 0.96 ± 0.09 | 0.28 ± 0.03 | 0.18 ± 0.05 | **0.46 ± 0.12** |
+| F-objetivo-bosque | 24 | 2.0 | 0.89 ± 0.17 | 0.27 ± 0.04 | 0.23 ± 0.09 | 0.46 ± 0.13 |
+| **F reducida** | 4 | 12.3 | 0.96 ± 0.05 | 0.28 ± 0.02 | 0.25 ± 0.09 | **0.55 ± 0.14** |
+| F-reducida-bosque | 4 | 12.3 | 0.91 ± 0.18 | 0.27 ± 0.04 | 0.20 ± 0.04 | 0.56 ± 0.09 |
+
+### 13.3 Ensayo con la cohorte simulada — pronóstico
+
+222 filas, 61 personas, 14 % de semanas altas.
+
+| Versión | Rasgos | c/r | Recall | F1 | PR-AUC | ROC-AUC |
+|---|---|---|---|---|---|---|
+| *base* clase mayoritaria | | | 0.00 | 0.00 | 0.14 | 0.50 |
+| *base* ya estaba alto | | | 0.00 | 0.00 | 0.14 | 0.50 |
+| *base* solo OLBI previo | | | 0.87 ± 0.15 | 0.24 ± 0.06 | 0.26 ± 0.07 | 0.58 ± 0.09 |
+| **B** (principal) | 20 | 1.6 | 0.61 ± 0.21 | 0.29 ± 0.05 | 0.40 ± 0.18 | **0.70 ± 0.15** |
+| B₀ | 20 | 1.6 | 0.83 ± 0.18 | 0.30 ± 0.07 | 0.33 ± 0.13 | 0.64 ± 0.13 |
+| B-bosque | 20 | 1.6 | 0.78 ± 0.15 | 0.26 ± 0.05 | 0.28 ± 0.10 | 0.62 ± 0.08 |
+| B-completo | 36 | 0.9 | 0.65 ± 0.24 | 0.33 ± 0.08 | 0.40 ± 0.18 | 0.71 ± 0.14 |
+| B-completo₀ | 36 | 0.9 | 0.58 ± 0.34 | 0.23 ± 0.12 | 0.30 ± 0.09 | 0.65 ± 0.10 |
+| B-completo-bosque | 36 | 0.9 | 0.79 ± 0.14 | 0.29 ± 0.07 | 0.30 ± 0.12 | 0.65 ± 0.07 |
+| **A** | 18 | 1.7 | 0.61 ± 0.21 | 0.28 ± 0.06 | 0.41 ± 0.18 | 0.70 ± 0.14 |
+| A₀ | 18 | 1.7 | 0.63 ± 0.37 | 0.24 ± 0.14 | 0.33 ± 0.13 | 0.65 ± 0.12 |
+| A-bosque | 18 | 1.7 | 0.83 ± 0.15 | 0.30 ± 0.05 | 0.26 ± 0.09 | 0.62 ± 0.07 |
+| A-completo | 34 | 0.9 | 0.61 ± 0.21 | 0.27 ± 0.04 | 0.41 ± 0.17 | 0.69 ± 0.14 |
+| A-completo₀ | 34 | 0.9 | 0.61 ± 0.28 | 0.29 ± 0.11 | 0.30 ± 0.09 | 0.66 ± 0.09 |
+| A-completo-bosque | 34 | 0.9 | 0.82 ± 0.12 | 0.29 ± 0.07 | 0.33 ± 0.12 | 0.67 ± 0.07 |
+| **D — ánimo** | 7 | 4.4 | 0.76 ± 0.18 | 0.33 ± 0.09 | 0.41 ± 0.18 | **0.72 ± 0.13** |
+| D₀ | 7 | 4.4 | 0.73 ± 0.17 | 0.32 ± 0.10 | 0.40 ± 0.17 | 0.70 ± 0.14 |
+| D-bosque | 7 | 4.4 | 0.80 ± 0.13 | 0.33 ± 0.07 | 0.33 ± 0.13 | 0.70 ± 0.08 |
+| **F — objetivo** | 27 | 1.2 | 0.96 ± 0.08 | 0.25 ± 0.04 | 0.17 ± 0.08 | **0.46 ± 0.14** |
+| F-objetivo-bosque | 27 | 1.2 | 0.97 ± 0.07 | 0.24 ± 0.04 | 0.17 ± 0.04 | 0.47 ± 0.04 |
+| **F reducida** | 4 | 7.8 | 0.96 ± 0.08 | 0.24 ± 0.05 | 0.20 ± 0.08 | **0.49 ± 0.12** |
+| F-reducida-bosque | 4 | 7.8 | 0.93 ± 0.13 | 0.24 ± 0.04 | 0.16 ± 0.05 | 0.45 ± 0.08 |
+
+> Falta en estas dos tablas la línea base **«el polaco sin reajustar»**, que se
+> añadió después de generar el ensayo. Reaparecerá en la próxima corrida.
+
+### 13.4 Qué se puede y qué no se puede leer aquí
+
+**Sí se puede:** que el pipeline corre entero, que las particiones por persona
+funcionan, que el preentrenamiento mueve los números en la dirección esperada
+(A gana a A₀, B gana a B₀ en PR-AUC y ROC-AUC) y que **el bosque no supera a la
+logística** — empata en nowcast con peor PR-AUC y pierde en pronóstico.
+
+**No se puede:** sacar ninguna conclusión sobre el burnout, ni sobre si F
+funciona. En la cohorte simulada las variables objetivas se conectan al estado
+latente solo de forma indirecta, así que **que F salga en 0.46 es una propiedad
+del simulador, no un hallazgo**. La pregunta de F se contesta con datos reales
+o no se contesta.
+
+Fíjate también en la columna `c/r`: ninguna versión llega a 10 casos por rasgo,
+y las «completas» andan por 0.9. Es exactamente el problema de potencia de §7,
+visible en la tabla.
+
+### 13.5 La columna que falta
+
+| Versión | Con la muestra del estudio |
+|---|---|
+| Todas las de arriba | **pendiente** |
+
+No va un 0: un 0 se leería como «sacó cero», y lo cierto es que no se ha
+medido. El día que haya 20 personas con semanas completas, un comando llena
+esta columna:
+
+```bash
+modelo/exploracion/venv/bin/python modelo/entrenar.py
+```
+
+Los resultados quedan en `modelo/resultados/datos-propios.json`.
