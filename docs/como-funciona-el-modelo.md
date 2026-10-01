@@ -176,15 +176,6 @@ pesos que hoy están en producción (los del estudio de referencia, §5):
 | intercepto | | | −0.122 |
 | | | **suma** | **+0.794** |
 
-La suma se aplasta entre 0 y 1 con la **sigmoide**:
-
-```
-probabilidad = 1 / (1 + e^(−0.794)) = 0.689  →  69 %
-```
-
-Eso es lo que la app muestra. Una suma de −3 da 5 %, una de 0 da 50 %, una de
-+3 da 95 %.
-
 **Cómo leer la tabla.** Tres columnas, tres dueños distintos:
 
 | Columna | De quién es |
@@ -218,6 +209,15 @@ cosa.
 
 Ni los pesos ni el intercepto los eligió nadie: salen todos de la misma
 búsqueda, explicada en §5.2.
+
+La suma se aplasta entre 0 y 1 con la **sigmoide**:
+
+```
+probabilidad = 1 / (1 + e^(−0.794)) = 0.689  →  69 %
+```
+
+Eso es lo que la app muestra. Una suma de −3 da 5 %, una de 0 da 50 %, una de
++3 da 95 %.
 
 ### 3.6 Lo que este ejemplo ya enseña
 
