@@ -116,40 +116,40 @@ export default function InformeMensual() {
           }
         `)}
         <View style={[e.encabezado, { zIndex: selectorAbierto ? 30 : 1 }]} nativeID="no-imprimir">
-          <View style={{ gap: 4, minWidth: 260 }}>
+          <View style={{ gap: 4, minWidth: 260, flex: 1 }}>
             <Text style={[texto.etiqueta, { color: color.textoMedio }]}>Para pasar a gerencia</Text>
             <Text style={[texto.titulo, { color: color.texto }]}>{mes ? `Informe de ${nombreMes(mes, false)}` : 'Informe mensual'}</Text>
           </View>
-          <View style={{ gap: espacio.sm, alignItems: 'flex-end', zIndex: selectorAbierto ? 30 : 1 }}>
-            <View style={[e.fila, { zIndex: selectorAbierto ? 30 : 1 }]}>
-              <View style={{ zIndex: selectorAbierto ? 30 : 1 }}>
-                <Pressable onPress={() => setSelectorAbierto((v) => !v)} style={e.selector} accessibilityRole="button">
-                  <IconoCalendario tamano={16} color={color.textoMedio} />
-                  <Text style={[texto.apoyo, { color: color.texto }]}>{mes ? nombreMes(mes) : '—'}</Text>
-                  <IconoChevronAbajo tamano={18} color={color.textoMedio} />
-                </Pressable>
-                {selectorAbierto && (
-                  <View style={e.menu}>
-                    {meses.map((m) => (
-                      <Pressable key={m} onPress={() => { setMes(m); setSelectorAbierto(false) }} style={e.menuItem}>
-                        <Text style={[texto.apoyo, { color: m === mes ? color.primarioProfundo : color.texto }]}>{nombreMes(m)}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
-              </View>
-              {Platform.OS === 'web' && (
+          {/* Los tres controles en una sola fila: el de PDF colgaba debajo y a
+           *  la derecha, desalineado con el selector y con «Imprimir». */}
+          <View style={[e.acciones, { zIndex: selectorAbierto ? 30 : 1 }]}>
+            <View style={{ zIndex: selectorAbierto ? 30 : 1 }}>
+              <Pressable onPress={() => setSelectorAbierto((v) => !v)} style={e.selector} accessibilityRole="button">
+                <IconoCalendario tamano={16} color={color.textoMedio} />
+                <Text style={[texto.apoyo, { color: color.texto }]}>{mes ? nombreMes(mes) : '—'}</Text>
+                <IconoChevronAbajo tamano={18} color={color.textoMedio} />
+              </Pressable>
+              {selectorAbierto && (
+                <View style={e.menu}>
+                  {meses.map((m) => (
+                    <Pressable key={m} onPress={() => { setMes(m); setSelectorAbierto(false) }} style={e.menuItem}>
+                      <Text style={[texto.apoyo, { color: m === mes ? color.primarioProfundo : color.texto }]}>{nombreMes(m)}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+            {Platform.OS === 'web' && (
+              <>
                 <Pressable onPress={() => window.print()} style={e.botonBorde} accessibilityRole="button">
                   <IconoImprimir tamano={16} color={color.texto} />
                   <Text style={[texto.apoyoFuerte, { color: color.texto }]}>Imprimir</Text>
                 </Pressable>
-              )}
-            </View>
-            {Platform.OS === 'web' && (
-              <Pressable onPress={() => window.print()} style={e.botonPdf} accessibilityRole="button">
-                <IconoArchivo tamano={16} color="#FFFFFF" />
-                <Text style={[texto.cuerpoFuerte, { color: '#FFFFFF' }]}>Descargar PDF</Text>
-              </Pressable>
+                <Pressable onPress={() => window.print()} style={e.botonPdf} accessibilityRole="button">
+                  <IconoArchivo tamano={16} color="#FFFFFF" />
+                  <Text style={[texto.cuerpoFuerte, { color: '#FFFFFF' }]}>Descargar PDF</Text>
+                </Pressable>
+              </>
             )}
           </View>
         </View>
@@ -325,13 +325,14 @@ function CeldaDimension({ rotulo, valor, nivel, previo, mesPrevio }: { rotulo: s
 }
 
 const e = StyleSheet.create({
-  encabezado: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: espacio.base, flexWrap: 'wrap' },
+  encabezado: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: espacio.base, flexWrap: 'wrap' },
+  acciones: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap' },
   selector: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, backgroundColor: color.superficie, borderWidth: 1, borderColor: color.borde, borderRadius: radio.md, paddingHorizontal: espacio.md, height: 42 },
   menu: { position: 'absolute', top: 46, left: 0, minWidth: 200, backgroundColor: color.superficie, borderRadius: radio.md, borderWidth: 1, borderColor: color.borde, paddingVertical: 4, zIndex: 30, elevation: 8, shadowColor: '#1C1917', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
   menuItem: { paddingHorizontal: espacio.md, paddingVertical: 10 },
   botonBorde: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, backgroundColor: color.superficie, borderWidth: 1, borderColor: color.borde, borderRadius: radio.md, paddingHorizontal: espacio.md, height: 42 },
-  botonPdf: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, paddingHorizontal: 18, height: 44, borderRadius: radio.md, backgroundColor: color.primario },
+  botonPdf: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, paddingHorizontal: 18, height: 42, borderRadius: radio.md, backgroundColor: color.primario },
   hoja: { backgroundColor: color.superficie, borderRadius: radio.lg, padding: espacio.xl, gap: espacio.base, borderWidth: 1, borderColor: '#EEECE8', maxWidth: 860, width: '100%', alignSelf: 'center' },
   sello: { width: 44, height: 44, borderRadius: radio.md, backgroundColor: '#E8EFEA', alignItems: 'center', justifyContent: 'center' },
   intro: { flexDirection: 'row', alignItems: 'center', gap: espacio.base, backgroundColor: '#E8F3EE', borderRadius: radio.md, padding: espacio.base, flexWrap: 'wrap' },
