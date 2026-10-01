@@ -42,6 +42,10 @@ export type Segmento = { tipo_segmento: 'modalidad' | 'rol'; segmento: string }
 
 export type ParticipacionSemana = {
   semana: string
+  /** Cuánta gente llevaba inscrita la empresa esa semana: es el denominador
+   *  de la tasa. `en_seguimiento` cuenta solo a quien sigue activo hoy, y
+   *  dividiendo por él salían semanas al 110 %. */
+  inscritos: number
   en_seguimiento: number
   respondieron_viernes: number
   tasa_respuesta_pct: number | null
@@ -199,40 +203,58 @@ export function recomendaciones(
 ): Recomendacion[] {
   const r: Recomendacion[] = []
   const f = ultimaSemana
-  if (f?.horas_dia_media != null && f.horas_dia_media >= 9.5) r.push({
-    id: 'REC-01', titulo: 'Revisar la carga de trabajo',
-    texto: `La jornada media supera las 9.5 h (${f.horas_dia_media} h/día). Considera límites de sobretiempo y redistribuir entregas.`,
-    referencia: 'Demerouti et al. (2001), Job Demands-Resources Model',
+  /** Mismo criterio que «lo que más pesa»: si un factor sale de la referencia
+   *  del estudio, aquí está qué hacer con él.
+   *
+   *  Antes cada acción tenía su propio corte, más alto que la referencia
+   *  —sobretiempo ≥ 5 h cuando la referencia son 4, guardias ≥ 40 % cuando
+   *  son 20—, así que la pantalla marcaba un factor como problema y luego no
+   *  ofrecía nada que hacer: en Nexa Software pesaban tres factores y la
+   *  sección «qué hacer esta semana» no aparecía. */
+  const fuera = (clave: ClaveFactor) => f != null && fueraDeReferencia(clave, f[clave] as number | null)
+
+  if (fuera('horas_dia_media')) r.push({
+    id: 'REC-01', titulo: 'Mirar el reparto de la carga',
+    texto: `La jornada media va en ${f!.horas_dia_media} h al día, por encima de las 8.5 que toma el estudio como referencia. Vale la pena revisar qué entregas se pueden mover y poner un tope al sobretiempo.`,
+    referencia: 'Demerouti et al. (2001), modelo de demandas y recursos',
   })
-  if ((f?.fin_de_semana_media != null && f.fin_de_semana_media >= 3) || (f?.sobretiempo_media != null && f.sobretiempo_media >= 5)) r.push({
-    id: 'REC-02', titulo: 'Política de desconexión efectiva',
-    texto: 'El trabajo fuera de horario es el mayor predictor de agotamiento en el modelo JD-R. Limita respuestas en canales técnicos después de las 19:00 y define relevos claros.',
-    referencia: 'Demerouti et al. (2001)',
-  })
-  if (f?.guardia_pct != null && f.guardia_pct >= 40) r.push({
-    id: 'REC-03', titulo: 'Rotar las guardias y compensar con descanso',
-    texto: `Más del 40 % del equipo estuvo disponible fuera de horario (${f.guardia_pct} %). Diversifica los turnos y estipula una ventana de compensación horaria.`,
+  if (fuera('sobretiempo_media') || fuera('fin_de_semana_media')) {
+    // Solo se nombra lo que de verdad se salió: citar también el factor que
+    // está bien hace dudar de si el problema es ese.
+    const partes: string[] = []
+    if (fuera('sobretiempo_media')) partes.push(`${f!.sobretiempo_media} h de sobretiempo`)
+    if (fuera('fin_de_semana_media')) partes.push(`${f!.fin_de_semana_media} h trabajadas en fin de semana`)
+    r.push({
+      id: 'REC-02', titulo: 'Proteger la desconexión',
+      texto: `Esta semana hubo ${partes.join(' y ')}, por encima de lo previsto. Trabajar fuera de hora es lo que más se relaciona con el agotamiento: ayuda acordar que después de las 19:00 no se responde en los canales de trabajo, y dejar claro quién cubre.`,
+      referencia: 'Demerouti et al. (2001)',
+    })
+  }
+  if (fuera('guardia_pct')) r.push({
+    id: 'REC-03', titulo: 'Repartir las guardias y devolver el descanso',
+    texto: `El ${f!.guardia_pct} % del equipo estuvo disponible fuera de horario, cuando la referencia es 20 %. Conviene rotar los turnos y compensar con horas libres a quien estuvo de guardia.`,
     referencia: 'Bakker & Demerouti (2007)',
   })
-  if (f?.sueno_media != null && f.sueno_media < 6.5) r.push({
-    id: 'REC-04', titulo: 'Proteger el descanso',
-    texto: `El sueño promedio está en ${f.sueno_media} h, bajo 6.5 h. Revisa horarios de inicio y guardias nocturnas.`,
-    referencia: 'Åkerstedt (2006), Psychosocial stress and impaired sleep',
+  if (fuera('sueno_media')) r.push({
+    id: 'REC-04', titulo: 'Cuidar el descanso',
+    texto: `Se durmió ${f!.sueno_media} h de media, por debajo de las 7 de referencia. Suele arreglarse moviendo las horas de inicio y evitando guardias nocturnas seguidas.`,
+    referencia: 'Åkerstedt (2006)',
   })
-  if (f?.apoyo_lider_media != null && f.apoyo_lider_media < 3) r.push({
-    id: 'REC-05', titulo: 'Fortalecer el liderazgo de primera línea',
-    texto: `El apoyo percibido del líder está en ${f.apoyo_lider_media} de 5. Es el recurso con mayor efecto protector; conviene formación y espacios 1:1.`,
-    referencia: 'Bakker & Demerouti (2007), Buffer de Recursos Laborales',
+  if (fuera('apoyo_lider_media')) r.push({
+    id: 'REC-05', titulo: 'Acompañar a quienes lideran',
+    texto: `El apoyo que la gente siente de su jefe directo está en ${f!.apoyo_lider_media} de 5, bajo la referencia de 3.5. Es lo que más protege del agotamiento: formación para quienes lideran y espacios de uno a uno ayudan más que cualquier otra medida.`,
+    referencia: 'Bakker & Demerouti (2007)',
   })
+
   const ultimas = pulso.slice(-2)
   if (ultimas.length === 2 && ultimas.every((p) => p.nivel_agotamiento === 'alto')) r.push({
-    id: 'REC-06', titulo: 'Agotamiento organizacional sostenido',
-    texto: 'Dos semanas seguidas en nivel alto. Conversa con el equipo de investigación sobre una intervención estructurada.',
+    id: 'REC-06', titulo: 'Dos semanas seguidas en alto',
+    texto: 'El agotamiento del equipo lleva dos semanas en nivel alto. Conviene hablarlo con el equipo del estudio para ver una intervención más de fondo.',
     referencia: 'Protocolo del estudio',
   })
   if (participacion?.tasa_respuesta_pct != null && participacion.tasa_respuesta_pct < 60) r.push({
-    id: 'REC-07', titulo: 'Participación baja',
-    texto: `Con ${participacion.tasa_respuesta_pct} % de respuesta la lectura es poco fiable. Recuerda en reunión de equipo que las respuestas son anónimas.`,
+    id: 'REC-07', titulo: 'Contesta poca gente',
+    texto: `Solo respondió el ${participacion.tasa_respuesta_pct} % esta semana, así que la lectura es poco fiable. Recordar en la reunión de equipo que las respuestas son anónimas suele bastar.`,
     referencia: 'ESP-007, adherencia',
   })
   return r
