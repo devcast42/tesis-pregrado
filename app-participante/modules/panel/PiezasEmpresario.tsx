@@ -74,21 +74,21 @@ export function TituloSeccion({ titulo, subtitulo, punto = color.tierra }: { tit
 
 // ---------------------------------------------------------- Participación
 
-/** «34 de 41 respondieron (83 %)» con barra y pastilla de muestra. */
+/** «20 de 22 contestaron (90 %)», con barra y si eso basta para leer la cifra. */
 export function TarjetaRespondieron({ respondieron, de, pct }: { respondieron: number; de: number; pct: number | null }) {
   const ok = pct != null && pct >= 60
   return (
     <Caja estilo={{ paddingVertical: 14 }}>
       <View style={[e.fila, { gap: espacio.base }]}>
         <View style={e.cuadroVerde}><IconoBarras tamano={20} color={color.primarioProfundo} /></View>
-        <View style={{ gap: 6, minWidth: 150 }}>
+        <View style={{ gap: 6, minWidth: 160 }}>
           <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-            <Text style={[texto.seccion, { color: color.texto }]}>{respondieron}</Text> de {de} respondieron{pct != null ? ` (${pct}%)` : ''}
+            <Text style={[texto.seccion, { color: color.texto }]}>{respondieron}</Text> de {de} contestaron{pct != null ? ` (${pct}%)` : ''}
           </Text>
           <View style={e.barraPista}><View style={[e.barraLlena, { width: `${Math.min(100, pct ?? 0)}%` }]} /></View>
         </View>
         <Pastilla fondo={ok ? '#E8EFEA' : color.alertaSuave} tinta={ok ? color.primarioProfundo : color.alerta} punto={ok ? color.primario : color.alerta}>
-          {ok ? 'Muestra representativa' : 'Muestra insuficiente'}
+          {ok ? 'Contestó bastante gente' : 'Contestó poca gente'}
         </Pastilla>
       </View>
     </Caja>
@@ -115,21 +115,22 @@ export function TarjetaDimension({ dimension, pulso, estudio }: {
   return (
     <Caja>
       <View style={{ gap: espacio.md }}>
-        <View style={[e.fila, { alignItems: 'flex-start' }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={[texto.seccion, { color: color.texto, fontSize: 19 }]}>Dimensión{'\n'}{dimension === 'agotamiento' ? 'Agotamiento' : 'Desvinculación'}</Text>
-            <Text style={[texto.apoyo, { color: color.textoMedio, marginTop: 4 }]}>
-              {dimension === 'agotamiento'
-                ? 'Fatiga física, cognitiva y demanda emocional sostenida'
-                : 'Conexión con el propósito, cinismo y sentido del rol'}
-            </Text>
-          </View>
-          <View style={[e.fila, { gap: 6 }]}>
+        {/* Título y texto a todo lo ancho; las pastillas, en su propia fila.
+            En la misma línea, el nombre se partía en dos («Agotamie / nto»)
+            y la descripción quedaba en una columna de cuatro palabras. */}
+        <View style={{ gap: 6 }}>
+          <Text style={[texto.seccion, { color: color.texto, fontSize: 19 }]}>{dimension === 'agotamiento' ? 'Agotamiento' : 'Desvinculación'}</Text>
+          <Text style={[texto.apoyo, { color: color.textoMedio }]}>
+            {dimension === 'agotamiento'
+              ? 'Cuánto cansancio acumulado declara el equipo. Cuanto más bajo, mejor.'
+              : 'Cuánto se ha desenganchado la gente de su trabajo. Cuanto más bajo, mejor.'}
+          </Text>
+          <View style={[e.fila, { gap: 6, flexWrap: 'wrap' }]}>
             {ultima && <PastillaNivel nivel={ultima[nivelClave]} />}
             {cambio !== null && (
               <Pastilla fondo="#EDEBE7" tinta={color.texto}
                 icono={cambio > 0 ? <IconoTendenciaArriba tamano={13} color={color.tierra} /> : <IconoTendenciaAbajo tamano={13} color={color.primario} />}>
-                {`${cambio > 0 ? '+' : ''}${cambio.toFixed(1)} vs S${pulso.length - 1}`}
+                {cambio === 0 ? 'igual que la semana pasada' : `${cambio > 0 ? '+' : ''}${cambio.toFixed(1)} que la semana pasada`}
               </Pastilla>
             )}
           </View>
@@ -142,7 +143,7 @@ export function TarjetaDimension({ dimension, pulso, estudio }: {
             <>
               <View style={e.separadorV} />
               <Text style={[texto.apoyo, { color: color.textoMedio, paddingBottom: 4 }]}>
-                Benchmark estudio: <Text style={[texto.apoyoFuerte, { color: color.texto }]}>{Number(estudio).toFixed(1)}</Text>
+                El resto del estudio, en <Text style={[texto.apoyoFuerte, { color: color.texto }]}>{Number(estudio).toFixed(1)}</Text>
               </Text>
             </>
           )}
@@ -151,9 +152,8 @@ export function TarjetaDimension({ dimension, pulso, estudio }: {
         {serie.length >= 2 && (
           <View style={e.mini}>
             <Text style={[texto.dato, { color: color.textoMedio }]}>
-              Tendencia acumulada (Semanas {desde} a {pulso.length}) <Text style={[texto.datoFuerte, { color: color.texto }]}>
-                Min {Math.min(...valores).toFixed(1)} · Max {Math.max(...valores).toFixed(1)}
-              </Text>
+              {`Semana a semana, de la ${desde} a la ${pulso.length}: se ha movido entre ${Math.min(...valores).toFixed(1)} y ${Math.max(...valores).toFixed(1)}.`}
+              {estudio != null ? ' La línea de puntos es el resto del estudio.' : ''}
             </Text>
             <GraficaLinea
               series={[{ etiqueta: dimension, color: tinta, puntos: serie.map((p) => ({ x: p.semana, y: Number(p[clave]) })) }]}
@@ -172,36 +172,42 @@ export function TarjetaDimension({ dimension, pulso, estudio }: {
 
 // ------------------------------------------------------------ Lo que pesa
 
-const PESA: Record<ClaveFactor, { etiqueta: string; icono: (c: string) => ReactNode; frase: (v: number) => string; ref: string }> = {
+/** Qué significa cada factor cuando se sale de la referencia, dicho para
+ *  quien dirige un equipo, no para un comité. Las frases de antes —«Impacto
+ *  crítico detectado en el indicador de agotamiento del viernes», «señales
+ *  de desacople entre compromisos de entrega y renegociación de alcance en
+ *  incidentes de mitad de sprint»— sonaban a consultora y no decían qué
+ *  pasaba. */
+const PESA: Record<ClaveFactor, { icono: (c: string) => ReactNode; frase: (v: number) => string; ref: string }> = {
   horas_dia_media: {
-    etiqueta: 'Fuera de referencia', icono: (c) => <IconoReloj tamano={16} color={c} />,
-    frase: (v) => `Exceso continuo de ${(v - 8.5).toFixed(1)} h sobre el umbral saludable. Impacto crítico detectado en el indicador de agotamiento del viernes.`,
-    ref: '≤ 8.5 h / día',
+    icono: (c) => <IconoReloj tamano={16} color={c} />,
+    frase: (v) => `Se trabajó ${(v - 8.5).toFixed(1)} h al día más de lo que el estudio toma como referencia. Sostenido varias semanas, es lo que primero se nota en el cansancio del viernes.`,
+    ref: 'hasta 8.5 h al día',
   },
   guardia_pct: {
-    etiqueta: 'Sobrecarga reactiva', icono: (c) => <IconoCampana tamano={16} color={c} />,
-    frase: () => 'Guardias no programadas y atención de tickets críticos fuera del horario estándar han fragmentado el descanso semanal.',
-    ref: '≤ 20 % del equipo',
+    icono: (c) => <IconoCampana tamano={16} color={c} />,
+    frase: (v) => `Uno de cada ${Math.max(2, Math.round(100 / Math.max(1, v)))} estuvo disponible fuera de horario. Estar pendiente, aunque no llamen, no deja descansar del todo.`,
+    ref: 'hasta el 20 % del equipo',
   },
   apoyo_lider_media: {
-    etiqueta: 'Oportunidad de ajuste', icono: (c) => <IconoActualizar tamano={16} color={c} />,
-    frase: () => 'Señales de desacople entre compromisos de entrega y renegociación de alcance en incidentes de mitad de sprint.',
-    ref: '≥ 3.5 / 5.0',
+    icono: (c) => <IconoActualizar tamano={16} color={c} />,
+    frase: () => 'La gente siente menos respaldo de su jefe directo del que sería esperable. Es el factor que más protege del agotamiento, así que mueve la aguja más que ningún otro.',
+    ref: 'al menos 3.5 de 5',
   },
   sueno_media: {
-    etiqueta: 'Fuera de referencia', icono: (c) => <IconoReloj tamano={16} color={c} />,
-    frase: (v) => `El descanso promedio quedó ${(7 - v).toFixed(1)} h por debajo de la referencia. La recuperación nocturna insuficiente amplifica la fatiga acumulada.`,
-    ref: '≥ 7.0 h / noche',
+    icono: (c) => <IconoReloj tamano={16} color={c} />,
+    frase: (v) => `Se durmió ${(7 - v).toFixed(1)} h menos de lo recomendable. El sueño que falta no se recupera el fin de semana: se acumula.`,
+    ref: 'al menos 7 h por noche',
   },
   fin_de_semana_media: {
-    etiqueta: 'Fuera de referencia', icono: (c) => <IconoReloj tamano={16} color={c} />,
-    frase: () => 'El trabajo en fin de semana recorta la ventana de desconexión. Es el factor con mayor relación con el agotamiento en el modelo JD-R.',
-    ref: '≤ 2.0 h / sem',
+    icono: (c) => <IconoReloj tamano={16} color={c} />,
+    frase: () => 'Se trabajó el fin de semana más de lo previsto. Cuando no hay un corte limpio, el lunes se empieza ya cansado.',
+    ref: 'hasta 2 h por fin de semana',
   },
   sobretiempo_media: {
-    etiqueta: 'Sobrecarga reactiva', icono: (c) => <IconoCampana tamano={16} color={c} />,
-    frase: () => 'Sobretiempo no planificado sostenido varias semanas. Suele preceder a caídas en el sueño y en el ánimo del viernes.',
-    ref: '≤ 4.0 h / sem',
+    icono: (c) => <IconoCampana tamano={16} color={c} />,
+    frase: () => 'El sobretiempo pasó de lo previsto. Suele aparecer antes de que caigan el sueño y el ánimo del viernes, así que es una buena señal temprana.',
+    ref: 'hasta 4 h a la semana',
   },
 }
 
@@ -210,21 +216,22 @@ export function TarjetaPesa({ clave, valor }: { clave: ClaveFactor; valor: numbe
   const p = PESA[clave]
   const fuera = fueraDeReferencia(clave, valor)
   const t = fuera ? SALMON : { fondo: '#EDEBE7', tinta: color.texto }
-  const titulo = clave === 'guardia_pct' ? `${valor.toFixed(0)} % del equipo en guardia`
-    : clave === 'apoyo_lider_media' ? `Apoyo del líder ${valor.toFixed(1)} / 5`
-    : `${f.nombre} ${valor.toFixed(1)} ${f.unidad.replace(' / ', '/')}`
+  const etiqueta = !fuera ? 'Dentro de lo previsto' : f.peorSi === 'mayor' ? 'Por encima de lo previsto' : 'Por debajo de lo previsto'
+  const titulo = clave === 'guardia_pct' ? `${valor.toFixed(0)} % del equipo estuvo de guardia`
+    : clave === 'apoyo_lider_media' ? `El apoyo del jefe quedó en ${valor.toFixed(1)} de 5`
+    : `${f.nombre}: ${valor.toFixed(1)} ${f.unidad.replace(' / ', '/')}`
   return (
     <Caja>
       <View style={{ gap: espacio.sm }}>
         <View style={e.fila}>
-          <View style={{ flex: 1, flexDirection: 'row' }}><Pastilla fondo={t.fondo} tinta={t.tinta}>{p.etiqueta}</Pastilla></View>
+          <View style={{ flex: 1, flexDirection: 'row' }}><Pastilla fondo={t.fondo} tinta={t.tinta}>{etiqueta}</Pastilla></View>
           {p.icono(fuera ? SALMON.tinta : color.textoMedio)}
         </View>
         <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{titulo}</Text>
         <Text style={[texto.apoyo, { color: color.textoMedio }]}>{p.frase(valor)}</Text>
         <View style={e.separadorH} />
         <View style={e.fila}>
-          <Text style={[texto.datoFuerte, { color: color.textoMedio, flex: 1 }]}>Referencia estudio:</Text>
+          <Text style={[texto.datoFuerte, { color: color.textoMedio, flex: 1 }]}>Lo esperable sería</Text>
           <Text style={[texto.datoFuerte, { color: color.texto }]}>{p.ref}</Text>
         </View>
       </View>
@@ -260,12 +267,12 @@ export function NotaAgregacion({ respondientes, minimo }: { respondientes?: numb
       <IconoCandado tamano={14} color={color.textoMedio} />
       <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1, minWidth: 240 }]}>
         {respondientes
-          ? `Cifras agregadas de ${respondientes} respondientes. Ningún dato individual es visible para la empresa ni RR.HH.`
-          : 'Cifras agregadas. Ningún dato individual es visible para la empresa ni RR.HH.'}
+          ? `Estas cifras son el promedio de ${respondientes} respuestas. Ni tú ni nadie de la empresa puede ver lo que contestó una persona concreta.`
+          : 'Estas cifras son promedios. Ni tú ni nadie de la empresa puede ver lo que contestó una persona concreta.'}
       </Text>
       <View style={[e.fila, { gap: 6 }]}>
         <View style={[e.punto, { backgroundColor: color.primario }]} />
-        <Text style={[texto.datoFuerte, { color: color.texto }]}>Mínimo ético de reporte: {minimo} personas</Text>
+        <Text style={[texto.datoFuerte, { color: color.texto }]}>Hacen falta {minimo} respuestas para enseñar un promedio</Text>
       </View>
     </View>
   )
@@ -278,10 +285,10 @@ export function SinReporte({ inscritos, minimo }: { inscritos: number; minimo: n
       <View style={[e.fila, { alignItems: 'flex-start' }]}>
         <IconoEscudo tamano={20} color={color.primarioProfundo} />
         <View style={{ flex: 1, gap: espacio.xs }}>
-          <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Todavía no hay cifras semanales</Text>
+          <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Todavía no hay cifras que enseñar</Text>
           <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-            Los promedios de la empresa se muestran cuando al menos {minimo} personas responden en la misma semana.
-            Es la garantía de que ninguna cifra señala a alguien concreto.
+            El promedio de tu empresa aparece cuando al menos {minimo} personas contestan la misma semana.
+            Con menos, una cifra podría señalar a alguien concreto, y eso es justo lo que el estudio evita.
             {faltan > 0 ? ` Con ${faltan} ${faltan === 1 ? 'persona más' : 'personas más'} inscritas y respondiendo habrá reporte.` : ' Con la participación de esta semana, la próxima ya podría haber reporte.'}
           </Text>
         </View>
@@ -293,8 +300,8 @@ export function SinReporte({ inscritos, minimo }: { inscritos: number; minimo: n
 export function Pie() {
   return (
     <View style={e.pie}>
-      <Text style={[texto.dato, { color: color.textoMedio, flex: 1, minWidth: 260 }]}>Firma ética de agregación estadística y anonimato · Investigación Universitaria en Salud Ocupacional</Text>
-      <Text style={[texto.dato, { color: color.textoMedio }]}>Protocolo de Privacidad k-Anonymity · Perú</Text>
+      <Text style={[texto.dato, { color: color.textoMedio, flex: 1, minWidth: 260 }]}>Estudio de la Universidad Nacional de Trujillo sobre bienestar en el trabajo.</Text>
+      <Text style={[texto.dato, { color: color.textoMedio }]}>Las respuestas no se pueden rastrear hasta quien las escribió.</Text>
     </View>
   )
 }
