@@ -1,37 +1,29 @@
-"""Entrenamiento con datos propios — ESP-005 §5.2 pasos 3-4 y §7.
+"""Modelo de desgaste — versión de producto.
 
-Lee la vista `semanas_modelo` (una fila por participante-semana, ESP-005 §8),
-entrena las cuatro versiones que el capítulo de resultados tiene que comparar
-y las evalúa con GroupKFold por persona.
+Una tarea, un modelo, nueve entradas.
 
-    A    MODELO PRINCIPAL: rasgos de ánimo + sueño/horas + dos de ficha,
-         recortado a ~14 variables por potencia (§7.6), partiendo de los pesos
-         preentrenados w0 en los rasgos compartidos (ESP-005 §4.3)
-    B    A + e_previo/d_previo (solo pronóstico): la versión operativa fuerte
-    A-completo / B-completo   las ~30 variables de §4.2. Exploratorio: se
-         reporta para mostrar que no aportan, no se publica
-    A0   igual que A pero desde cero: el control del experimento de §5
-    B0   igual que B pero desde cero
-    D-animo     solo los rasgos del check-in de ánimo (que son ítems del OLBI)
-    F-objetivo  solo lo objetivo: sueño, horas, sobrecarga, ficha. Ningún ítem
-                de ánimo. Responde si hace falta preguntar cómo te sientes
-    *-bosque  random forest sobre los mismos rasgos y las mismas particiones
-              (§6). Si no supera claramente a la logística, se reporta y se
-              descarta: la logística es interpretable y la muestra es corta.
+    ¿El próximo OLBI de esta persona saldrá alto?
 
-Y tres líneas base (§7.4): clase mayoritaria, «igual que el viernes pasado»
-(solo pronóstico) y el propio modelo preentrenado sin reajustar.
+Entradas: el resumen de su última semana de check-ins.
 
-El preentrenamiento entra como regularización L2 *hacia w0* en los rasgos
-compartidos y hacia cero en los propios, con el intercepto libre (§5.2 paso 3).
-La fuerza hacia w0 se elige en validación y se reporta (§12 decisión 5).
+    ánimo    t_media, t_ultimo, t_max, t_pendiente, e_media, d_media, n_dias
+    contexto sueno_media, horas_media
+
+Los siete de ánimo llegan con pesos ya calculados de Gruszczyńska, Basińska y
+Schaufeli (2021), así que el sistema opina desde el primer día de una empresa
+nueva. Los dos de contexto arrancan en cero y se aprenden con los datos de esa
+empresa: la penalización L2 tira hacia `w₀` en los primeros y hacia cero en los
+segundos.
+
+Esta rama es el producto, no la tesis. Lo que vive en `main` —las versiones
+A/B/D/F, el control sin preentrenamiento, el random forest, las cuatro líneas
+base, el análisis de potencia y la cohorte simulada— es el aparato que sostiene
+un capítulo de resultados. Aquí sobra: lo que se vende es el circuito completo
+—medir, detectar, derivar, atender, reportar— y el modelo es el disparador.
 
 Uso:
-    modelo/exploracion/venv/bin/python modelo/entrenar.py                      # datos reales
-    modelo/exploracion/venv/bin/python modelo/entrenar.py --origen simulada    # ensayo del pipeline
-    modelo/exploracion/venv/bin/python modelo/entrenar.py --publicar           # + migración
-
-Requiere SUPABASE_DB_PASSWORD en el entorno (`source ~/.zshrc`).
+    modelo/exploracion/venv/bin/python modelo/entrenar.py
+    modelo/exploracion/venv/bin/python modelo/entrenar.py --publicar
 """
 from __future__ import annotations
 
@@ -40,558 +32,375 @@ import json
 import os
 import pathlib
 import sys
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
 import psycopg
 from scipy.optimize import minimize
 from scipy.special import expit
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (average_precision_score, f1_score, precision_score,
                              recall_score, roc_auc_score)
 from sklearn.model_selection import GroupKFold
 
-DSN = ("postgresql://postgres.tnllaabrtntlmobtnhfp:{clave}"
-       "@aws-0-us-east-1.pooler.supabase.com:6543/postgres")
+RAIZ = pathlib.Path(__file__).parent
+DSN = ('postgresql://postgres.tnllaabrtntlmobtnhfp:{clave}'
+       '@aws-0-us-east-1.pooler.supabase.com:6543/postgres')
 
-RAIZ = pathlib.Path(__file__).resolve().parent
+# --------------------------------------------------------------------- diseño
 
-# ESP-005 §4.1 — los rasgos que comparten preentrenamiento y operación. El
-# orden importa: es el de `pesos` en modelo_versiones y en los JSON de w0.
-COMPARTIDOS = ['t_media', 't_ultimo', 't_max', 't_pendiente', 'e_media', 'd_media', 'n_dias']
-# Nombre del mismo rasgo en el preentrenamiento (modelo/versiones/*.json).
+# Los siete que vienen preentrenados. El orden es el de `pesos` en
+# modelo_versiones y en el JSON de w0: no se reordena.
+ANIMO = ['t_media', 't_ultimo', 't_max', 't_pendiente', 'e_media', 'd_media', 'n_dias']
+# Cómo se llama cada uno en el archivo del preentrenamiento.
 EN_W0 = {'t_media': 'T_media', 't_ultimo': 'T_ultimo', 't_max': 'T_max',
          't_pendiente': 'T_pendiente', 'e_media': 'E_media', 'd_media': 'D_media',
          'n_dias': 'n_dias'}
+# Los dos del check-in que no existen en el estudio de referencia.
+CONTEXTO = ['sueno_media', 'horas_media']
+RASGOS = ANIMO + CONTEXTO
 
-# ESP-005 §4.2 — rasgos propios, sin equivalente en el estudio de referencia.
-# Del check-in diario de lunes a jueves. Disponibles cualquier día de la semana.
-# Carga (cuánto se trabajó) y recuperación (si se logró desconectar). El
-# bloque de recuperación llega con el diario v3; en respuestas anteriores es
-# nulo y se imputa con la mediana.
-PROPIOS_DIARIOS = ['horas_media', 'horas_max', 'sueno_media', 'sueno_min',
-                   'horas_fin_de_semana', 'desconexion_media', 'contacto_fuera_horario']
-# De la ficha inicial. No cambian en el tiempo.
-PROPIOS_ESTABLES = [
-    'edad', 'antiguedad_empresa', 'antiguedad_sector', 'tamano_equipo',
-    'personas_a_cargo', 'minutos_traslado',
-    'rol_desarrollo', 'rol_qa', 'rol_datos', 'rol_infraestructura',
-    'rol_soporte', 'rol_diseno', 'rol_gestion', 'rol_otro',
-    'modalidad_remoto', 'modalidad_hibrido', 'modalidad_presencial',
-]
-# Del cuestionario semanal, que se responde EL VIERNES, junto con el OLBI (en
-# los datos, 73 de 76 veces después de él). Para el pronóstico son pasado y
-# entran sin problema. Para el nowcast NO pueden entrar: el aviso que se
-# quiere dar es el miércoles, y el miércoles estos datos todavía no existen.
-# Entrenar el nowcast con ellos daría métricas que la app nunca podría
-# reproducir en operación.
-PROPIOS_VIERNES = ['horas_sobretiempo', 'guardias', 'apoyo_lider']
+ETIQUETA = 'alto_t1'          # el OLBI de la semana siguiente
+W0 = 'preentrenamiento-pronostico-v1'
+VERSION = 'producto-v1'
 
-# Bloque objetivo mínimo. Existe por un problema de potencia, no de gusto: la
-# regla de oro es ~10 casos positivos por variable, y con 6 semanas y 60-100
-# personas habrá ~50 semanas altas. Con 25 rasgos objetivos eso son 2 casos
-# por variable y el modelo memoriza en vez de aprender. Estos cuatro se fijan
-# de antemano por hipótesis: sueño y carga física, nada de ánimo.
-OBJETIVO_MINIMO = ['sueno_media', 'sueno_min', 'horas_media', 'horas_max']
-
-# Versión recortada del modelo completo (§7.6). Misma app, mismas preguntas:
-# lo que cambia es cuáles entran al modelo.
-#
-# `rol` (8 columnas), `modalidad` (3), edad, antigüedades, tamaño de equipo,
-# personas a cargo y traslado salen del modelo principal: se siguen recogiendo
-# y se describen en la tesis, pero no se estiman.
-#
-# En su lugar entra `guardia_previa`: si la persona estuvo de guardia la semana
-# pasada. Es un dato que ella respondió, no una suposición sobre qué puestos
-# suelen tener guardias, y está disponible desde el lunes, que es cuando el
-# nowcast tiene que poder opinar.
-RED_FICHA = ['guardia_previa']
-
-
-def rasgos_principales(tarea: str) -> list[str]:
-    """El modelo PRINCIPAL de la tesis (ESP-005 §4.3, §7.6): recortado.
-
-    15 variables en nowcast y 18 en pronóstico. El conjunto completo de §4.2 se
-    sigue calculando y se reporta como `A-completo`, pero es exploratorio: con
-    ~50 semanas altas no hay potencia para estimar 30 coeficientes."""
-    return (COMPARTIDOS + PROPIOS_DIARIOS + RED_FICHA
-            + (PROPIOS_VIERNES if tarea == 'pronostico' else []))
-
-# Solo pronóstico: el OLBI del viernes de t, que en esa tarea ya es pasado.
-OLBI_PREVIO = ['e_previo', 'd_previo']
-
-PROPIOS = PROPIOS_DIARIOS + PROPIOS_ESTABLES + PROPIOS_VIERNES
-
-TAREAS = {
-    'nowcast': {
-        'etiqueta': 'alto_t', 'w0': 'preentrenamiento-v1',
-        'propios': PROPIOS_DIARIOS + PROPIOS_ESTABLES,
-    },
-    'pronostico': {
-        'etiqueta': 'alto_t1', 'w0': 'preentrenamiento-pronostico-v1',
-        'propios': PROPIOS_DIARIOS + PROPIOS_ESTABLES + PROPIOS_VIERNES,
-    },
-}
-
-# Fuerzas de regularización a probar hacia w0 (§12 decisión 5). Grande =
-# confiar en el dominio de referencia; pequeña = dejar que mande el dato propio.
+# Fuerza de la penalización hacia w0 en los rasgos de ánimo. Grande = me fío
+# del estudio de referencia; pequeña = mandan los datos de la empresa. Se
+# elige en validación, no a dedo.
 REJILLA_LAMBDA = [0.1, 0.3, 1.0, 3.0, 10.0]
-LAMBDA_PROPIOS = 1.0
+LAMBDA_CONTEXTO = 1.0         # los dos propios se regularizan hacia cero
 PLIEGUES = 5
-
-# Random forest como comparación (§6). Con ~300 filas y ~32 rasgos hay que
-# atarlo corto o memoriza: hojas de 5 como mínimo y sqrt(rasgos) por división.
-# No usa el preentrenamiento: w0 es un vector de pesos lineales y no tiene
-# traducción a un bosque, así que el bosque solo compite con A0/B0 en igualdad
-# de información, y con A/B en igualdad de particiones.
-BOSQUE = dict(n_estimators=400, min_samples_leaf=5, max_features='sqrt',
-              class_weight='balanced_subsample', random_state=0, n_jobs=-1)
 PLIEGUES_UMBRAL = 3
-# Un falso negativo es alguien con burnout al que no se llama; un falso
-# positivo, una conversación de más. El umbral se elige maximizando F-beta
-# con beta = 2, que pesa el recall cuatro veces más que la precisión (§7.2).
+# Un falso negativo es alguien quemándose al que nadie llama; un falso
+# positivo, una conversación de más. El umbral pesa el recall cuatro veces
+# más que la precisión.
 BETA = 2.0
-
-
-# --------------------------------------------------------------------- datos
-
-# Participantes que no son del estudio: la semilla de demostración del panel
-# del empresario y la cohorte simulada de modelo/simular.py. Se excluyen por
-# defecto para que nadie entrene sin darse cuenta con datos inventados.
+MINIMO_PERSONAS = 20
 SINTETICOS = ("DEMO-%", "SIM-%")
 
+# ---------------------------------------------------------------------- datos
 
-def cargar(origen: str) -> pd.DataFrame:
-    """`origen`: 'reales' (por defecto), 'simulada' (solo SIM-*) o 'todo'."""
+
+def cargar(incluir_demo: bool = False) -> pd.DataFrame:
     clave = os.environ.get('SUPABASE_DB_PASSWORD')
     if not clave:
         sys.exit('falta SUPABASE_DB_PASSWORD en el entorno (source ~/.zshrc)')
-    filtro = {
-        'reales': "where p.codigo_anonimo not like 'DEMO-%' and p.codigo_anonimo not like 'SIM-%'",
-        'simulada': "where p.codigo_anonimo like 'SIM-%'",
-        'todo': '',
-    }[origen]
+    filtro = '' if incluir_demo else (
+        "where p.codigo_anonimo not like 'DEMO-%' and p.codigo_anonimo not like 'SIM-%'")
     with psycopg.connect(DSN.format(clave=clave)) as cx:
         cx.execute('reset role')
         cur = cx.execute(f"""
-            select s.*, p.codigo_anonimo
+            select s.participante_id, s.semana, s.{ETIQUETA},
+                   {', '.join('s.' + r for r in RASGOS)},
+                   p.codigo_anonimo
             from semanas_modelo s
             join participantes p on p.id = s.participante_id
             {filtro}
             order by s.participante_id, s.semana
         """)
-        filas = cur.fetchall()
-        columnas = [d.name for d in cur.description]
-    D = pd.DataFrame(filas, columns=columnas)
-    for c in D.columns:
-        if c not in ('participante_id', 'semana', 'codigo_anonimo'):
-            D[c] = pd.to_numeric(D[c], errors='coerce')
+        D = pd.DataFrame(cur.fetchall(), columns=[d.name for d in cur.description])
+    for c in RASGOS + [ETIQUETA]:
+        D[c] = pd.to_numeric(D[c], errors='coerce')
     return D
 
 
-def w0_de(version: str) -> dict[str, float] | None:
-    """Pesos y estandarización del preentrenamiento, por nombre de rasgo."""
+def preparar(D: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, np.ndarray]:
+    """Filas con etiqueta y con al menos un día respondido. Los huecos de
+    sueño y jornada se rellenan con la mediana: una persona que no contestó
+    esos dos campos sigue teniendo señal de ánimo."""
+    d = D.dropna(subset=[ETIQUETA]).copy()
+    d = d[d['n_dias'] > 0]
+    for r in RASGOS:
+        d[r] = d[r].fillna(d[r].median() if d[r].notna().any() else 0.0)
+    return d, d[ETIQUETA].to_numpy(int), d['participante_id'].astype(str).to_numpy()
+
+
+def w0_de(version: str) -> dict | None:
     ruta = RAIZ / 'versiones' / f'{version}.json'
     if not ruta.exists():
         return None
     v = json.loads(ruta.read_text())
-    return {
-        'pesos': dict(zip(v['rasgos'], v['pesos'])),
-        'medias': dict(zip(v['rasgos'], v['medias'])),
-        'desviaciones': dict(zip(v['rasgos'], v['desviaciones'])),
-        'intercepto': v['intercepto'],
-    }
+    return {'pesos': dict(zip(v['rasgos'], v['pesos'])),
+            'medias': dict(zip(v['rasgos'], v['medias'])),
+            'desviaciones': dict(zip(v['rasgos'], v['desviaciones']))}
 
 
-def matriz(D: pd.DataFrame, rasgos: list[str], w0: dict | None,
-           stats: dict | None = None) -> tuple[np.ndarray, dict]:
-    """Estandariza. Los rasgos compartidos usan la escala del preentrenamiento
-    (si no, los pesos w0 no significan lo mismo); los propios, la de la muestra.
+# --------------------------------------------------------------------- ajuste
 
-    `stats` se calcula en el pliegue de entrenamiento y se aplica al de prueba:
-    estandarizar con la muestra completa filtraría información entre pliegues."""
+
+def tipificar(D: pd.DataFrame, w0: dict | None,
+              stats: dict | None = None) -> tuple[np.ndarray, dict]:
+    """Deja cada rasgo en «pasos desde lo normal».
+
+    Los de ánimo usan la escala del preentrenamiento: si se usara otra, sus
+    pesos dejarían de significar lo mismo. Los de contexto usan la de la
+    muestra, calculada en el pliegue de entrenamiento y aplicada al de prueba
+    —con la muestra entera se filtraría información entre pliegues—."""
     if stats is None:
         stats = {}
-        for r in rasgos:
-            compartido = w0 is not None and r in COMPARTIDOS
-            if compartido:
-                mu = w0['medias'][EN_W0[r]]
-                sd = w0['desviaciones'][EN_W0[r]]
+        for r in RASGOS:
+            if w0 is not None and r in ANIMO:
+                mu, sd = w0['medias'][EN_W0[r]], w0['desviaciones'][EN_W0[r]]
             else:
-                mu = float(D[r].mean())
-                sd = float(D[r].std(ddof=0)) or 1.0
-            stats[r] = (mu, sd if sd else 1.0)
-    X = np.column_stack([(D[r].to_numpy(float) - stats[r][0]) / stats[r][1] for r in rasgos])
+                mu, sd = float(D[r].mean()), float(D[r].std(ddof=0))
+            stats[r] = (mu, sd or 1.0)
+    X = np.column_stack([(D[r].to_numpy(float) - stats[r][0]) / stats[r][1] for r in RASGOS])
     return X, stats
 
 
-# ------------------------------------------------------------------ ajuste
+def ajustar(X: np.ndarray, y: np.ndarray, ancla: np.ndarray,
+            lam: np.ndarray) -> tuple[np.ndarray, float]:
+    """Logística con penalización L2 hacia `ancla`. El intercepto no se penaliza.
 
-def ajustar(X: np.ndarray, y: np.ndarray, ancla: np.ndarray, lam: np.ndarray,
-            peso: np.ndarray) -> tuple[np.ndarray, float]:
-    """Logística con penalización L2 hacia `ancla` (cero para los rasgos
-    propios, w0 para los compartidos). El intercepto no se penaliza."""
+    `peso` iguala el total de cada clase: sin eso, con un 15 % de positivos el
+    modelo aprende a decir «no» siempre y acierta el 85 %."""
     n, k = X.shape
+    peso = np.ones(n)
+    for clase in (0, 1):
+        sel = y == clase
+        if sel.sum():
+            peso[sel] = n / (2.0 * sel.sum())
 
     def objetivo(theta):
         w, b = theta[:k], theta[k]
         z = X @ w + b
-        # logloss estable: log(1+e^z) - y·z
         perdida = np.sum(peso * (np.logaddexp(0.0, z) - y * z)) / peso.sum()
         dif = w - ancla
-        reg = 0.5 * float(lam @ (dif ** 2))
-        p = expit(z)
-        g = (peso * (p - y)) / peso.sum()
-        return perdida + reg, np.concatenate([X.T @ g + lam * dif, [g.sum()]])
+        g = (peso * (expit(z) - y)) / peso.sum()
+        return (perdida + 0.5 * float(lam @ dif ** 2),
+                np.concatenate([X.T @ g + lam * dif, [g.sum()]]))
 
     r = minimize(objetivo, np.concatenate([ancla, [0.0]]), jac=True, method='L-BFGS-B')
     return r.x[:k], float(r.x[k])
 
 
-def pesos_balanceados(y: np.ndarray) -> np.ndarray:
-    """`class_weight='balanced'` (§7.3): cada clase pesa lo mismo en total."""
-    peso = np.ones(len(y), float)
-    for clase in (0, 1):
-        sel = y == clase
-        if sel.sum():
-            peso[sel] = len(y) / (2.0 * sel.sum())
-    return peso
+def ancla_y_lambda(w0: dict | None, lam_animo: float) -> tuple[np.ndarray, np.ndarray]:
+    ancla = np.array([w0['pesos'][EN_W0[r]] if (w0 and r in ANIMO) else 0.0 for r in RASGOS])
+    lam = np.array([lam_animo if (w0 and r in ANIMO) else LAMBDA_CONTEXTO for r in RASGOS])
+    return ancla, lam
 
 
-def umbral_por_recall(y: np.ndarray, p: np.ndarray) -> float:
-    """Umbral que maximiza F-beta (beta=2) en el pliegue de entrenamiento."""
+def umbral_fbeta(y: np.ndarray, p: np.ndarray) -> float:
     mejor, mejor_u = -1.0, 0.5
     for u in np.unique(np.round(p, 3)):
         yh = (p >= u).astype(int)
         vp = int(((yh == 1) & (y == 1)).sum())
-        if vp == 0:
+        if not vp:
             continue
         prec = vp / max(int((yh == 1).sum()), 1)
         rec = vp / max(int((y == 1).sum()), 1)
-        f = (1 + BETA ** 2) * prec * rec / ((BETA ** 2 * prec) + rec) if (prec + rec) else 0
+        f = (1 + BETA ** 2) * prec * rec / (BETA ** 2 * prec + rec)
         if f > mejor:
             mejor, mejor_u = f, float(u)
     return mejor_u
 
 
-# --------------------------------------------------------------- evaluación
+# ----------------------------------------------------------------- evaluación
+
 
 def metricas(y: np.ndarray, p: np.ndarray, u: float) -> dict:
     yh = (p >= u).astype(int)
-    hay_dos = len(np.unique(y)) == 2
+    dos = len(np.unique(y)) == 2
     return {
         'precision': round(float(precision_score(y, yh, zero_division=0)), 3),
         'recall': round(float(recall_score(y, yh, zero_division=0)), 3),
         'f1': round(float(f1_score(y, yh, zero_division=0)), 3),
-        'pr_auc': round(float(average_precision_score(y, p)), 3) if hay_dos else None,
-        'roc_auc': round(float(roc_auc_score(y, p)), 3) if hay_dos else None,
+        'pr_auc': round(float(average_precision_score(y, p)), 3) if dos else None,
+        'roc_auc': round(float(roc_auc_score(y, p)), 3) if dos else None,
     }
 
 
-def resumen(por_pliegue: list[dict]) -> dict:
-    """Media ± desviación por métrica (§7.1). Se reportan ambas."""
+def validar(d: pd.DataFrame, y: np.ndarray, grupos: np.ndarray,
+            w0: dict | None, lam_animo: float) -> dict | None:
+    """GroupKFold por persona: todas las semanas de alguien caen en el mismo
+    pliegue. Repartirlas haría que el modelo reconociera a la persona en vez
+    del fenómeno, y la nota saldría mejor de la que merece."""
+    n_pliegues = min(PLIEGUES, len(np.unique(grupos)))
+    if n_pliegues < 2 or len(np.unique(y)) < 2:
+        return None
+    ancla, lam = ancla_y_lambda(w0, lam_animo)
+    por_pliegue = []
+    for tr, te in GroupKFold(n_splits=n_pliegues).split(d, y, grupos):
+        if len(np.unique(y[tr])) < 2 or len(np.unique(y[te])) < 2:
+            continue
+        Xtr, stats = tipificar(d.iloc[tr], w0)
+        Xte, _ = tipificar(d.iloc[te], w0, stats)
+        w, b = ajustar(Xtr, y[tr], ancla, lam)
+        # El umbral se elige con predicciones fuera de muestra dentro del
+        # pliegue de entrenamiento. Con las de dentro saldría optimista.
+        u = umbral_interno(d.iloc[tr], y[tr], grupos[tr], w0, ancla, lam)
+        por_pliegue.append(metricas(y[te], expit(Xte @ w + b), u))
+    if not por_pliegue:
+        return None
     out = {}
     for m in ('precision', 'recall', 'f1', 'pr_auc', 'roc_auc'):
         vals = [f[m] for f in por_pliegue if f.get(m) is not None]
         out[m] = {'media': round(float(np.mean(vals)), 3),
-                  'de': round(float(np.std(vals)), 3),
-                  'pliegues': len(vals)} if vals else None
-    return out
+                  'de': round(float(np.std(vals)), 3)} if vals else None
+    return {'pliegues': len(por_pliegue), 'resumen': out}
 
 
-def entrenador(bosque: bool, ancla: np.ndarray, lam: np.ndarray):
-    """Devuelve `fit(X, y) -> predecir(Z) -> probabilidades`.
-
-    Envolver el ajuste permite que la logística y el bosque recorran
-    exactamente las mismas particiones (§6: «con las mismas particiones»)."""
-    def fit(X: np.ndarray, y: np.ndarray):
-        if bosque:
-            m = RandomForestClassifier(**BOSQUE).fit(X, y)
-            return lambda Z: m.predict_proba(Z)[:, 1]
-        w, b = ajustar(X, y, ancla, lam, pesos_balanceados(y))
-        return lambda Z: expit(Z @ w + b)
-    return fit
-
-
-def umbral_interno(fit, X: np.ndarray, y: np.ndarray, grupos: np.ndarray) -> float:
-    """Umbral elegido con predicciones fuera de muestra DENTRO del pliegue de
-    entrenamiento.
-
-    No es un refinamiento opcional: un bosque ajusta sus datos casi perfecto,
-    así que sus probabilidades en muestra son ~0/1 y un umbral elegido sobre
-    ellas no significa nada en datos nuevos. Hacerlo así para los dos modelos
-    es lo que vuelve comparable la comparación."""
+def umbral_interno(d: pd.DataFrame, y: np.ndarray, grupos: np.ndarray,
+                   w0: dict | None, ancla: np.ndarray, lam: np.ndarray) -> float:
     n = min(PLIEGUES_UMBRAL, len(np.unique(grupos)))
     if n < 2:
         return 0.5
-    p = np.full(len(y), np.nan)
-    for tr, te in GroupKFold(n_splits=n).split(X, y, grupos):
+    p = np.zeros(len(y))
+    for tr, te in GroupKFold(n_splits=n).split(d, y, grupos):
         if len(np.unique(y[tr])) < 2:
             continue
-        p[te] = fit(X[tr], y[tr])(X[te])
-    hay = ~np.isnan(p)
-    if hay.sum() == 0 or len(np.unique(y[hay])) < 2:
-        return 0.5
-    return umbral_por_recall(y[hay], p[hay])
+        Xtr, stats = tipificar(d.iloc[tr], w0)
+        Xte, _ = tipificar(d.iloc[te], w0, stats)
+        w, b = ajustar(Xtr, y[tr], ancla, lam)
+        p[te] = expit(Xte @ w + b)
+    return umbral_fbeta(y, p)
 
 
-def validar(D: pd.DataFrame, rasgos: list[str], y: np.ndarray, grupos: np.ndarray,
-            w0: dict | None, lam_compartidos: float,
-            bosque: bool = False) -> tuple[dict, np.ndarray]:
-    """GroupKFold por participante (§7.1, CA-005-03). Ninguna persona cae en
-    dos pliegues, y la estandarización se aprende solo con el entrenamiento."""
-    n_pliegues = min(PLIEGUES, len(np.unique(grupos)))
-    if n_pliegues < 2:
-        return {}, np.full(len(y), np.nan)
-    ancla_base = np.array([
-        (w0['pesos'][EN_W0[r]] if (w0 and r in COMPARTIDOS) else 0.0) for r in rasgos
-    ])
-    lam = np.array([
-        (lam_compartidos if (w0 and r in COMPARTIDOS) else LAMBDA_PROPIOS) for r in rasgos
-    ])
-    fit = entrenador(bosque, ancla_base, lam)
-    p = np.full(len(y), np.nan)
-    por_pliegue = []
-    for tr, te in GroupKFold(n_splits=n_pliegues).split(D, y, grupos):
-        # El bosque es invariante a la escala; se estandariza igual para que
-        # ambos modelos vean exactamente la misma matriz.
-        Xtr, stats = matriz(D.iloc[tr], rasgos, w0)
-        Xte, _ = matriz(D.iloc[te], rasgos, w0, stats)
-        u = umbral_interno(fit, Xtr, y[tr], grupos[tr])
-        p[te] = fit(Xtr, y[tr])(Xte)
-        if len(np.unique(y[te])):
-            por_pliegue.append(metricas(y[te], p[te], u))
-    return {'por_pliegue': por_pliegue, 'resumen': resumen(por_pliegue)}, p
+def base_referencia(d: pd.DataFrame, y: np.ndarray, w0: dict | None) -> dict | None:
+    """Los pesos de referencia aplicados tal cual, sin reentrenar.
 
-
-def base_preentrenado(D: pd.DataFrame, y: np.ndarray, w0: dict | None) -> dict | None:
-    """§7.4. El modelo de referencia aplicado TAL CUAL, sin reentrenar.
-
-    Responde una pregunta distinta de A0. A0 pregunta si sirvió de algo
-    preentrenar; esta pregunta si hacía falta reentrenar, o si con los pesos
-    del estudio de referencia ya bastaba. Si el modelo propio no la supera, la
-    muestra no aportó nada y hay que decirlo.
-
-    No lleva particiones y no las necesita: nada se ajusta con los datos
-    propios, así que todas las filas son fuera de muestra por construcción."""
+    Es la línea base que importa en un producto: si el modelo entrenado con
+    los datos de la empresa no la supera, no hacía falta entrenar nada. No
+    lleva particiones y no las necesita —nada se ajusta con estos datos—."""
     if not w0:
         return None
-    z = np.full(len(D), float(w0['intercepto']))
-    for r in COMPARTIDOS:
-        if r not in D:
-            return None
-        mu = w0['medias'][EN_W0[r]]
-        sd = w0['desviaciones'][EN_W0[r]] or 1.0
-        z = z + w0['pesos'][EN_W0[r]] * (D[r].to_numpy(float) - mu) / sd
-    p = 1.0 / (1.0 + np.exp(-z))
-    return {**metricas(y, p, 0.5),
-            'nota': 'pesos de referencia sin reentrenar; todas las filas fuera de muestra'}
+    z = np.zeros(len(d))
+    for r in ANIMO:
+        mu, sd = w0['medias'][EN_W0[r]], w0['desviaciones'][EN_W0[r]] or 1.0
+        z += w0['pesos'][EN_W0[r]] * (d[r].to_numpy(float) - mu) / sd
+    return metricas(y, expit(z), 0.5)
 
 
-def lineas_base(D: pd.DataFrame, y: np.ndarray, grupos: np.ndarray, tarea: str,
-                w0: dict | None = None) -> dict:
-    """§7.4. La que importa es cuánto sabe el OLBI solo, sin señales diarias:
-    si el modelo no la supera, las señales diarias no aportan nada y el título
-    de la tesis no se sostiene."""
-    base = {'clase_mayoritaria': metricas(y, np.full(len(y), float(y.mean())), 0.5)}
-    ref = base_preentrenado(D, y, w0)
-    if ref:
-        base['referencia_sin_reajustar'] = ref
-    if tarea != 'pronostico' or 'e_previo' not in D:
-        return base
+# ------------------------------------------------------------------- ejecución
 
-    # La regla literal «el viernes pasado ya estaba alto». Bajo la censura de
-    # §3.5 es degenerada: quien sigue en seguimiento está por debajo del
-    # umbral por construcción, así que nunca dispara. Se reporta igual, porque
-    # el 0 es el dato: esta regla no puede anticipar nada.
-    u_ag, u_dv = umbral_olbi()
-    regla = ((D['e_previo'] >= u_ag) | (D['d_previo'] >= u_dv)).astype(float).to_numpy()
-    base['regla_ya_estaba_alto'] = {
-        **metricas(y, regla, 0.5),
-        'nota': 'degenerada bajo censura: nadie en seguimiento supera el umbral',
+
+def entrenar(d: pd.DataFrame, y: np.ndarray, grupos: np.ndarray, w0: dict | None) -> dict:
+    """Elige la fuerza hacia w0 en validación y devuelve el modelo final."""
+    mejor = None
+    for lam_animo in (REJILLA_LAMBDA if w0 else [0.0]):
+        m = validar(d, y, grupos, w0, lam_animo)
+        if not m:
+            continue
+        pr = (m['resumen'].get('pr_auc') or {}).get('media') or 0
+        if mejor is None or pr > mejor[1]:
+            mejor = (lam_animo, pr, m)
+    if mejor is None:
+        return {'error': 'no hay pliegues evaluables: hacen falta más personas o más casos'}
+
+    lam_animo, _, val = mejor
+    ancla, lam = ancla_y_lambda(w0, lam_animo)
+    X, stats = tipificar(d, w0)
+    w, b = ajustar(X, y, ancla, lam)
+    return {
+        'version': VERSION,
+        'lambda_hacia_w0': lam_animo,
+        'rasgos': RASGOS,
+        'pesos': [round(float(x), 6) for x in w],
+        'intercepto': round(b, 6),
+        'medias': [round(stats[r][0], 6) for r in RASGOS],
+        'desviaciones': [round(stats[r][1], 6) for r in RASGOS],
+        'umbral_decision': round(umbral_interno(d, y, grupos, w0, ancla, lam), 3),
+        'validacion': val,
     }
 
-    # La comparación que sí mide algo: una logística con el OLBI previo como
-    # valor continuo (cuán cerca del umbral está la persona) y nada más.
-    m, _ = validar(D, OLBI_PREVIO, y, grupos, None, 0.0)
-    if m:
-        base['solo_olbi_previo'] = m['resumen']
-    return base
+
+def informe(incluir_demo: bool) -> dict:
+    D = cargar(incluir_demo)
+    d, y, grupos = preparar(D)
+    personas = int(len(np.unique(grupos)))
+    w0 = w0_de(W0)
+    res = {
+        'version': VERSION,
+        'tarea': 'el próximo OLBI saldrá alto',
+        'etiqueta': ETIQUETA,
+        'n_filas': int(len(d)),
+        'n_personas': personas,
+        'positivos': round(float(y.mean()), 3) if len(y) else None,
+        'casos_por_rasgo': round(float(y.sum()) / len(RASGOS), 1) if len(y) else None,
+        'preentrenamiento': W0 if w0 else None,
+        'sinteticas': int(d['codigo_anonimo'].str.startswith(('DEMO-', 'SIM-')).sum()),
+        'entrenado_en': datetime.now(timezone.utc).isoformat(),
+        'linea_base_referencia': base_referencia(d, y, w0),
+        'modelo': entrenar(d, y, grupos, w0) if len(d) else {'error': 'sin filas'},
+    }
+    return res
 
 
-def umbral_olbi() -> tuple[float, float]:
+def imprimir(r: dict) -> None:
+    print(f"\n=== {r['tarea'].upper()} ===")
+    print(f"  filas {r['n_filas']}  personas {r['n_personas']}  "
+          f"positivos {r['positivos']}  casos/rasgo {r['casos_por_rasgo']}")
+    if r['sinteticas']:
+        print(f"  ⚠ {r['sinteticas']} filas sintéticas (DEMO/SIM): esto es un ensayo, no un resultado")
+    b = r.get('linea_base_referencia')
+    if b:
+        print(f"  base  sin reentrenar      recall {b['recall']:.2f}  f1 {b['f1']:.2f}  "
+              f"roc_auc {b['roc_auc'] if b['roc_auc'] is not None else '—'}")
+    m = r['modelo']
+    if 'error' in m:
+        print('  ', m['error'])
+        return
+    v = m['validacion']['resumen']
+
+    def g(k):
+        return f"{v[k]['media']:.2f}±{v[k]['de']:.2f}" if v.get(k) else "  —  "
+    print(f"  {VERSION}  lam={m['lambda_hacia_w0']}  umbral={m['umbral_decision']}  "
+          f"recall {g('recall')}  f1 {g('f1')}  pr_auc {g('pr_auc')}  roc_auc {g('roc_auc')}")
+    print('\n  pesos:')
+    for n, p in zip(m['rasgos'], m['pesos']):
+        print(f"    {n:14} {p:+.4f}{'   (preentrenado)' if n in ANIMO else ''}")
+    print(f"    {'intercepto':14} {m['intercepto']:+.4f}")
+
+
+def publicar(r: dict) -> None:
+    """Carga la versión en `modelo_versiones` y la deja activa.
+
+    Se niega con datos sintéticos o con menos de 20 personas: una empresa no
+    puede estar recibiendo avisos de un modelo entrenado con gente inventada."""
+    if r['sinteticas']:
+        sys.exit(f"no se publica: {r['sinteticas']} filas sintéticas en el entrenamiento")
+    if r['n_personas'] < MINIMO_PERSONAS:
+        sys.exit(f"no se publica: {r['n_personas']} personas, el mínimo es {MINIMO_PERSONAS}")
+    m = r['modelo']
+    if 'error' in m:
+        sys.exit(f"no se publica: {m['error']}")
     clave = os.environ['SUPABASE_DB_PASSWORD']
     with psycopg.connect(DSN.format(clave=clave)) as cx:
         cx.execute('reset role')
-        r = cx.execute("""select (definicion->'umbrales'->>'agotamiento')::numeric,
-                                 (definicion->'umbrales'->>'desvinculacion')::numeric
-                          from formularios where clave='olbi' order by version desc limit 1""").fetchone()
-    return float(r[0]), float(r[1])
-
-
-# ------------------------------------------------------------------ informe
-
-def entrenar_tarea(D: pd.DataFrame, tarea: str) -> dict:
-    cfg = TAREAS[tarea]
-    d = D.dropna(subset=[cfg['etiqueta']]).copy()
-    # Sin señal diaria no hay fila que el modelo pueda puntuar.
-    d = d[d['n_dias'] > 0]
-    if d.empty:
-        return {'tarea': tarea, 'error': 'sin filas con etiqueta y señal diaria'}
-    for r in COMPARTIDOS + PROPIOS + OLBI_PREVIO + RED_FICHA:
-        if r in d:
-            d[r] = d[r].fillna(d[r].median() if d[r].notna().any() else 0.0)
-
-    y = d[cfg['etiqueta']].to_numpy(int)
-    grupos = d['participante_id'].astype(str).to_numpy()
-    w0 = w0_de(cfg['w0'])
-
-    # Cada variante es (rasgos, si le aplica el preentrenamiento). Las tres
-    # primeras son la ablación que responde de dónde viene la señal:
-    #   D = solo las 4 preguntas diarias (que son ítems del OLBI)
-    #   F = solo lo objetivo: sueño, horas, carga, ficha. Ningún ítem de ánimo
-    #   A = las dos cosas
-    # Si F se acerca a A, la detección no depende de preguntar cómo te
-    # sientes, y eso es una afirmación mucho más fuerte y más accionable.
-    principal = rasgos_principales(tarea)
-    completo = COMPARTIDOS + cfg['propios']
-    variantes = {
-        # El modelo principal de la tesis.
-        'A':            (principal, True),
-        # Exploratorio: todas las variables de §4.2. Se reporta, no se publica.
-        'A-completo':   (completo, True),
-        # Ablación: de dónde viene la señal.
-        'D-animo':      (COMPARTIDOS, True),
-        'F-objetivo':   (cfg['propios'], False),
-        'F-reducido':   (OBJETIVO_MINIMO, False),
-    }
-    if tarea == 'pronostico':
-        variantes['B'] = (principal + OLBI_PREVIO, True)
-        variantes['B-completo'] = (completo + OLBI_PREVIO, True)
-
-    salida = {
-        'tarea': tarea,
-        'n_filas': int(len(d)),
-        'n_personas': int(len(np.unique(grupos))),
-        'positivos': round(float(y.mean()), 3),
-        'lambda_probadas': REJILLA_LAMBDA,
-        'version_principal': 'B' if tarea == 'pronostico' else 'A',
-        'rasgos_principales': rasgos_principales(tarea),
-        'lineas_base': lineas_base(d, y, grupos, tarea, w0),
-        'versiones': {},
-    }
-    if len(np.unique(y)) < 2:
-        salida['error'] = 'una sola clase en la etiqueta: no hay nada que aprender'
-        return salida
-
-    for nombre, (rasgos, preentrenable) in variantes.items():
-        # Con preentrenamiento: se elige la fuerza hacia w0 en validación.
-        mejor = None
-        if w0 and preentrenable:
-            for lam in REJILLA_LAMBDA:
-                m, _ = validar(d, rasgos, y, grupos, w0, lam)
-                if not m:
-                    continue
-                r = (m['resumen'].get('pr_auc') or {}).get('media') or 0
-                if mejor is None or r > mejor[1]:
-                    mejor = (lam, r, m)
-        positivos = int(y.sum())
-        potencia = round(positivos / len(rasgos), 2)
-        if mejor:
-            salida['versiones'][nombre] = {
-                'lambda_hacia_w0': mejor[0], 'n_rasgos': len(rasgos),
-                'casos_por_rasgo': potencia, **mejor[2]}
-        # Sin preentrenamiento: el control. Para F-objetivo es la única
-        # versión posible, porque w0 solo tiene pesos de los rasgos de ánimo.
-        m0, _ = validar(d, rasgos, y, grupos, None, 0.0)
-        if m0:
-            salida['versiones'][f'{nombre}0' if preentrenable else nombre] = {
-                'lambda_hacia_w0': None, 'n_rasgos': len(rasgos),
-                'casos_por_rasgo': potencia, **m0}
-        # Random forest sobre los mismos rasgos y las mismas particiones (§6).
-        mb, _ = validar(d, rasgos, y, grupos, None, 0.0, bosque=True)
-        if mb:
-            salida['versiones'][f'{nombre}-bosque'] = {
-                'lambda_hacia_w0': None, 'algoritmo': 'random_forest',
-                'n_rasgos': len(rasgos), 'casos_por_rasgo': potencia,
-                'hiperparametros': {k: v for k, v in BOSQUE.items() if k != 'n_jobs'}, **mb}
-    return salida
-
-
-def imprimir(res: dict) -> None:
-    print(f"\n=== {res['tarea'].upper()} ===")
-    if 'error' in res:
-        print('  ', res['error'])
-    print(f"  filas: {res.get('n_filas')}  personas: {res.get('n_personas')}  "
-          f"positivos: {res.get('positivos')}   (* = modelo principal)")
-    for nombre, b in res.get('lineas_base', {}).items():
-        if isinstance(b.get('recall'), (int, float)):  # métricas planas
-            print(f"  base {nombre:24s} recall {b['recall']:.2f}  f1 {b['f1']:.2f}"
-                  + (f"   ({b['nota']})" if b.get('nota') else ''))
-        else:              # resumen por pliegue
-            def g(k):
-                return f"{b[k]['media']:.2f}±{b[k]['de']:.2f}" if b.get(k) else "  —  "
-            print(f"  base {nombre:24s} recall {g('recall')}  f1 {g('f1')}  "
-                  f"pr_auc {g('pr_auc')}  roc_auc {g('roc_auc')}")
-    principal = res.get('version_principal')
-    for nombre, v in res.get('versiones', {}).items():
-        r = v['resumen']
-        def m(k):
-            return f"{r[k]['media']:.2f}±{r[k]['de']:.2f}" if r.get(k) else "  —  "
-        lam = v['lambda_hacia_w0']
-        alg = 'bosque' if v.get('algoritmo') == 'random_forest' else f'lam={str(lam):4s}'
-        pot = f"{v.get('n_rasgos', 0):3d}r {v.get('casos_por_rasgo', 0):4.1f}c/r"
-        marca = '*' if nombre == principal else ' '
-        print(f" {marca}{nombre:18s} {alg:10s} {pot}  recall {m('recall')}  f1 {m('f1')}  "
-              f"pr_auc {m('pr_auc')}  roc_auc {m('roc_auc')}")
+        cx.execute("update modelo_versiones set activa = false where tarea = 'pronostico'")
+        cx.execute("""
+            insert into modelo_versiones
+              (version, origen, tarea, rasgos, medias, desviaciones, pesos, intercepto,
+               umbral_decision, metricas, fuente, activa, visible_para)
+            values (%s, 'propio', 'pronostico', %s, %s, %s, %s, %s, %s, %s, %s, true,
+                    array['investigador','psicologo','participante'])
+            on conflict (version) do update set
+              rasgos = excluded.rasgos, medias = excluded.medias,
+              desviaciones = excluded.desviaciones, pesos = excluded.pesos,
+              intercepto = excluded.intercepto, umbral_decision = excluded.umbral_decision,
+              metricas = excluded.metricas, activa = true
+        """, (m['version'], json.dumps(m['rasgos']), json.dumps(m['medias']),
+              json.dumps(m['desviaciones']), json.dumps(m['pesos']), m['intercepto'],
+              m['umbral_decision'], json.dumps(m['validacion']),
+              f"entrenado con {r['n_personas']} personas, {r['n_filas']} semanas"))
+    print(f"\npublicada {m['version']} y activa para pronóstico")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--origen', choices=('reales', 'simulada', 'todo'), default='reales',
-                    help="'reales' (por defecto) excluye DEMO-* y SIM-*; 'simulada' usa solo la "
-                         'cohorte de modelo/simular.py, para probar el pipeline sin datos propios')
+    ap.add_argument('--demo', action='store_true',
+                    help='incluye participantes DEMO-*/SIM-*: ensayo, nunca un resultado')
     ap.add_argument('--publicar', action='store_true',
-                    help='escribe la migración que carga la versión en modelo_versiones')
+                    help='carga la versión en modelo_versiones y la deja activa')
     args = ap.parse_args()
 
-    D = cargar(args.origen)
-    sinteticas = int(D['codigo_anonimo'].str.startswith(('DEMO-', 'SIM-')).sum()) if len(D) else 0
-    print(f"semanas_modelo [{args.origen}]: {len(D)} filas, "
-          f"{D['participante_id'].nunique() if len(D) else 0} personas"
-          + (f"  ({sinteticas} sintéticas)" if sinteticas else ""))
-
-    resultados = {t: entrenar_tarea(D, t) for t in TAREAS}
-    for r in resultados.values():
-        imprimir(r)
-
-    destino = RAIZ / 'resultados'
-    destino.mkdir(exist_ok=True)
-    informe = destino / {'reales': 'datos-propios.json',
-                         'simulada': 'ensayo-cohorte-simulada.json',
-                         'todo': 'ensayo-todo.json'}[args.origen]
-    informe.write_text(json.dumps(resultados, indent=2, ensure_ascii=False) + '\n')
-    print(f'\nresultados en {informe.relative_to(RAIZ.parent)}')
-    if sinteticas:
-        print('AVISO: hay filas sintéticas en este entrenamiento. Sirven para probar el\n'
-              '       pipeline; no son resultados del estudio y no pueden ir en la tesis.')
-
+    r = informe(args.demo)
+    imprimir(r)
+    salida = RAIZ / 'resultados' / ('ensayo-demo.json' if args.demo else 'producto.json')
+    salida.write_text(json.dumps(r, indent=2, ensure_ascii=False))
+    print(f"\nresultados en {salida.relative_to(RAIZ.parent)}")
     if args.publicar:
-        publicar(resultados, sinteticas)
-
-
-def publicar(resultados: dict, sinteticas: int) -> None:
-    """Escribe la migración solo si los datos la sostienen. Publicar una
-    versión entrenada con la semilla de demostración metería números
-    inventados en la app y en la tesis."""
-    if sinteticas:
-        sys.exit('NO se publica: hay filas sintéticas (DEMO-* o SIM-*) en el entrenamiento.')
-    flojas = [t for t, r in resultados.items()
-              if r.get('n_personas', 0) < 20 or 'error' in r]
-    if flojas:
-        sys.exit(f'NO se publica: {", ".join(flojas)} sin muestra suficiente '
-                 f'(se exigen 20 personas; ESP-005 §2 proyecta 60-100).')
-    sys.exit('publicación pendiente de implementar: hacerlo cuando haya datos propios.')
+        publicar(r)
 
 
 if __name__ == '__main__':

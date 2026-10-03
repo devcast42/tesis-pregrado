@@ -1,0 +1,94 @@
+{
+  "version": "producto-v1",
+  "tarea": "el próximo OLBI saldrá alto",
+  "etiqueta": "alto_t1",
+  "n_filas": 166,
+  "n_personas": 51,
+  "positivos": 0.036,
+  "casos_por_rasgo": 0.7,
+  "preentrenamiento": "preentrenamiento-pronostico-v1",
+  "sinteticas": 0,
+  "entrenado_en": "2026-10-03T16:11:44.800524+00:00",
+  "linea_base_referencia": {
+    "precision": 0.132,
+    "recall": 0.833,
+    "f1": 0.227,
+    "pr_auc": 0.502,
+    "roc_auc": 0.927
+  },
+  "modelo": {
+    "version": "producto-v1",
+    "lambda_hacia_w0": 0.1,
+    "rasgos": [
+      "t_media",
+      "t_ultimo",
+      "t_max",
+      "t_pendiente",
+      "e_media",
+      "d_media",
+      "n_dias",
+      "sueno_media",
+      "horas_media"
+    ],
+    "pesos": [
+      0.414986,
+      0.290357,
+      0.434196,
+      0.228086,
+      0.272706,
+      0.494372,
+      0.511379,
+      -0.05286,
+      0.04103
+    ],
+    "intercepto": -0.790044,
+    "medias": [
+      2.297074,
+      2.268085,
+      3.006383,
+      -0.005638,
+      2.42766,
+      2.166489,
+      4.0,
+      7.317068,
+      8.16762
+    ],
+    "desviaciones": [
+      0.612802,
+      0.848617,
+      0.796576,
+      0.325466,
+      0.724995,
+      0.628877,
+      1.0,
+      0.814966,
+      1.22128
+    ],
+    "umbral_decision": 0.968,
+    "validacion": {
+      "pliegues": 4,
+      "resumen": {
+        "precision": {
+          "media": 0.208,
+          "de": 0.138
+        },
+        "recall": {
+          "media": 0.75,
+          "de": 0.433
+        },
+        "f1": {
+          "media": 0.322,
+          "de": 0.205
+        },
+        "pr_auc": {
+          "media": 0.583,
+          "de": 0.387
+        },
+        "roc_auc": {
+          "media": 0.896,
+          "de": 0.14
+        }
+      }
+    }
+  }
+}

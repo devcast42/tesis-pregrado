@@ -13,7 +13,7 @@ métricas mejores, no un error. Por eso se verifican en código y no a ojo.
     CA-005-08  los pesos del preentrenamiento se reproducen desde modelo/
 
 CA-005-07 (reportar precisión, recall, F1, PR-AUC y ROC-AUC por pliegue para
-A, B, A0, B0 y las líneas base) lo cumple modelo/entrenar.py y se revisa sobre
+un solo modelo y su línea base) lo cumple modelo/entrenar.py y se revisa sobre
 su salida; no es automatizable como aserción.
 
 Uso:
@@ -104,36 +104,33 @@ def ca_01(cx):
 
 # ---------------------------------------------------------------- CA-005-02
 
-@prueba('CA-005-02 ningún ítem OLBI de la semana etiquetada entra como rasgo')
+@prueba('CA-005-02 ninguna entrada sale de la semana que se predice')
 def ca_02(cx):
-    """En nowcast la etiqueta es el OLBI de t: e_previo/d_previo (que son ese
-    OLBI) no pueden estar entre las entradas. Se comprueba sobre el código de
-    entrenar.py, que es quien elige las columnas."""
+    """La etiqueta es el OLBI de t+1. Todas las entradas resumen la semana t,
+    así que ningún ítem del OLBI ni ningún puntaje puede estar entre ellas:
+    si lo estuviera, el modelo estaría leyendo su propia respuesta."""
     import entrenar
-    rasgos_nowcast = set(entrenar.COMPARTIDOS + entrenar.PROPIOS)
-    prohibidos = set(entrenar.OLBI_PREVIO)
-    assert not (rasgos_nowcast & prohibidos), \
-        f'el nowcast usaría {rasgos_nowcast & prohibidos}, que es su propia etiqueta'
-    assert not any(r.startswith('olbi_') for r in rasgos_nowcast), \
+    rasgos = set(entrenar.RASGOS)
+    assert entrenar.ETIQUETA == 'alto_t1', 'la etiqueta dejó de ser el OLBI siguiente'
+    assert not any(r.startswith('olbi_') for r in rasgos), \
         'hay ítems olbi_* crudos entre los rasgos'
-    # En pronóstico sí es legítimo: la etiqueta es el OLBI de t+1.
-    assert entrenar.TAREAS['pronostico']['etiqueta'] == 'alto_t1'
-    assert entrenar.TAREAS['nowcast']['etiqueta'] == 'alto_t'
-    return f'{len(rasgos_nowcast)} rasgos en nowcast, ninguno del OLBI de t'
+    assert not ({'e_previo', 'd_previo', 'alto_t', 'alto_t1'} & rasgos), \
+        'hay puntajes del OLBI entre los rasgos'
+    return f'{len(rasgos)} rasgos, ninguno del OLBI'
 
 
 # --------------------------------------------------------------- CA-005-02b
 
-@prueba('CA-005-02b el nowcast no usa el cuestionario del viernes')
+@prueba('CA-005-02b el modelo puede opinar cualquier día de la semana')
 def ca_02b(cx):
-    """El nowcast existe para avisar ANTES del viernes. Si entre sus entradas
-    hay respuestas que solo existen el viernes, las métricas del entrenamiento
-    no se pueden reproducir el miércoles, que es cuando sirve el aviso."""
+    """El producto muestra una probabilidad desde el lunes. Si entre las
+    entradas hubiera respuestas que solo existen el viernes, las métricas del
+    entrenamiento no se podrían reproducir en operación: el modelo habría
+    aprendido con datos que el lunes todavía no existen."""
     import entrenar
-    del_viernes = set(entrenar.PROPIOS_VIERNES)
-    usados = set(entrenar.COMPARTIDOS + entrenar.TAREAS['nowcast']['propios'])
-    assert not (usados & del_viernes), \
-        f'el nowcast usaría {sorted(usados & del_viernes)}, que se responden el viernes'
+    del_viernes = {'horas_sobretiempo', 'guardias', 'apoyo_lider'}
+    usados = set(entrenar.RASGOS) & del_viernes
+    assert not usados, f'el modelo usaría {sorted(usados)}, que se responden el viernes'
 
     # Y comprobar que de verdad se responden el viernes, no asumirlo.
     reparto = dict(cx.execute("""
@@ -144,10 +141,7 @@ def ca_02b(cx):
         viernes_o_despues = sum(n for d, n in reparto.items() if d >= 5)
         assert viernes_o_despues / sum(reparto.values()) > 0.5, \
             'el cuestionario semanal ya no se responde el viernes: revisar esta exclusión'
-    # En pronóstico sí entran: la etiqueta es el viernes siguiente.
-    assert del_viernes <= set(entrenar.TAREAS['pronostico']['propios']), \
-        'el pronóstico debería poder usar el cuestionario semanal de t'
-    return f'{len(del_viernes)} rasgos del viernes fuera del nowcast, dentro del pronóstico'
+    return f'{len(entrenar.RASGOS)} rasgos, todos del check-in diario'
 
 
 # ---------------------------------------------------------------- CA-005-03
