@@ -220,11 +220,11 @@ function PanelAdmin({ children }: { children: ReactNode }) {
           {rol === 'admin' && (
             <View style={e.garantia}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={[texto.etiqueta, { color: color.primarioProfundo, flex: 1 }]}>GARANTÍA ÉTICA</Text>
+                <Text style={[texto.etiqueta, { color: color.primarioProfundo, flex: 1 }]}>QUÉ VES Y QUÉ NO</Text>
                 <IconoEscudoCheck tamano={13} color={color.primarioProfundo} />
               </View>
               <Text style={[texto.dato, { color: color.textoMedio }]}>
-                Datos agregados (k ≥ 10). Resguardo irrestricto de confidencialidad e identidad participante.
+                Ves quién es, cómo va y en qué nivel está. No ves sus respuestas, sus puntajes ni lo que habla con el psicólogo.
               </Text>
             </View>
           )}

@@ -1,9 +1,20 @@
-/** Consentimiento informado — implementa ESP-001 (RF-001-04 … RF-001-06).
+/** Consentimiento informado — producto.
  *
- *  ATENCIÓN: el texto de abajo es un marcador de posición. El definitivo debe
- *  ser el aprobado por el comité de ética (ESP-001 §9, pendiente 1). Al
- *  reemplazarlo, incrementar VERSION_TEXTO en modules/consentimiento/datos.ts
- *  para que quede registro de qué versión aceptó cada participante. */
+ *  ATENCIÓN: texto de trabajo. El definitivo lo revisa un abogado antes de
+ *  venderlo, porque es la única base legal de que la empresa vea nombres.
+ *  Al reemplazarlo, subir VERSION_TEXTO en modules/consentimiento/datos.ts.
+ *
+ *  Esta versión cambia lo más delicado del diseño anterior: aquí la empresa
+ *  SÍ ve quién eres, si respondes y en qué nivel estás. En la rama de la
+ *  tesis no lo ve nunca —solo promedios con un mínimo de diez respuestas—,
+ *  y ese era el núcleo de lo que la hacía defendible ante un comité de ética.
+ *
+ *  Lo que no cambia, y es lo que hay que decir con todas las letras, es que
+ *  la empresa no ve lo que respondiste ni lo que hablas con el psicólogo. El
+ *  informe clínico es del psicólogo y del participante; entregárselo al
+ *  empleador rompería el secreto profesional. Por eso el tercer punto está
+ *  redactado en negativo: lo importante no es lo que se comparte, es lo que
+ *  no. */
 
 import { useEffect, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -15,12 +26,12 @@ import { Boton, Parrafo, Titulo } from '../modules/nucleo/ui'
 import { ancho, color, espacio, radio, texto } from '../modules/nucleo/diseno'
 
 const PUNTOS = [
-  'Responderás un check-in breve cada día (unos 30 segundos) y un cuestionario más completo cada dos semanas.',
-  'Tus respuestas se guardan bajo un código anónimo. Tu empresa no accede a tus respuestas individuales.',
-  'Puedes retirar tu consentimiento en cualquier momento, sin dar explicaciones y sin consecuencia alguna.',
-  'Si el sistema identifica señales de riesgo, se te ofrecerá una sesión de apoyo con un profesional de psicología. Aceptarla es voluntario.',
-  // RN-004-07 — los proveedores se declaran aquí, antes de reclutar (PB-28).
-  'Cada sesión de apoyo se graba solo en audio y solo si tú y el psicólogo lo autorizan en ese momento. El audio se transcribe con Deepgram y un borrador de informe se redacta con Claude (Anthropic) para que el psicólogo lo revise; la videollamada usa LiveKit y los datos se guardan en Supabase. El audio y la transcripción se borran automáticamente al vencer el plazo fijado por el comité de ética.',
+  'Responderás seis preguntas cada día, de lunes a jueves. Son unos 15 segundos. El viernes, un cuestionario algo más largo.',
+  'Tu empresa verá tu nombre, si vas respondiendo y en qué nivel estás: bajo, a vigilar o alto.',
+  'Tu empresa NO verá lo que respondiste a cada pregunta, ni tus puntajes, ni nada de lo que hables con el psicólogo. Eso queda entre tú y él.',
+  'Si aparecen señales de riesgo se te ofrecerá una sesión con un profesional de psicología. Aceptarla es voluntario, y tu empresa solo sabrá que estás en acompañamiento, nunca por qué.',
+  'Puedes retirar tu consentimiento cuando quieras, sin dar explicaciones y sin consecuencia alguna.',
+  'Cada sesión se graba solo en audio y solo si tú y el psicólogo lo autorizan en ese momento. El audio se transcribe con Deepgram y un borrador de informe se redacta con Claude (Anthropic) para que el psicólogo lo revise; la videollamada usa LiveKit y los datos se guardan en Supabase. El audio y la transcripción se borran al vencer su plazo.',
 ]
 
 export default function Consentimiento() {

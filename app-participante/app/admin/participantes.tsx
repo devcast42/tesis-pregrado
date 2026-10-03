@@ -23,7 +23,7 @@ import {
   type Empresa, type FilaParticipacion, type ResumenEmpresa,
 } from '../../modules/panel/datos'
 import { darDeBaja, participacionSemanal, type ParticipacionSemana } from '../../modules/panel/empresario'
-import { Caja, NotaAgregacion, Pastilla, Pie } from '../../modules/panel/PiezasEmpresario'
+import { Caja, NotaAgregacion, Pastilla, PastillaNivel, Pie } from '../../modules/panel/PiezasEmpresario'
 import { Aviso, Boton, Cargando, Entrada, Etiqueta, Pantalla } from '../../modules/nucleo/ui'
 import { ancho, color, espacio, radio, texto } from '../../modules/nucleo/diseno'
 import {
@@ -138,14 +138,14 @@ export default function PersonasAdmin() {
             <Text style={[texto.etiqueta, { color: color.textoMedio }]}>Tu equipo en el estudio</Text>
             <Text style={[texto.titulo, { color: color.texto }]}>Las personas de tu empresa</Text>
             <Text style={[texto.apoyo, { color: color.textoMedio, maxWidth: 520 }]}>
-              Altas, bajas y contraseñas. La única pantalla con nombres.
+              Quién está, cómo va y en qué nivel. Altas, bajas y contraseñas.
             </Text>
           </View>
           <View style={e.aislamiento}>
             <IconoEscudo tamano={20} color={color.primarioProfundo} />
             <View style={{ flex: 1 }}>
-              <Text style={[texto.datoFuerte, { color: color.primarioProfundo }]}>Aquí no verás cómo está nadie</Text>
-              <Text style={[texto.dato, { color: color.textoMedio }]}>Quién responde, sí. Qué respondió, no.</Text>
+              <Text style={[texto.datoFuerte, { color: color.primarioProfundo }]}>Ves el nivel, no el detalle</Text>
+              <Text style={[texto.dato, { color: color.textoMedio }]}>Cómo está, sí. Qué respondió, no.</Text>
             </View>
           </View>
         </View>
@@ -262,7 +262,7 @@ export default function PersonasAdmin() {
                 juntan en una sola columna, que es como se leen. */}
             <Caja estilo={{ padding: 0, overflow: 'hidden' }}>
               <View style={e.tablaCabecera}>
-                {[['PERSONA', 2.6], ['CÓDIGO', 1], ['DESDE', 1], ['CÓMO VA', 1.8], ['', 1.5]].map(([h, f]) => (
+                {[['PERSONA', 2.6], ['CÓDIGO', 1], ['NIVEL', 1.6], ['CÓMO VA', 1.8], ['', 1.5]].map(([h, f]) => (
                   <Text key={String(h) || 'acciones'} style={[texto.etiqueta, { color: color.textoMedio, flex: Number(f), fontSize: 10.5 }]}>{h}</Text>
                 ))}
               </View>
@@ -292,9 +292,22 @@ export default function PersonasAdmin() {
                     <View style={{ flex: 1, flexDirection: 'row' }}>
                       <View style={e.chipCodigo}><Text style={[e.mono, { color: color.texto }]}>{x.codigo_anonimo}</Text></View>
                     </View>
-                    <Text style={[texto.dato, { color: color.textoMedio, flex: 1 }]}>
-                      {new Date(x.inscrito_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' }).replace('.', '')}
-                    </Text>
+                    {/* El nivel, nunca el puntaje (consentimiento v3). El
+                        número invitaría a comparar personas, que es justo lo
+                        que no se vende. Y «en acompañamiento» va sin fecha ni
+                        motivo: eso queda entre la persona y su psicólogo. */}
+                    <View style={{ flex: 1.6, gap: 3, alignItems: 'flex-start' }}>
+                      {x.nivel_agotamiento ? (
+                        <PastillaNivel nivel={x.nivel_agotamiento} />
+                      ) : (
+                        <Text style={[texto.dato, { color: color.textoSuave }]}>sin medir aún</Text>
+                      )}
+                      {x.en_acompanamiento && (
+                        <Pastilla fondo="#E8EFEA" tinta={color.primarioProfundo} punto={color.primario}>
+                          En acompañamiento
+                        </Pastilla>
+                      )}
+                    </View>
                     {/* Consentimiento y seguimiento son una sola idea para
                         quien lee: en qué punto está esta persona. */}
                     <View style={{ flex: 1.8, gap: 2 }}>
@@ -367,7 +380,7 @@ export default function PersonasAdmin() {
             <View style={e.garantia}>
               <View style={e.muestraIcono}><IconoEscudoCheck tamano={20} color={color.primarioProfundo} /></View>
               <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1, minWidth: 240 }]}>
-                No ves respuestas, ni puntuaciones, ni quién habló con un psicólogo. «Ya no participa» tampoco dice por qué.
+                Ves el nivel de cada persona, no sus respuestas ni sus puntajes. De quien está en acompañamiento no verás el motivo ni lo que habla con su psicólogo.
               </Text>
             </View>
           </>

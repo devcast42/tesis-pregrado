@@ -8,7 +8,9 @@ import { supabase } from '../nucleo/supabase'
 
 /** Versión del texto vigente. Al cambiar el consentimiento se incrementa,
  *  y los participantes vuelven a decidir sobre el texto nuevo. */
-export const VERSION_TEXTO = 'v2-2026-09' // añade grabación de sesiones y proveedores (RN-004-07)
+// v3 cambia el trato: la empresa pasa a ver nombre, adherencia y nivel.
+// Quien aceptó v2 lo hizo bajo anonimato, así que tiene que volver a decidir.
+export const VERSION_TEXTO = 'v3-2026-10'
 
 export type RegistroConsentimiento = {
   aceptado: boolean

@@ -44,6 +44,8 @@ export type ResumenEmpresa = {
   reportable: boolean
 }
 
+export type Nivel = 'bajo' | 'a_vigilar' | 'alto'
+
 export type FilaParticipacion = {
   participante_id: string
   codigo_anonimo: string
@@ -53,6 +55,14 @@ export type FilaParticipacion = {
   en_seguimiento: boolean
   dias_sin_responder: number | null
   inscrito_en: string
+  /** Producto: la empresa ve el nivel de cada persona, nunca su puntaje. El
+   *  número invita a comparar trabajadores, y eso no es lo que se compra. */
+  nivel_agotamiento: Nivel | null
+  nivel_desvinculacion: Nivel | null
+  /** Sí/no, sin fecha ni motivo: que esté en acompañamiento es gestionable;
+   *  por qué lo está, no es asunto de la empresa. */
+  en_acompanamiento: boolean
+  ultima_respuesta: string | null
 }
 
 export type Administrador = {
@@ -203,7 +213,7 @@ export async function resumenDeEmpresa(id: string): Promise<ResumenEmpresa | nul
  *  participante: `detectado`, `retirado` y `finalizado` se ven igual. */
 export async function participacionDeEmpresa(id: string): Promise<FilaParticipacion[]> {
   const { data, error } = await supabase
-    .from('participacion_empresa')
+    .from('seguimiento_empresa')
     .select('*')
     .eq('organizacion_id', id)
     .order('codigo_anonimo')
