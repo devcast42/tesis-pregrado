@@ -95,7 +95,7 @@ Estado del participante: `activo` → `detectado` | `retirado` | `finalizado`.
 ## Nota de implementación — identidad visual
 
 El logo de la app (insignia circular con la gota) vive en dos formatos que
-deben mantenerse iguales: `app-trabajador/assets/logo.svg`, de donde se
+deben mantenerse iguales: `aplicacion/assets/logo.svg`, de donde se
 generan `icon.png`, los tres del ícono adaptativo de Android, `splash-icon.png`
 y `favicon.png`; y `modules/nucleo/Logo.tsx`, que lo dibuja como componente en
 la pantalla de acceso. Reproducido del diseño en Figma

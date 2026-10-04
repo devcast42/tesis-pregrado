@@ -4,7 +4,7 @@
     {
       "name": "estudio-web",
       "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "cd app-trabajador && npx expo start --web --port 8081"],
+      "runtimeArgs": ["-c", "cd aplicacion && npx expo start --web --port 8081"],
       "port": 8081
     }
   ]

@@ -34,7 +34,7 @@ supabase/
   migrations/   Esquema, políticas RLS, vistas de indicadores
   functions/    Edge Functions (Deno)
   tests/        Invariantes verificados contra PostgreSQL
-app-trabajador/
+aplicacion/
   app/          Rutas — solo composición
   modules/      Un módulo por dominio, cada uno con su README
 ```
@@ -80,7 +80,7 @@ desde los ítems crudos sin volver a recolectar.
 
 ```bash
 cp supabase/functions/.env.example supabase/functions/.env
-cp app-trabajador/.env.example app-trabajador/.env
+cp aplicacion/.env.example aplicacion/.env
 ```
 
 Necesitas cuentas en Supabase, LiveKit Cloud, Deepgram y Anthropic, más un
@@ -121,7 +121,7 @@ derivar a nadie** y el caso queda sin asignar.
 ### 6. App
 
 ```bash
-cd app-trabajador
+cd aplicacion
 npm install
 npx expo run:ios     # o run:android — requiere dev build, no Expo Go
 npx expo start --web # panel de psicólogo e investigador
