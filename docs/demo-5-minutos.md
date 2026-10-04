@@ -25,7 +25,7 @@ alguien ya se sabe cómo se va a llamar.
 ```bash
 source ~/.zshrc
 modelo/exploracion/venv/bin/python supabase/semilla_demo_presentacion.py
-cd app-participante && npx expo start --web --port 8081
+cd app-trabajador && npx expo start --web --port 8081
 ```
 
 Deja **cuatro pestañas abiertas y con sesión iniciada**, en este orden:

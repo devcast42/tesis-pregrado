@@ -1,5 +1,5 @@
 {
-  "name": "app-participante",
+  "name": "app-trabajador",
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
