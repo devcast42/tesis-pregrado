@@ -9,7 +9,7 @@ import { useCallback, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { obtenerParticipante } from '../modules/acceso/datos'
+import { obtenerTrabajador } from '../modules/acceso/datos'
 import { enviosDelEstudio, inicioDeSemana, racha as consultarRacha, type Racha } from '../modules/recoleccion/datos'
 import { ahora } from '../modules/nucleo/reloj'
 import { Cargando } from '../modules/nucleo/ui'
@@ -27,7 +27,7 @@ export default function Registros() {
   const [totales, setTotales] = useState({ dias: 0, olbis: 0, semanasCompletas: 0 })
 
   const cargar = useCallback(async () => {
-    const p = await obtenerParticipante()
+    const p = await obtenerTrabajador()
     if (!p) return router.replace('/')
     const [envios, r] = await Promise.all([enviosDelEstudio(p.id), consultarRacha(p.id)])
     setRacha(r)

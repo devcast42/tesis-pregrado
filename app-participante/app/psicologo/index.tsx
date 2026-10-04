@@ -71,7 +71,7 @@ export default function Casos() {
         <View style={[e.fila, { alignItems: 'flex-end' }]}>
           <Text style={[texto.titulo, { flex: 1 }]}>Casos derivados</Text>
           <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-            {casos.length} {casos.length === 1 ? 'participante' : 'participantes'}
+            {casos.length} {casos.length === 1 ? 'trabajador' : 'trabajadores'}
           </Text>
         </View>
         <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
@@ -125,7 +125,7 @@ export default function Casos() {
           <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1 }]}>
             {visibles.length === 0
               ? 'No tienes casos asignados. Cuando el sistema derive a alguien, aparecerá aquí automáticamente.'
-              : 'No tienes más casos asignados. Cuando el sistema derive a un nuevo participante del estudio, aparecerá aquí automáticamente.'}
+              : 'No tienes más casos asignados. Cuando el sistema derive a un nuevo trabajador del estudio, aparecerá aquí automáticamente.'}
           </Text>
         </View>
       </ScrollView>

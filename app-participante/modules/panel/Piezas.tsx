@@ -2,7 +2,7 @@
  *
  *  Viven aquí y no en `nucleo/ui` porque solo tienen sentido en un panel de
  *  escritorio: una tarjeta de indicador o una barra de distribución no
- *  aparecen nunca en la app del participante. */
+ *  aparecen nunca en la app del trabajador. */
 
 import type { ReactNode } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
@@ -57,7 +57,7 @@ export function Barra({
       <View style={e.barraCabecera}>
         <Text style={[texto.datoFuerte, { color: color.texto, flex: 1 }]}>{etiqueta}</Text>
         <Text style={[texto.dato, { color: color.textoSuave }]}>
-          {cantidad} {cantidad === 1 ? 'participante' : 'participantes'} ({porcentaje}%)
+          {cantidad} {cantidad === 1 ? 'trabajador' : 'trabajadores'} ({porcentaje}%)
         </Text>
       </View>
       <View style={e.barraPista}>

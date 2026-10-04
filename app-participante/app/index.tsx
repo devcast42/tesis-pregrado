@@ -6,7 +6,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { Cargando } from '../modules/nucleo/ui'
 import { color, espacio, texto } from '../modules/nucleo/diseno'
-import { haySesion, obtenerParticipante } from '../modules/acceso/datos'
+import { haySesion, obtenerTrabajador } from '../modules/acceso/datos'
 import { necesitaDesbloqueo } from '../modules/acceso/bloqueo'
 import { obtenerRol, RUTA_INICIAL } from '../modules/nucleo/rol'
 import { puedeRecolectar } from '../modules/consentimiento/datos'
@@ -31,28 +31,28 @@ export default function Index() {
         return router.replace(RUTA_INICIAL[rol])
       }
 
-      const participante = await obtenerParticipante()
+      const trabajador = await obtenerTrabajador()
       if (!vigente) return
 
       // RF-001-03 — la inscripción la hace el equipo de investigación.
-      if (!participante) {
+      if (!trabajador) {
         return setMensaje(
           'Tu cuenta aún no está vinculada al estudio. Contacta al equipo de investigación.',
         )
       }
 
-      // Un participante detectado sigue entrando: ve su resultado, recibe la
+      // Un trabajador detectado sigue entrando: ve su resultado, recibe la
       // sesión de apoyo y la atiende desde aquí (ESP-002 RF-002-12, ESP-004).
       // Solo quien se retiró o terminó el estudio ve el cierre.
-      if (participante.estado === 'retirado' || participante.estado === 'finalizado') {
+      if (trabajador.estado === 'retirado' || trabajador.estado === 'finalizado') {
         return setMensaje(
-          participante.estado === 'retirado'
+          trabajador.estado === 'retirado'
             ? 'Te retiraste del estudio. Si fue un error, escríbele al equipo de investigación.'
             : 'El estudio terminó. Gracias por acompañarnos estas semanas.',
         )
       }
 
-      const consentido = await puedeRecolectar(participante.id)
+      const consentido = await puedeRecolectar(trabajador.id)
       if (!vigente) return
 
       router.replace(consentido ? '/hoy' : '/consentimiento')

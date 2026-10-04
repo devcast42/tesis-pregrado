@@ -20,7 +20,7 @@ import { BarraUmbral, Evolucion, Pastilla, Rotulo, Tarjeta, fechaHoraCorta, hace
 import { Boton, Cargando } from '../../../modules/nucleo/ui'
 import { color, espacio, radio, texto } from '../../../modules/nucleo/diseno'
 import { IconoCandado, IconoCheck, IconoNota, IconoOjo, IconoVideo } from '../../../modules/nucleo/iconos'
-import { ETIQUETA_CONFIANZA, confianzaDe, metricasAplicables, type Prediccion } from '../../../modules/participante/resultado'
+import { ETIQUETA_CONFIANZA, confianzaDe, metricasAplicables, type Prediccion } from '../../../modules/trabajador/resultado'
 
 const ROL: Record<string, string> = {
   desarrollo: 'Desarrollo de software', qa: 'QA o testing', datos: 'Datos o analítica',
@@ -44,9 +44,9 @@ export default function DetalleCaso() {
     if (!c) return router.back()
     setCaso(c)
     const [p, t, pr] = await Promise.all([
-      perfilCaso(c.participante_id).catch(() => null),
-      trayectoriaOlbi(c.participante_id).catch(() => []),
-      pronosticoCaso(c.participante_id).catch(() => null),
+      perfilCaso(c.trabajador_id).catch(() => null),
+      trayectoriaOlbi(c.trabajador_id).catch(() => []),
+      pronosticoCaso(c.trabajador_id).catch(() => null),
     ])
     setPerfil(p); setTrayectoria(t); setPronostico(pr)
   }, [id])
@@ -56,7 +56,7 @@ export default function DetalleCaso() {
   async function verIdentidad() {
     if (!caso) return
     try {
-      setIdentidad(await obtenerIdentidad(caso.participante_id))
+      setIdentidad(await obtenerIdentidad(caso.trabajador_id))
     } catch {
       Alert.alert('No disponible', 'La identidad solo se puede consultar con una derivación abierta.')
     }
@@ -93,7 +93,7 @@ export default function DetalleCaso() {
     if (!caso) return
     Alert.alert(
       'Cerrar caso',
-      'Perderás el acceso a este participante. ¿Por qué se cierra?',
+      'Perderás el acceso a este trabajador. ¿Por qué se cierra?',
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: DESENLACES.mejora, onPress: () => cerrarConDesenlace('mejora') },
@@ -138,7 +138,7 @@ export default function DetalleCaso() {
         {/* Si esta persona ya pasó por aquí, atenderla sin saber qué pasó la
             vez anterior es empezar de cero. */}
         <Pressable
-          onPress={() => router.push(`/psicologo/persona/${caso.participante_id}`)}
+          onPress={() => router.push(`/psicologo/persona/${caso.trabajador_id}`)}
           style={({ pressed }) => [{ alignSelf: 'flex-start' }, pressed && { opacity: 0.7 }]}
           accessibilityRole="link"
         >
@@ -176,13 +176,13 @@ export default function DetalleCaso() {
         </View>
       </Tarjeta>
 
-      {/* Cita pedida por el participante (RF-004-13 … RF-004-15) */}
+      {/* Cita pedida por el trabajador (RF-004-13 … RF-004-15) */}
       {caso.cita_id && caso.cita_para && (
         <Tarjeta borde={caso.cita_estado === 'solicitada' ? color.alerta : undefined}>
           <Rotulo derecha={<Pastilla texto={caso.cita_estado === 'confirmada' ? 'CONFIRMADA' : 'POR CONFIRMAR'}
             fondo={caso.cita_estado === 'confirmada' ? color.exitoSuave : color.alertaSuave}
             tinta={caso.cita_estado === 'confirmada' ? color.exito : color.alerta} />}>
-            CITA PEDIDA POR EL PARTICIPANTE
+            CITA PEDIDA POR EL TRABAJADOR
           </Rotulo>
           <Text style={[texto.seccion, { color: color.texto }]}>{fechaHoraCorta(caso.cita_para)}</Text>
           {caso.cita_motivo && (
@@ -193,8 +193,8 @@ export default function DetalleCaso() {
           )}
           <Text style={[texto.apoyo, { color: color.textoMedio }]}>
             {caso.cita_estado === 'solicitada'
-              ? 'Al confirmar, el participante recibe la hora. Si no puedes, cancélala: podrá pedir otra.'
-              : 'A esa hora, abre la sala desde aquí; el participante entra desde su app.'}
+              ? 'Al confirmar, el trabajador recibe la hora. Si no puedes, cancélala: podrá pedir otra.'
+              : 'A esa hora, abre la sala desde aquí; el trabajador entra desde su app.'}
           </Text>
           {abierto && caso.cita_estado === 'solicitada' && (
             <View style={e.fila}>
@@ -220,7 +220,7 @@ export default function DetalleCaso() {
         {typeof agot !== 'number' && typeof desv !== 'number' && (
           <Text style={[texto.apoyo, { color: color.textoMedio }]}>
             {caso.origen === 'solicitud'
-              ? 'El participante pidió la cita por su cuenta; no hubo detección del sistema.'
+              ? 'El trabajador pidió la cita por su cuenta; no hubo detección del sistema.'
               : 'Sin puntajes registrados en la detección.'}
           </Text>
         )}
@@ -272,7 +272,7 @@ export default function DetalleCaso() {
                 <Text style={[texto.cuerpo, { color: color.texto }]}>
                   {caso.sesion_finalizada_en
                     ? `Sesión realizada ${haceCuanto(caso.sesion_finalizada_en)}.`
-                    : `Sala abierta ${haceCuanto(caso.sesion_iniciada_en ?? caso.abierta_en)} · ${caso.consentimiento_participante ? 'consentimiento de grabación dado' : 'sin consentimiento de grabación aún'}.`}
+                    : `Sala abierta ${haceCuanto(caso.sesion_iniciada_en ?? caso.abierta_en)} · ${caso.consentimiento_trabajador ? 'consentimiento de grabación dado' : 'sin consentimiento de grabación aún'}.`}
                 </Text>
                 {caso.informe_estado && (
                   <Pressable onPress={() => router.push(`/psicologo/informe/${caso.sesion_id}`)} accessibilityRole="button">
@@ -283,7 +283,7 @@ export default function DetalleCaso() {
                 )}
               </>
             ) : (
-              <Text style={[texto.cuerpo, { color: color.texto }]}>Primera derivación para este participante. Sin sesiones previas registradas.</Text>
+              <Text style={[texto.cuerpo, { color: color.texto }]}>Primera derivación para este trabajador. Sin sesiones previas registradas.</Text>
             )}
           </View>
         </View>

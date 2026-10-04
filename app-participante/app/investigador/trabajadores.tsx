@@ -1,5 +1,5 @@
-/** Registro de participantes — implementa ESP-009 RF-009-07.
- *  Diseño: Figma NsWTiSKab9HJt9b2EBz7XA «Participantes · Investigador Principal».
+/** Registro de trabajadores — implementa ESP-009 RF-009-07.
+ *  Diseño: Figma NsWTiSKab9HJt9b2EBz7XA «Trabajadores · Investigador Principal».
  *
  *  La pantalla responde a una pregunta: ¿a quién hay que mirar hoy? Por eso
  *  arriba no hay catorce chips sueltos sino cuatro VISTAS —todos, necesitan
@@ -21,7 +21,7 @@ import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } fro
 import { router } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
 import { conFiltro, useFiltro, useDatosDelFiltro } from '../../modules/investigador/filtro'
-import { ETIQUETA_ESTADO, calendario, participantes as listar, type Envio, type FilaParticipanteV2 } from '../../modules/investigador/panel'
+import { ETIQUETA_ESTADO, calendario, trabajadores as listar, type Envio, type FilaTrabajadorV2 } from '../../modules/investigador/panel'
 import { aCsv, descargarTexto } from '../../modules/investigador/exportar'
 import { listarEmpresas, type Empresa } from '../../modules/panel/datos'
 import { BarraPct, BotonChico, Caja, Codigo, Encabezado, Mono, Pastilla, PastillaEstado, PastillaNivel, Rotulo, TONO } from '../../modules/investigador/piezas'
@@ -40,7 +40,7 @@ const DIAS_CALLADO = 4
 const RIESGO_ALTO = 0.5
 const TIERRA = '#8C4A2B'
 
-type Estado = 'todos' | FilaParticipanteV2['estado']
+type Estado = 'todos' | FilaTrabajadorV2['estado']
 type Nivel = 'todos' | 'bajo' | 'a_vigilar' | 'alto'
 type Vista = 'todos' | 'atencion' | 'callados' | 'apoyo'
 type Orden = 'urgencia' | 'codigo' | 'adherencia' | 'olbi' | 'riesgo'
@@ -48,7 +48,7 @@ type Orden = 'urgencia' | 'codigo' | 'adherencia' | 'olbi' | 'riesgo'
 /** Las cuatro vistas de entrada. Son uniones (basta una condición), que es lo
  *  que un chip de filtro no sabe expresar: «necesita atención» es estar
  *  detectado O tener el OLBI alto O que el modelo lo señale hoy. */
-const VISTAS: { clave: Vista; titulo: string; apoyo: string; prueba: (x: FilaParticipanteV2) => boolean }[] = [
+const VISTAS: { clave: Vista; titulo: string; apoyo: string; prueba: (x: FilaTrabajadorV2) => boolean }[] = [
   { clave: 'todos', titulo: 'Todos', apoyo: 'toda la cohorte, por urgencia', prueba: () => true },
   {
     clave: 'atencion', titulo: 'Necesitan atención', apoyo: 'detectados, OLBI alto o señalados hoy por el modelo',
@@ -68,7 +68,7 @@ const VISTAS: { clave: Vista; titulo: string; apoyo: string; prueba: (x: FilaPar
 ]
 
 const COLUMNAS: { clave: Orden | null; titulo: string; ancho: number }[] = [
-  { clave: 'codigo', titulo: 'Participante', ancho: 2.4 },
+  { clave: 'codigo', titulo: 'Trabajador', ancho: 2.4 },
   { clave: null, titulo: 'Situación', ancho: 1 },
   { clave: 'adherencia', titulo: 'Adherencia', ancho: 1.6 },
   // Los dos números del OLBI en el título, para no repetir «agot.» y «desv.»
@@ -78,11 +78,11 @@ const COLUMNAS: { clave: Orden | null; titulo: string; ancho: number }[] = [
   { clave: null, titulo: 'Apoyo', ancho: 1.2 },
 ]
 
-export default function Participantes() {
+export default function Trabajadores() {
   const { filtro, fijar } = useFiltro()
   const { width } = useWindowDimensions()
   const conPanel = width >= 1200
-  const [filas, setFilas] = useState<FilaParticipanteV2[] | null>(null)
+  const [filas, setFilas] = useState<FilaTrabajadorV2[] | null>(null)
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [vista, setVista] = useState<Vista>('todos')
   const [afinar, setAfinar] = useState(false)
@@ -97,7 +97,7 @@ export default function Participantes() {
   const [busqueda, setBusqueda] = useState('')
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
   const [pagina, setPagina] = useState(0)
-  const [abierto, setAbierto] = useState<FilaParticipanteV2 | null>(null)
+  const [abierto, setAbierto] = useState<FilaTrabajadorV2 | null>(null)
 
   // Al cambiar de empresa se cierra la ficha abierta y se vacía la selección:
   // ambas son de la empresa anterior, y una selección que sobrevive al cambio
@@ -144,7 +144,7 @@ export default function Participantes() {
 
   if (!filas) return <Panel rol="investigador"><Cargando /></Panel>
 
-  const cuenta = (pred: (x: FilaParticipanteV2) => boolean) => filas.filter(pred).length
+  const cuenta = (pred: (x: FilaTrabajadorV2) => boolean) => filas.filter(pred).length
   const enSeguimiento = cuenta((x) => x.estado === 'activo')
   const detectados = cuenta((x) => x.estado === 'detectado')
   const enApoyo = cuenta((x) => !!x.derivacion_id || !!x.estado_cita)
@@ -158,7 +158,7 @@ export default function Participantes() {
   }
   function exportarSeleccion() {
     const sel = filas!.filter((x) => seleccion.has(x.id))
-    descargarTexto(`participantes-${new Date().toISOString().slice(0, 10)}.csv`, aCsv(sel as any), 'text/csv')
+    descargarTexto(`trabajadores-${new Date().toISOString().slice(0, 10)}.csv`, aCsv(sel as any), 'text/csv')
   }
 
   return (
@@ -167,7 +167,7 @@ export default function Participantes() {
         <Pantalla ancho={ancho.panel}>
           <Encabezado
             eyebrow="Registro de la cohorte · ESP-009"
-            titulo="Participantes"
+            titulo="Trabajadores"
             subtitulo={`${filas.length} ${filas.length === 1 ? 'persona inscrita' : 'personas inscritas'} en ${empresa ? empresa.nombre : `${empresas.length} empresas`} · ${enSeguimiento} en seguimiento. Cada quien aparece por su código; los nombres no salen de aquí.`}
             derecha={(
               <View style={[e.fila, { gap: espacio.sm }]}>
@@ -263,7 +263,7 @@ export default function Participantes() {
           {seleccion.size > 0 && (
             <View style={e.barraSel}>
               <Text style={[texto.datoFuerte, { color: color.primarioProfundo, flex: 1 }]}>
-                {`${seleccion.size} ${seleccion.size === 1 ? 'participante seleccionado' : 'participantes seleccionados'}`}
+                {`${seleccion.size} ${seleccion.size === 1 ? 'trabajador seleccionado' : 'trabajadores seleccionados'}`}
               </Text>
               <Pressable onPress={() => setSeleccion(new Set())} hitSlop={6}><Text style={[texto.dato, { color: color.textoMedio }]}>Quitar selección</Text></Pressable>
               <BotonChico onPress={exportarSeleccion} icono={<IconoArchivo tamano={13} color={color.texto} />}>Descargar CSV</BotonChico>
@@ -425,7 +425,7 @@ function Chip({ children, activo, onPress, tono, vacio }: {
 }
 
 /** Ventana de páginas alrededor de la actual. La versión anterior pintaba
- *  siempre 1–5 y un «… 6»: con 58 participantes la última página solo se
+ *  siempre 1–5 y un «… 6»: con 58 trabajadores la última página solo se
  *  alcanzaba pulsando la flecha. */
 function Paginador({ pag, paginas, ir }: { pag: number; paginas: number; ir: (n: number) => void }) {
   const desde = Math.max(0, Math.min(pag - 2, paginas - 5))
@@ -449,8 +449,8 @@ function Paginador({ pag, paginas, ir }: { pag: number; paginas: number; ir: (n:
   )
 }
 
-/** Vista previa del participante sin salir de la tabla. */
-function PanelLateral({ p, onCerrar }: { p: FilaParticipanteV2; onCerrar: () => void }) {
+/** Vista previa del trabajador sin salir de la tabla. */
+function PanelLateral({ p, onCerrar }: { p: FilaTrabajadorV2; onCerrar: () => void }) {
   const { filtro } = useFiltro()
   const [envios, setEnvios] = useState<Envio[]>([])
   useEffect(() => { calendario(p.id).then(setEnvios).catch(() => setEnvios([])) }, [p.id])
@@ -476,7 +476,7 @@ function PanelLateral({ p, onCerrar }: { p: FilaParticipanteV2; onCerrar: () => 
         </View>
       )}
 
-      <Pressable onPress={() => router.push(conFiltro(`/investigador/participante/${p.id}`, filtro) as never)} style={e.botonFicha} accessibilityRole="button">
+      <Pressable onPress={() => router.push(conFiltro(`/investigador/trabajador/${p.id}`, filtro) as never)} style={e.botonFicha} accessibilityRole="button">
         <Text style={[texto.datoFuerte, { color: '#FFFFFF' }]}>Abrir la ficha completa</Text>
         <IconoAbrir tamano={13} color="#FFFFFF" />
       </Pressable>

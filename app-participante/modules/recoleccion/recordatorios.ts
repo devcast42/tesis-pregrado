@@ -1,7 +1,7 @@
 /** Recordatorios locales — implementa ESP-002 (RF-002-06).
  *
  *  La adherencia es el mayor riesgo de campo del estudio: sin recordatorio,
- *  la serie temporal de cada participante se llena de huecos y el modelo de
+ *  la serie temporal de cada trabajador se llena de huecos y el modelo de
  *  trayectoria pierde su insumo.
  *
  *  ⚠️ EL MÓDULO SE CARGA PEREZOSAMENTE, Y ESO NO ES UN DETALLE.
@@ -101,7 +101,7 @@ function notificaciones(): ModuloNotificaciones | null {
 
 export type HoraRecordatorio = { hora: number; minuto: number }
 
-/** Hora elegida por el participante (por defecto 19:00). Vive en el
+/** Hora elegida por el trabajador (por defecto 19:00). Vive en el
  *  dispositivo: el servidor no necesita saber a qué hora suena el teléfono. */
 export async function horaRecordatorio(): Promise<HoraRecordatorio> {
   try {

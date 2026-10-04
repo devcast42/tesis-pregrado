@@ -36,7 +36,7 @@ export default function Consulta() {
   async function autorizar() {
     await consentirGrabacion(id, 'psicologo')
     await cargar()
-    // Si el participante ya autorizó y hay alguien en la sala, arranca ya.
+    // Si el trabajador ya autorizó y hay alguien en la sala, arranca ya.
     iniciarGrabacion(id).catch(() => {})
   }
 
@@ -61,7 +61,7 @@ export default function Consulta() {
 
   if (!sesion) return <Cargando />
 
-  const ambos = sesion.consentimiento_participante && sesion.consentimiento_psicologo
+  const ambos = sesion.consentimiento_trabajador && sesion.consentimiento_psicologo
   const codigo = caso?.codigo_anonimo ?? ''
 
   if (enLlamada && credenciales) {
@@ -100,7 +100,7 @@ export default function Consulta() {
         </View>
         <Text style={[texto.cuerpo, { color: color.texto }]}>La sesión se graba solo en audio y únicamente si ambos la autorizan.</Text>
         <Text style={[texto.cuerpo, { color: color.texto }]}>El audio se utiliza para generar un borrador de informe que tú revisas y apruebas.</Text>
-        <Text style={[texto.cuerpo, { color: color.texto }]}>El participante nunca tiene acceso a la grabación ni a los apuntes clínicos.</Text>
+        <Text style={[texto.cuerpo, { color: color.texto }]}>El trabajador nunca tiene acceso a la grabación ni a los apuntes clínicos.</Text>
       </View>
 
       <Autorizacion
@@ -110,9 +110,9 @@ export default function Consulta() {
         accion={!sesion.consentimiento_psicologo ? { texto: 'Autorizar audio', onPress: autorizar } : undefined}
       />
       <Autorizacion
-        titulo="Autorización del participante"
-        detalle={sesion.consentimiento_participante ? 'Consentimiento otorgado en app' : 'Aún no la ha dado desde su app'}
-        dada={sesion.consentimiento_participante}
+        titulo="Autorización del trabajador"
+        detalle={sesion.consentimiento_trabajador ? 'Consentimiento otorgado en app' : 'Aún no la ha dado desde su app'}
+        dada={sesion.consentimiento_trabajador}
       />
 
       <View style={e.nota}>

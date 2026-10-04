@@ -1,6 +1,6 @@
 -- Semilla de DEMOSTRACIÓN para el panel del empresario (ESP-008 rev. 2).
 --
--- SOLO PARA ENTORNOS DE PRUEBA. Crea 12 participantes ficticios (sin cuenta
+-- SOLO PARA ENTORNOS DE PRUEBA. Crea 12 trabajadores ficticios (sin cuenta
 -- de acceso: auth_user_id nulo) en la empresa del admin indicado, con seis
 -- semanas de check-ins, OLBI del viernes y preguntas semanales, para que las
 -- vistas agregadas superen el mínimo de reporte y el panel se vea completo.
@@ -47,18 +47,18 @@ begin
   select definicion -> 'items' into v_olbi from formularios where clave = 'olbi' and version = 2;
 
   for v_i in 1..12 loop
-    -- Participante ficticio
-    insert into participantes (organizacion_id, codigo_anonimo, estado, inscrito_en)
+    -- Trabajador ficticio
+    insert into trabajadores (organizacion_id, codigo_anonimo, estado, inscrito_en)
     values (v_org, format('DEMO-%s', lpad(v_i::text, 2, '0')), 'activo', v_lunes0 - 3)
     returning id into v_p;
 
-    insert into consentimientos (participante_id, version_texto, aceptado, registrado_en)
+    insert into consentimientos (trabajador_id, version_texto, aceptado, registrado_en)
     values (v_p, 'demo', true, v_lunes0 - 3);
 
     -- Datos iniciales: mezcla de modalidades y roles
     v_modalidad := (array['remoto','hibrido','presencial'])[1 + (v_i % 3)];
     v_rol := (array['desarrollo','desarrollo','qa','datos','infraestructura','desarrollo'])[1 + (v_i % 6)];
-    insert into respuestas (participante_id, formulario_clave, formulario_version, iniciado_en, enviado_en)
+    insert into respuestas (trabajador_id, formulario_clave, formulario_version, iniciado_en, enviado_en)
     values (v_p, 'estable', 1, v_lunes0 - 3, v_lunes0 - 3) returning id into v_resp;
     insert into respuestas_items (respuesta_id, item_clave, valor_num, valor_texto) values
       (v_resp, 'edad', 24 + (v_i * 3) % 15, null),
@@ -79,7 +79,7 @@ begin
       -- Lunes a jueves: check-in diario
       for v_dia in 0..3 loop
         v_ts := ((v_lunes0 + v_sem * 7 + v_dia)::timestamp + interval '18 hours') at time zone 'America/Lima';
-        insert into respuestas (participante_id, formulario_clave, formulario_version, iniciado_en, enviado_en)
+        insert into respuestas (trabajador_id, formulario_clave, formulario_version, iniciado_en, enviado_en)
         values (v_p, 'diario', 2, v_ts - interval '40 seconds', v_ts) returning id into v_resp;
         insert into respuestas_items (respuesta_id, item_clave, valor_num, valor_texto) values
           (v_resp, 'od_04', least(5, greatest(1, round(v_base + (v_dia % 2) * 0.4))), null),
@@ -96,7 +96,7 @@ begin
 
       -- Viernes: OLBI completo (16 ítems, escala 1–4) + semanal
       v_ts := ((v_lunes0 + v_sem * 7 + 4)::timestamp + interval '18 hours') at time zone 'America/Lima';
-      insert into respuestas (participante_id, formulario_clave, formulario_version, iniciado_en, enviado_en)
+      insert into respuestas (trabajador_id, formulario_clave, formulario_version, iniciado_en, enviado_en)
       values (v_p, 'olbi', 2, v_ts - interval '4 minutes', v_ts) returning id into v_resp;
       for v_item in select * from jsonb_array_elements(v_olbi) loop
         -- Escala 1–4. Objetivo de la dimensión en escala 1–4 ≈ (v_base * 0.8):
@@ -110,7 +110,7 @@ begin
         values (v_resp, v_item ->> 'clave', least(4, greatest(1, round(v_valor))), null);
       end loop;
 
-      insert into respuestas (participante_id, formulario_clave, formulario_version, iniciado_en, enviado_en)
+      insert into respuestas (trabajador_id, formulario_clave, formulario_version, iniciado_en, enviado_en)
       values (v_p, 'semanal', 2, v_ts + interval '1 minute', v_ts + interval '2 minutes') returning id into v_resp;
       insert into respuestas_items (respuesta_id, item_clave, valor_num, valor_texto) values
         (v_resp, 'horas_sobretiempo', round((1.5 + v_sem * 1.1 + v_semilla * 3)::numeric, 1), null),
@@ -119,7 +119,7 @@ begin
     end loop;
   end loop;
 
-  raise notice 'Semilla demo creada: 12 participantes DEMO-01..12 en la empresa % con 6 semanas', v_org;
+  raise notice 'Semilla demo creada: 12 trabajadores DEMO-01..12 en la empresa % con 6 semanas', v_org;
 end $$;
 
 -- ---------------------------------------------------------------------------
@@ -129,19 +129,19 @@ end $$;
 -- jueves y el pronóstico del viernes, con las versiones ACTIVAS del modelo y
 -- los rasgos reales de esa semana (rasgos_semana con fecha de referencia).
 -- No inventa probabilidades: aplica el mismo cálculo de probabilidad_semana.
--- Idempotente (no duplica por participante, tarea y día).
+-- Idempotente (no duplica por trabajador, tarea y día).
 do $$
 declare
   p record; v modelo_versiones%rowtype; x jsonb; z numeric; i int; nombre text; prob numeric;
   t text; sem date; ref date;
 begin
-  for p in select id from participantes where codigo_anonimo like 'DEMO-%' loop
+  for p in select id from trabajadores where codigo_anonimo like 'DEMO-%' loop
     foreach t in array array['nowcast', 'pronostico'] loop
       select * into v from modelo_versiones m where m.tarea = t and m.activa;
       if not found then continue; end if;
       for sem in select generate_series(date '2026-08-03', date '2026-09-14', interval '7 days')::date loop
         ref := sem + case when t = 'nowcast' then 3 else 4 end;   -- jueves / viernes
-        if exists (select 1 from eventos e where e.participante_id = p.id and e.tipo = 'prediccion_modelo'
+        if exists (select 1 from eventos e where e.trabajador_id = p.id and e.tipo = 'prediccion_modelo'
                      and e.metadata ->> 'tarea' = t and (e.metadata ->> 'dia')::date = ref) then continue; end if;
         x := rasgos_semana(p.id, ref);
         if x is null then continue; end if;
@@ -151,7 +151,7 @@ begin
           z := z + (v.pesos ->> i)::numeric * ((x ->> nombre)::numeric - (v.medias ->> i)::numeric) / (v.desviaciones ->> i)::numeric;
         end loop;
         prob := round(1 / (1 + exp(-z)), 3);
-        insert into eventos (participante_id, tipo, ocurrido_en, metadata)
+        insert into eventos (trabajador_id, tipo, ocurrido_en, metadata)
         values (p.id, 'prediccion_modelo', (ref::timestamp + time '18:30') at time zone tz_estudio(),
                 jsonb_build_object('version', v.version, 'tarea', t, 'dia', ref, 'n_dias', (x ->> 'n_dias')::int,
                                    'probabilidad', prob, 'senalado', prob >= v.umbral_decision, 'demo', true));
@@ -162,8 +162,8 @@ end $$;
 
 -- ---------------------------------------------------------------------------
 -- Deshacer (descomentar y ejecutar):
--- delete from respuestas_items where respuesta_id in (select id from respuestas where participante_id in (select id from participantes where codigo_anonimo like 'DEMO-%'));
--- delete from respuestas where participante_id in (select id from participantes where codigo_anonimo like 'DEMO-%');
--- delete from consentimientos where participante_id in (select id from participantes where codigo_anonimo like 'DEMO-%');
--- delete from eventos where participante_id in (select id from participantes where codigo_anonimo like 'DEMO-%');
--- delete from participantes where codigo_anonimo like 'DEMO-%';
+-- delete from respuestas_items where respuesta_id in (select id from respuestas where trabajador_id in (select id from trabajadores where codigo_anonimo like 'DEMO-%'));
+-- delete from respuestas where trabajador_id in (select id from trabajadores where codigo_anonimo like 'DEMO-%');
+-- delete from consentimientos where trabajador_id in (select id from trabajadores where codigo_anonimo like 'DEMO-%');
+-- delete from eventos where trabajador_id in (select id from trabajadores where codigo_anonimo like 'DEMO-%');
+-- delete from trabajadores where codigo_anonimo like 'DEMO-%';

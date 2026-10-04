@@ -8,7 +8,7 @@ import { supabase } from '../nucleo/supabase'
 
 export type Derivacion = {
   id: string
-  participante_id: string
+  trabajador_id: string
   abierta_en: string
   cerrada_en: string | null
   codigo_anonimo: string
@@ -37,7 +37,7 @@ export type Informe = {
 export type SesionConsulta = {
   id: string
   derivacion_id: string
-  consentimiento_participante: boolean
+  consentimiento_trabajador: boolean
   consentimiento_psicologo: boolean
   sala_livekit: string
   iniciada_en: string
@@ -48,7 +48,7 @@ export type SesionConsulta = {
 export async function listarDerivaciones(soloAbiertas = true): Promise<Derivacion[]> {
   let consulta = supabase
     .from('derivaciones')
-    .select('id, participante_id, abierta_en, cerrada_en, participantes(codigo_anonimo)')
+    .select('id, trabajador_id, abierta_en, cerrada_en, trabajadores(codigo_anonimo)')
     .order('abierta_en', { ascending: false })
 
   if (soloAbiertas) consulta = consulta.is('cerrada_en', null)
@@ -58,19 +58,19 @@ export async function listarDerivaciones(soloAbiertas = true): Promise<Derivacio
 
   return (data ?? []).map((fila: any) => ({
     id: fila.id,
-    participante_id: fila.participante_id,
+    trabajador_id: fila.trabajador_id,
     abierta_en: fila.abierta_en,
     cerrada_en: fila.cerrada_en,
-    codigo_anonimo: fila.participantes?.codigo_anonimo ?? '—',
+    codigo_anonimo: fila.trabajadores?.codigo_anonimo ?? '—',
   }))
 }
 
 /** RF-006-12 y RN-006-03 — única puerta a los datos personales.
  *  El servidor verifica la derivación y registra el acceso antes de responder;
  *  si no hay derivación abierta, esto lanza. */
-export async function obtenerIdentidad(participanteId: string) {
+export async function obtenerIdentidad(trabajadorId: string) {
   const { data, error } = await supabase.rpc('obtener_identidad', {
-    p_participante_id: participanteId,
+    p_trabajador_id: trabajadorId,
   })
   if (error) throw error
   return (data?.[0] as { nombre: string; correo_contacto: string } | undefined) ?? null
@@ -78,22 +78,22 @@ export async function obtenerIdentidad(participanteId: string) {
 
 /** RF-006-03 — trayectoria de puntajes. El cálculo vive en la vista
  *  `puntajes_olbi`, no aquí: el cliente nunca puntúa (ESP-002 RN-002-05). */
-export async function trayectoriaOlbi(participanteId: string): Promise<PuntajeOlbi[]> {
+export async function trayectoriaOlbi(trabajadorId: string): Promise<PuntajeOlbi[]> {
   const { data, error } = await supabase
     .from('puntajes_olbi')
     .select('respuesta_id, enviado_en, dimension, puntaje')
-    .eq('participante_id', participanteId)
+    .eq('trabajador_id', trabajadorId)
     .order('enviado_en', { ascending: true })
 
   if (error) throw error
   return (data ?? []) as PuntajeOlbi[]
 }
 
-export async function eventoDeteccion(participanteId: string) {
+export async function eventoDeteccion(trabajadorId: string) {
   const { data } = await supabase
     .from('eventos')
     .select('ocurrido_en, metadata')
-    .eq('participante_id', participanteId)
+    .eq('trabajador_id', trabajadorId)
     .eq('tipo', 'deteccion')
     .order('ocurrido_en', { ascending: true })
     .limit(1)
@@ -124,9 +124,9 @@ export async function crearSesion(derivacionId: string): Promise<SesionConsulta>
 }
 
 /** RF-004-02 — el consentimiento de grabación es por sesión y de ambas partes. */
-export async function consentirGrabacion(sesionId: string, quien: 'psicologo' | 'participante') {
+export async function consentirGrabacion(sesionId: string, quien: 'psicologo' | 'trabajador') {
   const campo =
-    quien === 'psicologo' ? 'consentimiento_psicologo' : 'consentimiento_participante'
+    quien === 'psicologo' ? 'consentimiento_psicologo' : 'consentimiento_trabajador'
 
   const { error } = await supabase
     .from('sesiones_consulta')
@@ -190,7 +190,7 @@ export async function aprobarInforme(
   if (error) throw error
 }
 
-/** RF-006-06 — al cerrar, el psicólogo pierde el acceso a este participante. */
+/** RF-006-06 — al cerrar, el psicólogo pierde el acceso a este trabajador. */
 export const DESENLACES = {
   mejora: 'Mejoró y no necesita seguir',
   derivado_externo: 'Derivado a atención externa',
@@ -232,7 +232,7 @@ export async function proponerCita(derivacionId: string, para: string, motivo?: 
 export type CitaAgenda = {
   cita_id: string
   derivacion_id: string
-  participante_id: string
+  trabajador_id: string
   nombre: string | null
   codigo_anonimo: string
   propuesta_para: string
@@ -248,7 +248,7 @@ export async function agenda(): Promise<CitaAgenda[]> {
 }
 
 export type EpisodioHistoria = {
-  participante_id: string
+  trabajador_id: string
   nombre: string | null
   codigo_anonimo: string
   derivacion_id: string
@@ -262,9 +262,9 @@ export type EpisodioHistoria = {
 
 /** Todos los episodios de una persona, o de todas si no se pasa id. Un caso
  *  que se cierra y vuelve a abrirse eran dos filas sin relación. */
-export async function historiaClinica(participanteId?: string): Promise<EpisodioHistoria[]> {
+export async function historiaClinica(trabajadorId?: string): Promise<EpisodioHistoria[]> {
   let q = supabase.from('historia_clinica').select('*').order('abierta_en', { ascending: false })
-  if (participanteId) q = q.eq('participante_id', participanteId)
+  if (trabajadorId) q = q.eq('trabajador_id', trabajadorId)
   const { data } = await q
   return (data ?? []) as EpisodioHistoria[]
 }
@@ -277,7 +277,7 @@ export async function psicologoActual() {
 export async function obtenerDerivacion(derivacionId: string): Promise<Derivacion | null> {
   const { data } = await supabase
     .from('derivaciones')
-    .select('id, participante_id, abierta_en, cerrada_en, participantes(codigo_anonimo)')
+    .select('id, trabajador_id, abierta_en, cerrada_en, trabajadores(codigo_anonimo)')
     .eq('id', derivacionId)
     .maybeSingle()
 
@@ -285,10 +285,10 @@ export async function obtenerDerivacion(derivacionId: string): Promise<Derivacio
   const fila = data as any
   return {
     id: fila.id,
-    participante_id: fila.participante_id,
+    trabajador_id: fila.trabajador_id,
     abierta_en: fila.abierta_en,
     cerrada_en: fila.cerrada_en,
-    codigo_anonimo: fila.participantes?.codigo_anonimo ?? '—',
+    codigo_anonimo: fila.trabajadores?.codigo_anonimo ?? '—',
   }
 }
 
@@ -299,7 +299,7 @@ export type EstadoCaso = 'sesion_pendiente' | 'cita_por_confirmar' | 'cita_confi
 /** Una fila de `casos_psicologo` (ESP-006 RF-006-13). */
 export type Caso = {
   derivacion_id: string
-  participante_id: string
+  trabajador_id: string
   codigo_anonimo: string
   empresa: string | null
   abierta_en: string
@@ -310,10 +310,10 @@ export type Caso = {
   sesion_id: string | null
   sesion_iniciada_en: string | null
   sesion_finalizada_en: string | null
-  consentimiento_participante: boolean | null
+  consentimiento_trabajador: boolean | null
   consentimiento_psicologo: boolean | null
   informe_estado: 'sin_revisar' | 'aprobado' | 'descartado' | null
-  /** deteccion: la abrió el modelo. solicitud: la pidió el participante (ESP-004 RF-004-13). */
+  /** deteccion: la abrió el modelo. solicitud: la pidió el trabajador (ESP-004 RF-004-13). */
   origen: 'deteccion' | 'solicitud'
   cita_id: string | null
   cita_para: string | null
@@ -323,7 +323,7 @@ export type Caso = {
 }
 
 /** RF-004-15 — el psicólogo confirma la hora pedida o la cancela (y el
- *  participante puede pedir otra). Ambas son funciones de base de datos. */
+ *  trabajador puede pedir otra). Ambas son funciones de base de datos. */
 export async function confirmarCita(citaId: string) {
   const { error } = await supabase.rpc('confirmar_cita', { p_cita: citaId })
   if (error) throw error
@@ -360,20 +360,20 @@ export async function obtenerCaso(derivacionId: string): Promise<Caso | null> {
 }
 
 /** RF-006-14 — rol, modalidad y antigüedad (excepción acotada a RN-006-07). */
-export async function perfilCaso(participanteId: string): Promise<PerfilCaso | null> {
-  const { data } = await supabase.rpc('perfil_caso', { p_participante: participanteId })
+export async function perfilCaso(trabajadorId: string): Promise<PerfilCaso | null> {
+  const { data } = await supabase.rpc('perfil_caso', { p_trabajador: trabajadorId })
   return (data as PerfilCaso | null) ?? null
 }
 
 /** ESP-005 — pronóstico para la próxima semana, con la versión activa. Se
  *  consulta sin registrar evento: la predicción «oficial» del día la registra
- *  la app del participante; el psicólogo solo la lee. */
-export async function pronosticoCaso(participanteId: string) {
+ *  la app del trabajador; el psicólogo solo la lee. */
+export async function pronosticoCaso(trabajadorId: string) {
   const { data } = await supabase.rpc('probabilidad_semana', {
-    p_participante: participanteId,
+    p_trabajador: trabajadorId,
     p_tarea: 'pronostico',
   })
-  return data && data.probabilidad != null ? (data as import('../participante/resultado').Prediccion) : null
+  return data && data.probabilidad != null ? (data as import('../trabajador/resultado').Prediccion) : null
 }
 
 /** RF-004-12 — informe manual cuando no hubo grabación: borrador vacío,

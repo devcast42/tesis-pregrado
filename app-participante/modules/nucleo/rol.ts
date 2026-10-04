@@ -6,7 +6,7 @@
 
 import { idUsuario, supabase } from './supabase'
 
-export type Rol = 'participante' | 'psicologo' | 'investigador' | 'admin'
+export type Rol = 'trabajador' | 'psicologo' | 'investigador' | 'admin'
 
 export async function obtenerRol(): Promise<Rol | null> {
   const id = await idUsuario()
@@ -25,7 +25,7 @@ export async function obtenerRol(): Promise<Rol | null> {
 }
 
 export const RUTA_INICIAL: Record<Rol, string> = {
-  participante: '/hoy',
+  trabajador: '/hoy',
   psicologo: '/psicologo',
   investigador: '/investigador',
   admin: '/admin',

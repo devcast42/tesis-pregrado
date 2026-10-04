@@ -19,8 +19,8 @@ export const TABLAS = [
   // a `ventanas_modelo`, que implementaba la formulación de ventanas de 14 días
   // de la revisión 1 (§3.4) y ya no es con lo que se entrena: exportarla daba
   // un dataset con el que los resultados de la tesis no se pueden reproducir.
-  { clave: 'semanas_modelo', archivo: 'tbl_semanas_modelo.csv', orden: ['participante_id', 'semana'], titulo: 'tbl_semanas_modelo', descripcion: 'Contrato de entrenamiento: una fila por participante y semana con los rasgos de ESP-005 §4 y ambas etiquetas (nowcast y pronóstico), censurada en el primer cruce.' },
-  { clave: 'predicciones_participante', archivo: 'tbl_predicciones.csv', orden: ['evento_id'], titulo: 'tbl_predicciones', descripcion: 'Predicciones registradas en su momento (nowcast y pronóstico) confrontadas con el OLBI objetivo.' },
+  { clave: 'semanas_modelo', archivo: 'tbl_semanas_modelo.csv', orden: ['trabajador_id', 'semana'], titulo: 'tbl_semanas_modelo', descripcion: 'Contrato de entrenamiento: una fila por trabajador y semana con los rasgos de ESP-005 §4 y ambas etiquetas (nowcast y pronóstico), censurada en el primer cruce.' },
+  { clave: 'predicciones_trabajador', archivo: 'tbl_predicciones.csv', orden: ['evento_id'], titulo: 'tbl_predicciones', descripcion: 'Predicciones registradas en su momento (nowcast y pronóstico) confrontadas con el OLBI objetivo.' },
   { clave: 'eventos', archivo: 'tbl_eventos.csv', orden: ['id'], titulo: 'tbl_eventos', descripcion: 'Eventos de proceso: inicio, detección, derivación, sesión, informe aprobado, accesos a identidad.' },
 ] as const
 
@@ -36,7 +36,7 @@ export type ClaveTabla = (typeof TABLAS)[number]['clave']
  *  unos segundos; en paralelo se estorban.
  *  La página no espera este cálculo, así que la demora no se nota. */
 export async function conteos(filtro: FiltroGlobal): Promise<Record<ClaveTabla, number | null>> {
-  const ids = await participantesDelFiltro(filtro)
+  const ids = await trabajadoresDelFiltro(filtro)
   const out = {} as Record<ClaveTabla, number | null>
   for (const t of TABLAS) out[t.clave] = await contar(t.clave, ids)
   return out
@@ -47,12 +47,12 @@ export async function conteos(filtro: FiltroGlobal): Promise<Record<ClaveTabla, 
 const TOPE_RECUENTO = 20000
 
 async function contar(tabla: ClaveTabla, ids: string[] | null): Promise<number | null> {
-  // respuestas_items no tiene participante_id: se filtra a través de su envío.
+  // respuestas_items no tiene trabajador_id: se filtra a través de su envío.
   // Sin filtro de empresa esa unión no hace falta.
   const porEnvio = tabla === 'respuestas_items' && !!ids
-  const columna = porEnvio ? 'respuesta_id, respuestas!inner(participante_id)'
-    : tabla === 'respuestas_items' ? 'respuesta_id' : 'participante_id'
-  const clave = porEnvio ? 'respuestas.participante_id' : 'participante_id'
+  const columna = porEnvio ? 'respuesta_id, respuestas!inner(trabajador_id)'
+    : tabla === 'respuestas_items' ? 'respuesta_id' : 'trabajador_id'
+  const clave = porEnvio ? 'respuestas.trabajador_id' : 'trabajador_id'
 
   let q = supabase.from(tabla).select(columna, { count: 'exact', head: true })
   if (ids) q = q.in(clave, ids)
@@ -73,9 +73,9 @@ async function contar(tabla: ClaveTabla, ids: string[] | null): Promise<number |
   return manual.data.length > TOPE_RECUENTO ? null : manual.data.length
 }
 
-async function participantesDelFiltro(filtro: FiltroGlobal): Promise<string[] | null> {
+async function trabajadoresDelFiltro(filtro: FiltroGlobal): Promise<string[] | null> {
   if (!filtro.organizacion_id) return null
-  const { data } = await supabase.from('participantes').select('id').eq('organizacion_id', filtro.organizacion_id)
+  const { data } = await supabase.from('trabajadores').select('id').eq('organizacion_id', filtro.organizacion_id)
   return (data ?? []).map((p) => p.id as string)
 }
 
@@ -92,14 +92,14 @@ async function filas(tabla: ClaveTabla, ids: string[] | null): Promise<Record<st
   const orden = TABLAS.find((t) => t.clave === tabla)!.orden
   for (let desde = 0; ; desde += PAGINA) {
     const anidada = tabla === 'respuestas_items'
-    let q = supabase.from(tabla).select(anidada ? '*, respuestas!inner(participante_id)' : '*').range(desde, desde + PAGINA - 1)
+    let q = supabase.from(tabla).select(anidada ? '*, respuestas!inner(trabajador_id)' : '*').range(desde, desde + PAGINA - 1)
     for (const col of orden) q = q.order(col)
-    if (ids) q = q.in(anidada ? 'respuestas.participante_id' : 'participante_id', ids)
+    if (ids) q = q.in(anidada ? 'respuestas.trabajador_id' : 'trabajador_id', ids)
     const { data, error } = await q
     if (error) throw error
     for (const fila of (data ?? []) as unknown as Record<string, unknown>[]) {
-      // La tabla exportada lleva participante_id como columna plana, no como objeto anidado.
-      if (anidada) { const r = fila.respuestas as { participante_id: string } | null; delete fila.respuestas; fila.participante_id = r?.participante_id ?? null }
+      // La tabla exportada lleva trabajador_id como columna plana, no como objeto anidado.
+      if (anidada) { const r = fila.respuestas as { trabajador_id: string } | null; delete fila.respuestas; fila.trabajador_id = r?.trabajador_id ?? null }
       out.push(fila)
     }
     if (!data || data.length < PAGINA) break
@@ -187,10 +187,10 @@ export const DICCIONARIO = [
   { variable: 'puntajes_olbi.puntaje', tipo: 'numeric', texto: 'Media de los 8 ítems de una subescala del OLBI, con la inversión ya aplicada. La columna `dimension` dice cuál: agotamiento o desvinculacion. Formato largo: dos filas por aplicación.', rango: 'Escala 1–4 · Corte: ≥ 2.875 agotamiento, ≥ 2.75 desvinculación (Leclercq)' },
   { variable: 'respuestas_items.item_clave', tipo: 'text', texto: 'Qué se preguntó. Diario: od_04, od_12, od_03, od_06 (ítems del OLBI en versión diaria), horas_trabajadas, horas_sueno, desconexion, contacto_fuera_horario, horas_fin_de_semana. Viernes: olbi_01…olbi_16, horas_sobretiempo, guardias, apoyo_lider. Al inscribirse: edad, antiguedad_empresa, antiguedad_sector, tamano_equipo, personas_a_cargo, minutos_traslado, rol, modalidad.', rango: 'El valor va en valor_num, salvo rol y modalidad, que van en valor_texto' },
   { variable: 'respuestas_items.valor_num', tipo: 'numeric', texto: 'El valor respondido. Los ítems diarios del OLBI van en escala 1–5; los 16 del viernes en escala 1–4; contacto_fuera_horario y guardias son 0 o 1; el resto son horas o cuentas.', rango: 'od_*: [1–5] · olbi_*: [1–4] · horas_sueno: [4.3–10.0] h observado' },
-  { variable: 'semanas_modelo.t_media … t_pendiente', tipo: 'numeric', texto: 'Resumen semanal de los cuatro ítems diarios: media, último día, peor día y pendiente dentro de la semana. Son las entradas del modelo (ESP-005 §4.1). La columna `semana` es el lunes de esa semana ISO, no un número de 1 a 6.', rango: 'Una fila por participante y semana, censurada en el primer cruce' },
+  { variable: 'semanas_modelo.t_media … t_pendiente', tipo: 'numeric', texto: 'Resumen semanal de los cuatro ítems diarios: media, último día, peor día y pendiente dentro de la semana. Son las entradas del modelo (ESP-005 §4.1). La columna `semana` es el lunes de esa semana ISO, no un número de 1 a 6.', rango: 'Una fila por trabajador y semana, censurada en el primer cruce' },
   { variable: 'semanas_modelo.alto_t / alto_t1', tipo: 'bool', texto: 'Las dos etiquetas. alto_t es el OLBI del viernes de esa misma semana (nowcast); alto_t1 el del viernes siguiente (pronóstico). alto_t1 es nulo en la semana del cruce: esa persona ya salió del seguimiento.', rango: 'ESP-005 §3.5 · usar e_previo/d_previo solo con alto_t1' },
-  { variable: 'predicciones_participante.probabilidad', tipo: 'numeric', texto: 'Lo que el modelo dijo en su momento, no recalculado después. `tarea` distingue nowcast de pronostico y `version` dice qué modelo lo produjo.', rango: '[0.0 – 1.0] · RN-009-05' },
-  { variable: 'predicciones_participante.senalado / resultado_real / acierto', tipo: 'bool', texto: 'Si el modelo levantó la mano (probabilidad ≥ umbral), qué pasó de verdad el viernes objetivo, y si coincidieron.', rango: 'acierto nulo = todavía sin resultado, o nowcast respondido tarde' },
+  { variable: 'predicciones_trabajador.probabilidad', tipo: 'numeric', texto: 'Lo que el modelo dijo en su momento, no recalculado después. `tarea` distingue nowcast de pronostico y `version` dice qué modelo lo produjo.', rango: '[0.0 – 1.0] · RN-009-05' },
+  { variable: 'predicciones_trabajador.senalado / resultado_real / acierto', tipo: 'bool', texto: 'Si el modelo levantó la mano (probabilidad ≥ umbral), qué pasó de verdad el viernes objetivo, y si coincidieron.', rango: 'acierto nulo = todavía sin resultado, o nowcast respondido tarde' },
 ]
 
 // ------------------------------------------------------------- Exportar
@@ -201,7 +201,7 @@ export type Formato = 'csv' | 'json'
 
 export async function exportarZip(filtro: FiltroGlobal, tablas: ClaveTabla[], formato: Formato = 'csv'): Promise<ResultadoExportacion> {
   if (typeof document === 'undefined') throw new Error('La exportación solo está disponible en el navegador.')
-  const ids = await participantesDelFiltro(filtro)
+  const ids = await trabajadoresDelFiltro(filtro)
   const archivos: { nombre: string; contenido: string }[] = []
   const cont: Record<string, number> = {}
   for (const t of TABLAS) {
@@ -246,7 +246,7 @@ export async function exportarZip(filtro: FiltroGlobal, tablas: ClaveTabla[], fo
   return { nombre, hash, conteos: cont, bytes: bytes.length }
 }
 
-/** Ficha de un participante en JSON o CSV (RF-009-09). */
+/** Ficha de un trabajador en JSON o CSV (RF-009-09). */
 export function descargarTexto(nombre: string, contenido: string, tipo = 'application/json') {
   if (typeof document === 'undefined') return
   const blob = new Blob([contenido], { type: tipo })

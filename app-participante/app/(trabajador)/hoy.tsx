@@ -1,4 +1,4 @@
-/** Pantalla principal del participante — implementa ESP-002 (RF-002-01,
+/** Pantalla principal del trabajador — implementa ESP-002 (RF-002-01,
  *  RF-002-08) con el diseño de Figma (nodos 1:2 y 1:138).
  *
  *  Se abre a diario, muchas veces con prisa. Lo primero que debe quedar claro
@@ -16,7 +16,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { obtenerParticipante } from '../../modules/acceso/datos'
+import { obtenerTrabajador } from '../../modules/acceso/datos'
 import {
   calendarios, diasConCheckinEstaSemana, indiceLunes, inicioDeSemana, prediccionActual, racha as consultarRacha, ultimaPrediccionSemana, ultimosEnvios, type Racha,
 } from '../../modules/recoleccion/datos'
@@ -26,16 +26,16 @@ import { sesionDisponible, type SesionDisponible } from '../../modules/consulta/
 import {
   BarraSuperior, BloqueCierre, PastillaRacha, PieEtico, Pensamiento, RegistrosDelDia, RitmoSemanal,
   Saludo, TarjetaApoyo, TarjetaHero, TarjetaSecundaria, type EstadoDia,
-} from '../../modules/participante/piezas'
-import { fechaLarga, fraseDelDia, saludoPorHora, semanaDelEstudio } from '../../modules/participante/textos'
+} from '../../modules/trabajador/piezas'
+import { fechaLarga, fraseDelDia, saludoPorHora, semanaDelEstudio } from '../../modules/trabajador/textos'
 import { Cargando } from '../../modules/nucleo/ui'
 import { ahora, cargarDesfase } from '../../modules/nucleo/reloj'
 import {
   ultimoResultado, guardarResultado, nivelGeneral, ETIQUETA_NIVEL, tomarConsejo, type Prediccion, type ResultadoSemana,
-} from '../../modules/participante/resultado'
-import { ModalResultado, TarjetaProbabilidad, type ModoModal } from '../../modules/participante/ModalResultado'
+} from '../../modules/trabajador/resultado'
+import { ModalResultado, TarjetaProbabilidad, type ModoModal } from '../../modules/trabajador/ModalResultado'
 import { color, espacio } from '../../modules/nucleo/diseno'
-import type { Participante } from '../../modules/nucleo/tipos'
+import type { Trabajador } from '../../modules/nucleo/tipos'
 
 /** Lo único que la pantalla aporta de su cuenta: la insignia de cadencia y el
  *  verbo del botón. El título, la descripción y la duración salen de la
@@ -72,7 +72,7 @@ function encabezado(item: ItemAgenda): string {
 }
 
 export default function Hoy() {
-  const [participante, setParticipante] = useState<Participante | null>(null)
+  const [trabajador, setTrabajador] = useState<Trabajador | null>(null)
   const [agenda, setAgenda] = useState<ItemAgenda[] | null>(null)
   const [diasRespondidos, setDiasRespondidos] = useState<Set<number>>(new Set())
   const [sesion, setSesion] = useState<SesionDisponible | null>(null)
@@ -111,10 +111,10 @@ export default function Hoy() {
    *  dos llamadas baratas; el resultado del OLBI en sí no se recalcula. */
   async function abrirResultado() {
     let r = await ultimoResultado()
-    if (r && participante) {
+    if (r && trabajador) {
       const [retrospectiva, pronostico] = await Promise.all([
-        ultimaPrediccionSemana(participante.id),
-        r.pronostico ?? prediccionActual(participante.id, 'pronostico'),
+        ultimaPrediccionSemana(trabajador.id),
+        r.pronostico ?? prediccionActual(trabajador.id, 'pronostico'),
       ])
       r = { ...r, retrospectiva, pronostico }
       await guardarResultado(r)
@@ -125,7 +125,7 @@ export default function Hoy() {
 
   const cargar = useCallback(async () => {
     await cargarDesfase()
-    const p = await obtenerParticipante()
+    const p = await obtenerTrabajador()
     if (!p) return router.replace('/')
     // El nowcast solo tiene sentido de lunes a jueves: el viernes el OLBI
     // resuelve la semana y una predicción nueva pisaría la del jueves, que
@@ -148,7 +148,7 @@ export default function Hoy() {
       // definición que pinta la tarjeta, para que no puedan contradecirla.
       sincronizarRecordatorios({ diario: cal.diario?.duracion, olbi: cal.olbi?.duracion }).catch(() => {})
     }
-    setParticipante(p)
+    setTrabajador(p)
     setAgenda(agendaDeHoy(envios, cal))
     setDiasRespondidos(dias)
     setSesion(s)
@@ -169,12 +169,12 @@ export default function Hoy() {
 
   const irAAjustes = () => router.push('/perfil')
 
-  if (!agenda || !participante) return <Cargando />
+  if (!agenda || !trabajador) return <Cargando />
 
   const ahoraMismo = ahora()
   // RN-007-04 — quien fue detectado sale del seguimiento diario: sin
   // formularios, pero con su resultado y su sesión de apoyo.
-  const enSeguimiento = participante.estado === 'activo'
+  const enSeguimiento = trabajador.estado === 'activo'
   const pendientes = enSeguimiento ? agenda.filter((i) => !i.completado) : []
   const completados = agenda.filter((i) => i.completado)
   const todoListo = pendientes.length === 0
@@ -215,8 +215,8 @@ export default function Hoy() {
       >
         <Saludo
           fecha={fechaLarga(ahoraMismo)}
-          semana={semanaDelEstudio(participante.inscrito_en, ahoraMismo)}
-          codigo={participante.codigo_anonimo}
+          semana={semanaDelEstudio(trabajador.inscrito_en, ahoraMismo)}
+          codigo={trabajador.codigo_anonimo}
           titulo={saludo.titulo}
           subtitulo={todoListo ? 'Gracias por tu tiempo de hoy.' : saludo.subtitulo}
           onAjustes={irAAjustes}
@@ -284,7 +284,7 @@ export default function Hoy() {
 
         <Pensamiento frase={fraseDelDia(ahoraMismo)} />
 
-        <PieEtico codigo={participante.codigo_anonimo} onAjustes={irAAjustes} />
+        <PieEtico codigo={trabajador.codigo_anonimo} onAjustes={irAAjustes} />
       </ScrollView>
 
       <ModalResultado modo={modal} resultado={resultado} consejo={consejo} prediccion={prediccion} onCerrar={() => {

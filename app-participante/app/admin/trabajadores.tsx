@@ -19,7 +19,7 @@ import { Panel } from '../../modules/panel/Sidebar'
 import { Credenciales } from '../../modules/panel/Tabla'
 import { Monograma } from '../../modules/panel/Piezas'
 import {
-  inscribirParticipante, miEmpresa, participacionDeEmpresa, restablecerParticipante, resumenDeEmpresa,
+  inscribirTrabajador, miEmpresa, participacionDeEmpresa, restablecerTrabajador, resumenDeEmpresa,
   type Empresa, type FilaParticipacion, type ResumenEmpresa,
 } from '../../modules/panel/datos'
 import { darDeBaja, participacionSemanal, type ParticipacionSemana } from '../../modules/panel/empresario'
@@ -68,7 +68,7 @@ export default function PersonasAdmin() {
     if (!empresa) return
     setOcupado(true); setError(null); setReseteo(null)
     try {
-      const r = await inscribirParticipante({ organizacion_id: empresa.id, correo, nombre })
+      const r = await inscribirTrabajador({ organizacion_id: empresa.id, correo, nombre })
       setNuevo({ correo, contrasena: r.contrasena })
       setNombre(''); setCorreo('')
       await cargar()
@@ -80,7 +80,7 @@ export default function PersonasAdmin() {
   async function restablecer(fila: FilaParticipacion) {
     setNuevo(null); setError(null)
     try {
-      const r = await restablecerParticipante(fila.participante_id)
+      const r = await restablecerTrabajador(fila.trabajador_id)
       setReseteo({ codigo: fila.codigo_anonimo, contrasena: r.contrasena })
     } catch (ex) {
       setError(ex instanceof Error ? ex.message : 'No se pudo restablecer.')
@@ -90,7 +90,7 @@ export default function PersonasAdmin() {
   function confirmarBaja(fila: FilaParticipacion) {
     const ejecutar = async () => {
       setNuevo(null); setReseteo(null); setError(null)
-      try { await darDeBaja(fila.participante_id); await cargar() } catch (ex) {
+      try { await darDeBaja(fila.trabajador_id); await cargar() } catch (ex) {
         setError(ex instanceof Error ? ex.message : 'No se pudo dar de baja.')
       }
     }
@@ -281,7 +281,7 @@ export default function PersonasAdmin() {
               {enPagina.map((x) => {
                 const callada = x.en_seguimiento && x.dias_sin_responder != null && x.dias_sin_responder >= 4
                 return (
-                  <View key={x.participante_id} style={e.tablaFila}>
+                  <View key={x.trabajador_id} style={e.tablaFila}>
                     <View style={[e.fila, { flex: 2.6, flexWrap: 'nowrap' }]}>
                       <Monograma nombre={x.nombre ?? x.codigo_anonimo} />
                       <View style={{ flex: 1, minWidth: 0 }}>

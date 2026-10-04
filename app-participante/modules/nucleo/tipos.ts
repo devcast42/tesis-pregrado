@@ -2,18 +2,18 @@
 
 export type ClaveFormulario = 'estable' | 'diario' | 'semanal' | 'olbi'
 
-export type EstadoParticipante = 'activo' | 'detectado' | 'retirado' | 'finalizado'
+export type EstadoTrabajador = 'activo' | 'detectado' | 'retirado' | 'finalizado'
 
-export type Participante = {
+export type Trabajador = {
   id: string
   organizacion_id: string
   codigo_anonimo: string
-  estado: EstadoParticipante
+  estado: EstadoTrabajador
   inscrito_en: string
 }
 
 /** Un ítem de formulario. La definición vive en base de datos, no en el código
- *  (RF-002-02): en un estudio longitudinal no todos los participantes
+ *  (RF-002-02): en un estudio longitudinal no todos los trabajadores
  *  actualizan la app al mismo tiempo, y el instrumento debe ser idéntico
  *  para todos en un momento dado. */
 export type ItemDef = {

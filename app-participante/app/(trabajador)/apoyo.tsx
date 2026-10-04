@@ -1,5 +1,5 @@
 /** Apoyo — implementa ESP-004 RF-004-13 … RF-004-16.
- *  Diseño: Figma IcncrzVKVbewGGc6RkImCM, frame «Apoyo · Participante».
+ *  Diseño: Figma IcncrzVKVbewGGc6RkImCM, frame «Apoyo · Trabajador».
  *
  *  Una sola pestaña para todo lo que tiene que ver con el psicólogo: entrar
  *  a la sesión si hay una sala abierta, ver la cita pedida, o pedir una.
@@ -14,13 +14,13 @@ import {
 } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { obtenerParticipante } from '../../modules/acceso/datos'
+import { obtenerTrabajador } from '../../modules/acceso/datos'
 import { sesionDisponible, type SesionDisponible } from '../../modules/consulta/datos'
 import { abrirPdf, misResumenes, type Resumen } from '../../modules/consulta/resumen'
 import {
   cancelarCita, citaVigente, diasOfrecidos, fechaHora, horasDisponibles, misCitas, solicitarCita, type Cita,
 } from '../../modules/consulta/citas'
-import { BarraSuperior } from '../../modules/participante/piezas'
+import { BarraSuperior } from '../../modules/trabajador/piezas'
 import { Boton, Cargando } from '../../modules/nucleo/ui'
 import {
   IconoApoyo, IconoArchivo, IconoCalendario, IconoCandado, IconoCheck, IconoChevronAbajo, IconoEntrar, IconoHistorial,
@@ -43,7 +43,7 @@ export default function Apoyo() {
   const insets = useSafeAreaInsets()
 
   const cargar = useCallback(async () => {
-    const p = await obtenerParticipante()
+    const p = await obtenerTrabajador()
     if (!p) return router.replace('/')
     const [c, s, r] = await Promise.all([misCitas(), sesionDisponible(), misResumenes().catch(() => [])])
     setCitas(c)

@@ -129,8 +129,8 @@ export async function umbrales(): Promise<Umbral[]> {
   return (data ?? []) as Umbral[]
 }
 
-export async function darDeBaja(participanteId: string) {
-  const { error } = await supabase.rpc('dar_de_baja_participante', { p_participante: participanteId, p_motivo: 'salida_empresa' })
+export async function darDeBaja(trabajadorId: string) {
+  const { error } = await supabase.rpc('dar_de_baja_trabajador', { p_trabajador: trabajadorId, p_motivo: 'salida_empresa' })
   if (error) throw error
 }
 

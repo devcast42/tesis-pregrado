@@ -28,7 +28,7 @@ export type Empresa = { id: string; nombre: string; creado_en: string } & Omit<D
 
 /** La empresa con sus conteos, tal como aparece en el maestro. */
 export type FilaEmpresa = Empresa & {
-  participantes: number
+  trabajadores: number
   en_seguimiento: number
   administradores: number
 }
@@ -47,7 +47,7 @@ export type ResumenEmpresa = {
 export type Nivel = 'bajo' | 'a_vigilar' | 'alto'
 
 export type FilaParticipacion = {
-  participante_id: string
+  trabajador_id: string
   codigo_anonimo: string
   nombre: string | null
   correo_contacto: string | null
@@ -210,7 +210,7 @@ export async function resumenDeEmpresa(id: string): Promise<ResumenEmpresa | nul
 }
 
 /** Participación, nunca salud. La vista no expone el estado real del
- *  participante: `detectado`, `retirado` y `finalizado` se ven igual. */
+ *  trabajador: `detectado`, `retirado` y `finalizado` se ven igual. */
 export async function participacionDeEmpresa(id: string): Promise<FilaParticipacion[]> {
   const { data, error } = await supabase
     .from('seguimiento_empresa')
@@ -276,15 +276,15 @@ export async function cargaDePsicologos(): Promise<Record<string, number>> {
   return carga
 }
 
-// ------------------------------------------------------------- Participantes
+// ------------------------------------------------------------- Trabajadores
 
-export async function inscribirParticipante(datos: {
+export async function inscribirTrabajador(datos: {
   organizacion_id: string
   correo: string
   nombre: string
 }) {
   return invocar<{ codigo_anonimo: string; contrasena: string }>(
-    'inscribir-participante',
+    'inscribir-trabajador',
     datos,
   )
 }
@@ -296,10 +296,10 @@ export async function restablecerContrasena(authUserId: string) {
   })
 }
 
-/** Para participantes: el panel nunca ve ids de auth, los resuelve el servidor. */
-export async function restablecerParticipante(participanteId: string) {
+/** Para trabajadores: el panel nunca ve ids de auth, los resuelve el servidor. */
+export async function restablecerTrabajador(trabajadorId: string) {
   return invocar<{ contrasena: string }>('restablecer-contrasena', {
-    participante_id: participanteId,
+    trabajador_id: trabajadorId,
   })
 }
 
@@ -344,7 +344,7 @@ export type FilaDerivacion = {
 export async function listarDerivaciones(): Promise<FilaDerivacion[]> {
   const { data, error } = await supabase
     .from('derivaciones')
-    .select('id, abierta_en, cerrada_en, participantes(codigo_anonimo), psicologos(nombre)')
+    .select('id, abierta_en, cerrada_en, trabajadores(codigo_anonimo), psicologos(nombre)')
     .order('abierta_en', { ascending: false })
   if (error) throw error
 
@@ -352,7 +352,7 @@ export async function listarDerivaciones(): Promise<FilaDerivacion[]> {
     id: string
     abierta_en: string
     cerrada_en: string | null
-    participantes: { codigo_anonimo: string } | null
+    trabajadores: { codigo_anonimo: string } | null
     psicologos: { nombre: string } | null
   }
 
@@ -360,7 +360,7 @@ export async function listarDerivaciones(): Promise<FilaDerivacion[]> {
     id: d.id,
     abierta_en: d.abierta_en,
     cerrada_en: d.cerrada_en,
-    codigo_anonimo: d.participantes?.codigo_anonimo ?? '—',
+    codigo_anonimo: d.trabajadores?.codigo_anonimo ?? '—',
     psicologo: d.psicologos?.nombre ?? '—',
   }))
 }
@@ -377,7 +377,7 @@ export type FilaAuditoria = {
 export async function listarAccesosIdentidad(): Promise<FilaAuditoria[]> {
   const { data, error } = await supabase
     .from('eventos')
-    .select('id, ocurrido_en, metadata, participantes(codigo_anonimo)')
+    .select('id, ocurrido_en, metadata, trabajadores(codigo_anonimo)')
     .eq('tipo', 'acceso_identidad')
     .order('ocurrido_en', { ascending: false })
     .limit(200)
@@ -387,7 +387,7 @@ export async function listarAccesosIdentidad(): Promise<FilaAuditoria[]> {
     id: number
     ocurrido_en: string
     metadata: { psicologo_id?: string } | null
-    participantes: { codigo_anonimo: string } | null
+    trabajadores: { codigo_anonimo: string } | null
   }
   const crudas = (data ?? []) as unknown as Cruda[]
 
@@ -398,7 +398,7 @@ export async function listarAccesosIdentidad(): Promise<FilaAuditoria[]> {
   return crudas.map((ev) => ({
     id: ev.id,
     ocurrido_en: ev.ocurrido_en,
-    codigo_anonimo: ev.participantes?.codigo_anonimo ?? '—',
+    codigo_anonimo: ev.trabajadores?.codigo_anonimo ?? '—',
     psicologo: nombres.get(ev.metadata?.psicologo_id ?? '') ?? '—',
   }))
 }

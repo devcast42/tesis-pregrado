@@ -3,7 +3,7 @@
  *  Informe mensual), reproducido pieza por pieza.
  *
  *  Todo lo que se pinta aquí es agregado. Las piezas no reciben nunca un
- *  participante: reciben medias, niveles y semanas. */
+ *  trabajador: reciben medias, niveles y semanas. */
 
 import type { ReactNode } from 'react'
 import { StyleSheet, Text, View } from 'react-native'

@@ -1,4 +1,4 @@
-/** Retroalimentación al participante — implementa ESP-002 (RF-002-12, RN-002-08).
+/** Retroalimentación al trabajador — implementa ESP-002 (RF-002-12, RN-002-08).
  *
  *  El asesor pidió que el estudio le sirva a quien responde: al cerrar la
  *  semana la persona ve en qué nivel quedó y qué puede hacer. Se muestra un

@@ -1,7 +1,7 @@
 """Exploración del diario OLBI y prueba de concepto del modelo de ESP-005.
 
 Regresión logística regularizada sobre una ventana de días anteriores, validada
-por persona (GroupKFold) para que ningún participante esté a la vez en
+por persona (GroupKFold) para que ningún trabajador esté a la vez en
 entrenamiento y prueba.
 """
 import warnings

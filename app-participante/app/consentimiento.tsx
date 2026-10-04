@@ -11,7 +11,7 @@
  *
  *  Lo que no cambia, y es lo que hay que decir con todas las letras, es que
  *  la empresa no ve lo que respondiste ni lo que hablas con el psicólogo. El
- *  informe clínico es del psicólogo y del participante; entregárselo al
+ *  informe clínico es del psicólogo y del trabajador; entregárselo al
  *  empleador rompería el secreto profesional. Por eso el tercer punto está
  *  redactado en negativo: lo importante no es lo que se comparte, es lo que
  *  no. */
@@ -19,7 +19,7 @@
 import { useEffect, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
-import { obtenerParticipante } from '../modules/acceso/datos'
+import { obtenerTrabajador } from '../modules/acceso/datos'
 import { registrarDecision } from '../modules/consentimiento/datos'
 import { programarDiario, cancelarTodos } from '../modules/recoleccion/recordatorios'
 import { Boton, Parrafo, Titulo } from '../modules/nucleo/ui'
@@ -35,20 +35,20 @@ const PUNTOS = [
 ]
 
 export default function Consentimiento() {
-  const [participanteId, setParticipanteId] = useState<string | null>(null)
+  const [trabajadorId, setTrabajadorId] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [rechazado, setRechazado] = useState(false)
 
   useEffect(() => {
-    obtenerParticipante().then((p) => setParticipanteId(p?.id ?? null))
+    obtenerTrabajador().then((p) => setTrabajadorId(p?.id ?? null))
   }, [])
 
   async function decidir(aceptado: boolean) {
-    if (!participanteId) return
+    if (!trabajadorId) return
     setOcupado(true)
     try {
       // RN-001-03 — el rechazo se registra, no se omite.
-      await registrarDecision(participanteId, aceptado)
+      await registrarDecision(trabajadorId, aceptado)
       if (aceptado) {
         // El recordatorio es importante para la adherencia, pero no puede
         // bloquear la entrada al estudio: la decisión ya quedó registrada.
@@ -111,10 +111,10 @@ export default function Consentimiento() {
       </ScrollView>
 
       <View style={e.pie}>
-        <Boton onPress={() => decidir(true)} inhabilitado={!participanteId} cargando={ocupado}>
+        <Boton onPress={() => decidir(true)} inhabilitado={!trabajadorId} cargando={ocupado}>
           Acepto participar
         </Boton>
-        <Boton variante="texto" onPress={() => decidir(false)} inhabilitado={!participanteId}>
+        <Boton variante="texto" onPress={() => decidir(false)} inhabilitado={!trabajadorId}>
           No deseo participar
         </Boton>
       </View>

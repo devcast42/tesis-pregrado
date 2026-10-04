@@ -1,5 +1,5 @@
-/** Ficha del participante — implementa ESP-009 RF-009-08, RF-009-09.
- *  Diseño: Figma NsWTiSKab9HJt9b2EBz7XA «Ficha del Participante».
+/** Ficha del trabajador — implementa ESP-009 RF-009-08, RF-009-09.
+ *  Diseño: Figma NsWTiSKab9HJt9b2EBz7XA «Ficha del Trabajador».
  *
  *  La pantalla contesta, en este orden: qué le pasa a esta persona, qué se
  *  ha hecho, y con qué pruebas. Antes empezaba por la prueba —una matriz de
@@ -20,8 +20,8 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { Panel } from '../../../modules/panel/Sidebar'
 import { conFiltro, useFiltro } from '../../../modules/investigador/filtro'
 import {
-  calendario, cerrarSeguimiento, citasDelParticipante, definiciones, ficha as cargarFicha, fechaCorta, fechaHoraPET, isoLocal, lineaTiempo, lunesDe,
-  olbiSemanal, participantes as listar, predicciones, respuestasConItems, serieDiaria, verIdentidad,
+  calendario, cerrarSeguimiento, citasDelTrabajador, definiciones, ficha as cargarFicha, fechaCorta, fechaHoraPET, isoLocal, lineaTiempo, lunesDe,
+  olbiSemanal, trabajadores as listar, predicciones, respuestasConItems, serieDiaria, verIdentidad,
   type CitaEstudio, type DefinicionItem, type DiaSerie, type Envio, type Ficha, type Hito, type OlbiSemana, type Prediccion, type RespuestaConItems,
 } from '../../../modules/investigador/panel'
 import { aCsv, descargarTexto } from '../../../modules/investigador/exportar'
@@ -48,7 +48,7 @@ const SECCIONES = [
   { id: 'linea', titulo: 'Todo lo que pasó, en orden' },
 ]
 
-export default function FichaParticipante() {
+export default function FichaTrabajador() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { filtro } = useFiltro()
   const { width } = useWindowDimensions()
@@ -73,7 +73,7 @@ export default function FichaParticipante() {
     if (!id) return
     const [fi, ca, se, ol, pr, re, de, li, ci, lista] = await Promise.all([
       cargarFicha(id), calendario(id), serieDiaria(id), olbiSemanal(id), predicciones(id), respuestasConItems(id), definiciones(), lineaTiempo(id),
-      citasDelParticipante(id).catch(() => [] as CitaEstudio[]), listar(filtro).catch(() => []),
+      citasDelTrabajador(id).catch(() => [] as CitaEstudio[]), listar(filtro).catch(() => []),
     ])
     setF(fi); setEnvios(ca); setSerie(se); setOlbi(ol); setPreds(pr); setRespuestas(re); setDefs(de); setHitos(li); setCitas(ci)
     const i = lista.findIndex((x) => x.id === id)
@@ -93,7 +93,7 @@ export default function FichaParticipante() {
   const semanaActual = Math.min(semanaReal, SEMANAS_ESTUDIO)
   const detectadoEn = f.deteccion ? semanaDe(f.inscrito_en, f.deteccion.ocurrido_en) : null
   const cal = construirCalendario(f, envios)
-  // `f.cita` llega siempre en nulo (ver `citasDelParticipante`); estas salen
+  // `f.cita` llega siempre en nulo (ver `citasDelTrabajador`); estas salen
   // de `citas_estudio`, que es lo que el investigador sí puede leer.
   const citaPendiente = citas.find((c) => c.estado === 'solicitada' || c.estado === 'confirmada') ?? null
   const citaPasada = citas.find((c) => c.estado === 'atendida') ?? null
@@ -126,7 +126,7 @@ export default function FichaParticipante() {
   async function abrirIdentidad() {
     confirmar('Ver quién es', 'Queda registrado: este acceso aparecerá en la línea de tiempo de la persona y en la auditoría del estudio, con la hora y tu nombre. ¿Seguimos?', async () => {
       try {
-        const id = await verIdentidad(f!.participante_id)
+        const id = await verIdentidad(f!.trabajador_id)
         // Sin fila en `identidades` no hay error: la consulta responde vacío.
         // Decirlo tal cual, que es distinto de «no se pudo».
         if (!id) return aviso('No hay nombre guardado', `${f!.codigo_anonimo} no tiene nombre ni correo en el sistema. El acceso quedó registrado igualmente.`)
@@ -147,7 +147,7 @@ export default function FichaParticipante() {
   }
   function cerrar() {
     confirmar('Cerrar el seguimiento', `${f!.codigo_anonimo} pasará a «finalizado» y dejará de recibir check-ins. Sus respuestas se conservan, y si tiene una derivación abierta sigue su curso. Motivo: fin de estudio.`, async () => {
-      try { await cerrarSeguimiento(f!.participante_id, 'fin_de_estudio'); cargar() } catch (e) { aviso('No se pudo cerrar', mensajeDe(e)) }
+      try { await cerrarSeguimiento(f!.trabajador_id, 'fin_de_estudio'); cargar() } catch (e) { aviso('No se pudo cerrar', mensajeDe(e)) }
     })
   }
 
@@ -156,14 +156,14 @@ export default function FichaParticipante() {
       <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={e.contenido}>
         {/* Volver y moverse por la lista: arriba del todo, fuera de la tarjeta. */}
         <View style={[e.fila, { justifyContent: 'space-between' }]}>
-          <Pressable onPress={() => router.push(conFiltro('/investigador/participantes', filtro) as never)} style={[e.fila, { gap: 6 }]} accessibilityRole="link">
+          <Pressable onPress={() => router.push(conFiltro('/investigador/trabajadores', filtro) as never)} style={[e.fila, { gap: 6 }]} accessibilityRole="link">
             <IconoVolver tamano={13} color={color.textoMedio} />
-            <Text style={[texto.dato, { color: color.textoMedio }]}>Volver a participantes</Text>
+            <Text style={[texto.dato, { color: color.textoMedio }]}>Volver a trabajadores</Text>
           </Pressable>
           <View style={[e.fila, { gap: 6 }]}>
-            <BotonChico onPress={() => vecinos.anterior && router.replace(conFiltro(`/investigador/participante/${vecinos.anterior}`, filtro) as never)}>‹ Anterior</BotonChico>
+            <BotonChico onPress={() => vecinos.anterior && router.replace(conFiltro(`/investigador/trabajador/${vecinos.anterior}`, filtro) as never)}>‹ Anterior</BotonChico>
             <Text style={[texto.dato, { color: color.textoMedio }]}>{vecinos.posicion} de {vecinos.total}</Text>
-            <BotonChico onPress={() => vecinos.siguiente && router.replace(conFiltro(`/investigador/participante/${vecinos.siguiente}`, filtro) as never)}>Siguiente ›</BotonChico>
+            <BotonChico onPress={() => vecinos.siguiente && router.replace(conFiltro(`/investigador/trabajador/${vecinos.siguiente}`, filtro) as never)}>Siguiente ›</BotonChico>
           </View>
         </View>
 

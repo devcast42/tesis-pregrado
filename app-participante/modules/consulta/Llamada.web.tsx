@@ -168,7 +168,7 @@ export function Llamada({ url, token, onSalir, etiqueta, grabando }: PropsLlamad
               style: { width: '100%', height: '100%', objectFit: 'cover', transform: !grandeEsPropia ? 'scaleX(-1)' : undefined, display: chicaTieneVideo ? 'block' : 'none' },
             })}
             {!chicaTieneVideo && <View style={[estilos.centro, { backgroundColor: '#2A2E33' }]}><IconoVideoTachado tamano={20} color="rgba(255,255,255,0.6)" /></View>}
-            <Text style={estilos.miniaturaEtiqueta}>{grandeEsPropia ? (etiqueta ?? 'Participante') : 'Tú'}</Text>
+            <Text style={estilos.miniaturaEtiqueta}>{grandeEsPropia ? (etiqueta ?? 'Trabajador') : 'Tú'}</Text>
           </Pressable>
         </View>
 

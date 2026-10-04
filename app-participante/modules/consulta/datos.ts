@@ -46,24 +46,24 @@ export async function obtenerSesion(sesionId: string) {
 export type SesionDisponible = {
   id: string
   iniciada_en: string
-  consentimiento_participante: boolean
+  consentimiento_trabajador: boolean
 }
 
-/** La sesión de apoyo abierta del participante, si la hay.
+/** La sesión de apoyo abierta del trabajador, si la hay.
  *
- *  RLS acota a las propias (política "participante ve su sesion"), así que no
- *  hace falta filtrar por participante. Se toma la más reciente sin
+ *  RLS acota a las propias (política "trabajador ve su sesion"), así que no
+ *  hace falta filtrar por trabajador. Se toma la más reciente sin
  *  finalizar. Null significa que no hay nada que ofrecer, y la pantalla
  *  principal simplemente no muestra la tarjeta —sin explicar por qué. */
 export async function sesionDisponible(): Promise<SesionDisponible | null> {
   // Solo una sala viva de verdad: de las últimas tres horas. Una sala que
   // nadie cerró ayer no es una invitación a entrar (la base la marca como
   // finalizada de todos modos, ver `cerrar_sesiones_huerfanas`). No se filtra
-  // por derivación abierta porque el participante no lee `derivaciones`.
+  // por derivación abierta porque el trabajador no lee `derivaciones`.
   const hace3h = new Date(Date.now() - 3 * 3_600_000).toISOString()
   const { data } = await supabase
     .from('sesiones_consulta')
-    .select('id, iniciada_en, consentimiento_participante')
+    .select('id, iniciada_en, consentimiento_trabajador')
     .is('finalizada_en', null)
     .gte('iniciada_en', hace3h)
     .order('iniciada_en', { ascending: false })

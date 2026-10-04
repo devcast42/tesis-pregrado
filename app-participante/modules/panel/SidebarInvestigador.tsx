@@ -26,7 +26,7 @@ const SECCIONES: Seccion[] = [
   { ruta: '/investigador/hoy', titulo: 'Hoy', grupo: 'ESTUDIO', icono: (c) => <IconoReloj tamano={16} color={c} />, badge: true },
   { ruta: '/investigador', titulo: 'Resumen', grupo: 'ESTUDIO', icono: (c) => <IconoBarras tamano={16} color={c} /> },
   { ruta: '/investigador/cohorte', titulo: 'Cohorte', grupo: 'ESTUDIO', icono: (c) => <IconoEquipo tamano={16} color={c} /> },
-  { ruta: '/investigador/participantes', titulo: 'Participantes', grupo: 'PERSONAS', icono: (c) => <IconoCredencial tamano={16} color={c} /> },
+  { ruta: '/investigador/trabajadores', titulo: 'Trabajadores', grupo: 'PERSONAS', icono: (c) => <IconoCredencial tamano={16} color={c} /> },
   { ruta: '/investigador/derivaciones', titulo: 'Derivaciones', grupo: 'PERSONAS', icono: (c) => <IconoNota tamano={16} color={c} /> },
   { ruta: '/investigador/versiones', titulo: 'Versiones', grupo: 'MODELO', icono: (c) => <IconoAjustes tamano={15} color={c} /> },
   { ruta: '/investigador/desempeno', titulo: 'Desempeño', grupo: 'MODELO', icono: (c) => <IconoGrafica tamano={16} color={c} /> },
@@ -253,7 +253,7 @@ function Buscador({ visible, onCerrar }: { visible: boolean; onCerrar: () => voi
   const buscar = useCallback(async (t: string) => {
     setQ(t)
     if (t.trim().length < 2) return setResultados([])
-    const { data } = await supabase.from('panel_participantes_v2').select('id, codigo_anonimo, organizacion, estado').ilike('codigo_anonimo', `%${t.trim()}%`).limit(8)
+    const { data } = await supabase.from('panel_trabajadores_v2').select('id, codigo_anonimo, organizacion, estado').ilike('codigo_anonimo', `%${t.trim()}%`).limit(8)
     setResultados((data ?? []) as any)
   }, [])
   if (!visible) return null
@@ -265,11 +265,11 @@ function Buscador({ visible, onCerrar }: { visible: boolean; onCerrar: () => voi
             <IconoLupa tamano={18} color={color.textoMedio} />
             <TextInput autoFocus value={q} onChangeText={buscar} placeholder="Buscar por código (ej. P-042)" placeholderTextColor={color.textoSuave}
               style={[texto.cuerpo, { flex: 1, color: color.texto, paddingVertical: 8 }]} autoCapitalize="characters" autoCorrect={false}
-              onSubmitEditing={() => { if (resultados[0]) { onCerrar(); router.push(conFiltro(`/investigador/participante/${resultados[0].id}`, filtro) as never) } }} />
+              onSubmitEditing={() => { if (resultados[0]) { onCerrar(); router.push(conFiltro(`/investigador/trabajador/${resultados[0].id}`, filtro) as never) } }} />
             <View style={e.kbd}><Text style={[texto.dato, { color: color.textoMedio, fontSize: 10 }]}>ESC</Text></View>
           </View>
           {resultados.map((r) => (
-            <Pressable key={r.id} onPress={() => { onCerrar(); router.push(conFiltro(`/investigador/participante/${r.id}`, filtro) as never) }} style={e.resultado}>
+            <Pressable key={r.id} onPress={() => { onCerrar(); router.push(conFiltro(`/investigador/trabajador/${r.id}`, filtro) as never) }} style={e.resultado}>
               <Text style={[e.mono, { color: color.primarioProfundo, fontWeight: '600' }]}>{r.codigo_anonimo}</Text>
               <Text style={[texto.apoyo, { color: color.texto, flex: 1 }]}>{r.organizacion}</Text>
               <Text style={[texto.dato, { color: color.textoMedio }]}>{r.estado}</Text>

@@ -1,4 +1,4 @@
-/** Piezas de la pantalla principal del participante.
+/** Piezas de la pantalla principal del trabajador.
  *
  *  Implementan el diseño de Figma (archivo H3QiUxtgPeSzpbeIyBfWpk, nodos 1:2
  *  y 1:138). Las medidas, radios y colores vienen de ahí; los textos que el
@@ -54,7 +54,7 @@ export function Saludo({
           {`${fecha} · SEMANA ${semana}`.toUpperCase()}
         </Text>
         <Pressable onPress={onAjustes} accessibilityRole="button"
-          accessibilityLabel={`Ajustes de participante ${codigo}`} style={e.pastillaCodigo}>
+          accessibilityLabel={`Ajustes de trabajador ${codigo}`} style={e.pastillaCodigo}>
           <Text style={[texto.etiqueta, { color: color.textoMedio }]}>{codigo}</Text>
           <IconoAjustes tamano={13.5} color={color.textoMedio} />
         </Pressable>
@@ -350,7 +350,7 @@ export function PieEtico({ codigo, onAjustes }: { codigo: string; onAjustes: () 
       <View style={e.pieFila}>
         <IconoCandado tamano={14} color={color.textoMedio} />
         <Text style={[texto.apoyo, e.pieTexto]}>
-          Tu código de participante: {codigo} · Datos protegidos y disociados
+          Tu código de trabajador: {codigo} · Datos protegidos y disociados
         </Text>
       </View>
       <Pressable onPress={onAjustes} accessibilityRole="link" style={e.pieEnlace}>

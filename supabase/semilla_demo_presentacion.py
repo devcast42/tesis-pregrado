@@ -28,7 +28,7 @@ Uso:
     modelo/exploracion/venv/bin/python supabase/semilla_demo_presentacion.py
     modelo/exploracion/venv/bin/python supabase/semilla_demo_presentacion.py --limpiar
 
-`--limpiar` deja la base sin participantes ni empresas, lista para recibir datos
+`--limpiar` deja la base sin trabajadores ni empresas, lista para recibir datos
 reales. Las cuentas de acceso, los psicólogos, los formularios y las versiones
 del modelo no se tocan nunca.
 """
@@ -55,7 +55,7 @@ TZ = timezone(timedelta(hours=-5))
 # Cuenta que atiende las derivaciones y cuenta que administra la empresa mayor.
 PSICOLOGO = 'test+psicologo@tesis.local'
 ADMIN = 'test+admin@tesis.local'
-# Participante con cuenta real: permite entrar a la app en vivo y encontrar a
+# Trabajador con cuenta real: permite entrar a la app en vivo y encontrar a
 # esa misma persona en el panel del investigador.
 PARTICIPANTE_EN_VIVO = 'user.prueba2@gmail.com'
 
@@ -93,17 +93,17 @@ EMPRESAS = [
 ]
 
 TRANSCRIPCION = """Psicólogo: Cuéntame cómo han sido estas últimas semanas.
-Participante: Pesadas. Entramos en el cierre de una versión y me quedo hasta tarde casi todos los días.
+Trabajador: Pesadas. Entramos en el cierre de una versión y me quedo hasta tarde casi todos los días.
 Psicólogo: ¿Y cuando cierras la laptop, logras desconectar?
-Participante: La verdad no. Me quedo dándole vueltas, y si entra una alerta de producción la reviso igual. La semana pasada me llamaron dos veces de madrugada.
+Trabajador: La verdad no. Me quedo dándole vueltas, y si entra una alerta de producción la reviso igual. La semana pasada me llamaron dos veces de madrugada.
 Psicólogo: ¿Cómo está tu descanso?
-Participante: Duermo unas cinco horas. Me levanto cansado incluso antes de empezar.
+Trabajador: Duermo unas cinco horas. Me levanto cansado incluso antes de empezar.
 Psicólogo: ¿Has podido hablar de esta carga con tu líder?
-Participante: Se lo comenté una vez. Me dijo que después del cierre bajaría el ritmo, pero el cierre se ha ido moviendo.
+Trabajador: Se lo comenté una vez. Me dijo que después del cierre bajaría el ritmo, pero el cierre se ha ido moviendo.
 Psicólogo: ¿Qué cosas te ayudan cuando logras parar?
-Participante: Salir a correr, y los fines de semana cuando de verdad me desconecto. Pero últimamente trabajo también el sábado.
+Trabajador: Salir a correr, y los fines de semana cuando de verdad me desconecto. Pero últimamente trabajo también el sábado.
 Psicólogo: Te propongo dos cosas concretas para esta semana. Una hora fija de cierre, y hablar con tu líder de la rotación de guardias.
-Participante: Lo de la hora fija lo puedo intentar. Lo de las guardias también, aunque me da algo de reparo.
+Trabajador: Lo de la hora fija lo puedo intentar. Lo de las guardias también, aunque me da algo de reparo.
 Psicólogo: Lo vemos la próxima sesión y ajustamos."""
 
 BORRADOR = {
@@ -158,7 +158,7 @@ def conectar():
 
 
 def limpiar(cx, borrar_empresas: bool) -> tuple[int, list]:
-    """Borra todo lo que genera un participante.
+    """Borra todo lo que genera un trabajador.
 
     NO toca cuentas de acceso, psicólogos, formularios, versiones del modelo ni
     umbrales.
@@ -167,14 +167,14 @@ def limpiar(cx, borrar_empresas: bool) -> tuple[int, list]:
     administrador no puede quedarse sin empresa (`admin_pertenece_a_empresa`),
     así que primero se crean las nuevas, se reapunta al admin y recién entonces
     se retiran las anteriores. `borrar_empresas` es para el borrado total."""
-    n = cx.execute("select count(*) from participantes").fetchone()[0]
+    n = cx.execute("select count(*) from trabajadores").fetchone()[0]
     # Borrado por tabla completa, no por lista de identificadores: todas estas
-    # tablas cuelgan de `participantes` y se van enteras. Filtrar por un arreglo
+    # tablas cuelgan de `trabajadores` y se van enteras. Filtrar por un arreglo
     # de miles de ids hace que el borrado tarde más que el propio sembrado.
-    for tabla in ('resumenes_participante', 'informes', 'transcripciones',
+    for tabla in ('resumenes_trabajador', 'informes', 'transcripciones',
                   'sesiones_consulta', 'citas', 'derivaciones',
                   'respuestas_items', 'respuestas', 'eventos',
-                  'consentimientos', 'identidades', 'participantes'):
+                  'consentimientos', 'identidades', 'trabajadores'):
         cx.execute(f'delete from {tabla}')
 
     viejas = [r[0] for r in cx.execute("select id from organizaciones").fetchall()]
@@ -232,13 +232,13 @@ def main() -> None:
     n_part, viejas = limpiar(cx, borrar_empresas=args.limpiar)
     if args.limpiar:
         cx.commit()
-        print(f'base limpia: {n_part} participantes retirados, sin empresas.')
+        print(f'base limpia: {n_part} trabajadores retirados, sin empresas.')
         print('Se conservan cuentas de acceso, psicólogos, formularios, versiones del')
         print('modelo y umbrales. El rol de administrador habrá que volver a asignarlo')
         print('cuando exista una empresa.')
         return
     if n_part or viejas:
-        print(f'se retiraron {n_part} participantes y {len(viejas)} empresas anteriores\n')
+        print(f'se retiraron {n_part} trabajadores y {len(viejas)} empresas anteriores\n')
 
     psi = cx.execute("""select p.id from psicologos p join auth.users u on u.id = p.auth_user_id
                         where u.email = %s""", (PSICOLOGO,)).fetchone()
@@ -275,7 +275,7 @@ def main() -> None:
             codigo = f"{emp['prefijo']}-{k:03d}"
             cruza = any(s['alto'] for s in ss)
             auth = cuenta_viva[0] if (emp['admin'] and k == 1 and cuenta_viva) else None
-            pid = escribir_participante(cx, org, codigo, auth, lunes0, p, ss, cruza,
+            pid = escribir_trabajador(cx, org, codigo, auth, lunes0, p, ss, cruza,
                                         rng, en_vivo=auth is not None)
             creados.append({'pid': pid, 'codigo': codigo, 'cruza': cruza,
                             'empresa': emp['nombre'], 'lunes0': lunes0, 'semanas': emp['semanas'],
@@ -298,7 +298,7 @@ def main() -> None:
     n_pred = predicciones(cx, todos)
     cx.commit()
 
-    print(f"\n{len(todos)} participantes en {len(EMPRESAS)} empresas.")
+    print(f"\n{len(todos)} trabajadores en {len(EMPRESAS)} empresas.")
     for c in todos:
         if c['etapa']:
             print(f"  {c['codigo']:7s} {c['empresa']:18s} detectado -> {c['etapa']}")
@@ -308,13 +308,13 @@ def main() -> None:
     print(f"  admin {ADMIN} -> {EMPRESAS[0]['nombre']}")
 
 
-def escribir_participante(cx, org, codigo, auth_user_id, lunes0, persona, semanas, cruza,
+def escribir_trabajador(cx, org, codigo, auth_user_id, lunes0, persona, semanas, cruza,
                           rng, en_vivo: bool = False) -> str:
     estado = 'detectado' if cruza else 'activo'
     # La inscripción es el lunes de la primera semana, no antes: si cayera en
     # un viernes previo, el panel contaría ese viernes como un OLBI omitido.
     inscrito = datetime.combine(lunes0, datetime.min.time(), TZ) + timedelta(hours=9)
-    pid = cx.execute("""insert into participantes (organizacion_id, auth_user_id, codigo_anonimo, estado, inscrito_en)
+    pid = cx.execute("""insert into trabajadores (organizacion_id, auth_user_id, codigo_anonimo, estado, inscrito_en)
                         values (%s, %s, %s, %s, %s) returning id""",
                      (org, auth_user_id, codigo, estado, inscrito)).fetchone()[0]
 
@@ -327,14 +327,14 @@ def escribir_participante(cx, org, codigo, auth_user_id, lunes0, persona, semana
     # la persona que está delante.
     if en_vivo:
         correo = PARTICIPANTE_EN_VIVO
-    cx.execute("""insert into identidades (participante_id, nombre, correo_contacto, registrado_en)
+    cx.execute("""insert into identidades (trabajador_id, nombre, correo_contacto, registrado_en)
                   values (%s, %s, %s, %s)""", (pid, nombre, correo, inscrito))
 
-    cx.execute("insert into eventos (participante_id, tipo, ocurrido_en) values (%s, 'inicio_seguimiento', %s)",
+    cx.execute("insert into eventos (trabajador_id, tipo, ocurrido_en) values (%s, 'inicio_seguimiento', %s)",
                (pid, inscrito))
     # Sin consentimiento la app manda a la pantalla de consentir y el panel lo
     # marca como pendiente (ESP-001).
-    cx.execute("""insert into consentimientos (participante_id, version_texto, aceptado, registrado_en)
+    cx.execute("""insert into consentimientos (trabajador_id, version_texto, aceptado, registrado_en)
                   values (%s, 'v2-2026-09', true, %s)""", (pid, inscrito))
     insertar(cx, pid, 'estable', 1, inscrito,
              {**persona['estable'], 'rol': persona['rol'], 'modalidad': persona['modalidad']})
@@ -363,7 +363,7 @@ def escribir_participante(cx, org, codigo, auth_user_id, lunes0, persona, semana
         insertar(cx, pid, 'olbi', 2, viernes + timedelta(minutes=6), s['olbi'])
         if s['alto']:
             detectado_en = viernes + timedelta(minutes=8)
-            ev = cx.execute("""insert into eventos (participante_id, tipo, ocurrido_en, metadata)
+            ev = cx.execute("""insert into eventos (trabajador_id, tipo, ocurrido_en, metadata)
                                values (%s, 'deteccion', %s, %s) returning id""",
                             (pid, detectado_en, psycopg.types.json.Jsonb({
                                 'metodo': 'olbi_umbral',
@@ -388,7 +388,7 @@ def insertar(cx, pid, clave, version, cuando, valores: dict) -> None:
 
 def volcar(cx) -> tuple[int, int]:
     with cx.cursor() as cur:
-        cur.executemany("""insert into respuestas (id, participante_id, formulario_clave, formulario_version, iniciado_en, enviado_en)
+        cur.executemany("""insert into respuestas (id, trabajador_id, formulario_clave, formulario_version, iniciado_en, enviado_en)
                            values (%s, %s, %s, %s, %s, %s)""", _respuestas)
         cur.executemany("""insert into respuestas_items (respuesta_id, item_clave, valor_num, valor_texto)
                            values (%s, %s, %s, %s)""", _items)
@@ -401,10 +401,10 @@ def circuito(cx, c, psi, etapa: str) -> None:
     pid = c['pid']
     evento_id, detectado_en = deteccion_de.get(str(pid), (None, datetime.now(TZ)))
 
-    deriv = cx.execute("""insert into derivaciones (participante_id, psicologo_id, evento_deteccion_id, abierta_en, origen)
+    deriv = cx.execute("""insert into derivaciones (trabajador_id, psicologo_id, evento_deteccion_id, abierta_en, origen)
                           values (%s, %s, %s, %s, 'deteccion') returning id""",
                        (pid, psi, evento_id, detectado_en + timedelta(minutes=2))).fetchone()[0]
-    cx.execute("""insert into eventos (participante_id, tipo, ocurrido_en, metadata)
+    cx.execute("""insert into eventos (trabajador_id, tipo, ocurrido_en, metadata)
                   values (%s, 'derivacion_psicologo', %s, %s)""",
                (pid, detectado_en + timedelta(minutes=2),
                 psycopg.types.json.Jsonb({'derivacion_id': str(deriv)})))
@@ -415,7 +415,7 @@ def circuito(cx, c, psi, etapa: str) -> None:
     # y `obtener_identidad` lo deja anotado. Es la única forma de que existan
     # datos personales a la vista, y lo que llena la pantalla de Auditoría.
     # Solo desde `cita_solicitada`: quien sigue «sin cita» aún no ha contactado.
-    cx.execute("""insert into eventos (participante_id, tipo, ocurrido_en, metadata)
+    cx.execute("""insert into eventos (trabajador_id, tipo, ocurrido_en, metadata)
                   values (%s, 'acceso_identidad', %s, %s)""",
                (pid, detectado_en + timedelta(hours=2),
                 psycopg.types.json.Jsonb({'psicologo_id': str(psi), 'por': 'psicologo',
@@ -423,12 +423,12 @@ def circuito(cx, c, psi, etapa: str) -> None:
 
     para = (detectado_en + timedelta(days=3)).replace(hour=16, minute=0, second=0, microsecond=0)
     estado_cita = 'solicitada' if etapa == 'cita_solicitada' else 'confirmada'
-    cita = cx.execute("""insert into citas (participante_id, derivacion_id, psicologo_id, propuesta_para, motivo, estado, creada_en)
+    cita = cx.execute("""insert into citas (trabajador_id, derivacion_id, psicologo_id, propuesta_para, motivo, estado, creada_en)
                          values (%s, %s, %s, %s, %s, %s, %s) returning id""",
                       (pid, deriv, psi, para,
                        'Quisiera hablar de la carga de estas semanas y de cómo estoy durmiendo.',
                        estado_cita, detectado_en + timedelta(hours=3))).fetchone()[0]
-    cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'cita_solicitada', %s, %s)",
+    cx.execute("insert into eventos (trabajador_id, tipo, ocurrido_en, metadata) values (%s, 'cita_solicitada', %s, %s)",
                (pid, detectado_en + timedelta(hours=3), psycopg.types.json.Jsonb({'cita_id': str(cita)})))
 
     # Confirmar la cita deja su propio hito. En la app lo escribe
@@ -442,26 +442,26 @@ def circuito(cx, c, psi, etapa: str) -> None:
     # sesiones hechas. El embudo del Resumen contaba cero citas por lo mismo.
     if etapa != 'cita_solicitada':
         confirmada_en = detectado_en + timedelta(hours=5)
-        cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'cita_confirmada', %s, %s)",
+        cx.execute("insert into eventos (trabajador_id, tipo, ocurrido_en, metadata) values (%s, 'cita_confirmada', %s, %s)",
                    (pid, confirmada_en, psycopg.types.json.Jsonb({'cita_id': str(cita)})))
     if etapa in ('cita_solicitada', 'cita_confirmada'):
         return
 
     inicio, fin = para, para + timedelta(minutes=38)
-    ses = cx.execute("""insert into sesiones_consulta (derivacion_id, consentimiento_participante, consentimiento_psicologo, sala_livekit, iniciada_en, finalizada_en)
+    ses = cx.execute("""insert into sesiones_consulta (derivacion_id, consentimiento_trabajador, consentimiento_psicologo, sala_livekit, iniciada_en, finalizada_en)
                         values (%s, true, true, %s, %s, %s) returning id""",
                      (deriv, f'demo-{uuid.uuid4().hex[:12]}', inicio, fin)).fetchone()[0]
     # Los dos hitos que la app registra y de los que vive `circuito_apoyo`.
-    cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'sesion_iniciada', %s, %s)",
+    cx.execute("insert into eventos (trabajador_id, tipo, ocurrido_en, metadata) values (%s, 'sesion_iniciada', %s, %s)",
                (pid, inicio, psycopg.types.json.Jsonb({'sesion_id': str(ses)})))
-    cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'sesion_realizada', %s, %s)",
+    cx.execute("insert into eventos (trabajador_id, tipo, ocurrido_en, metadata) values (%s, 'sesion_realizada', %s, %s)",
                (pid, fin, psycopg.types.json.Jsonb({'sesion_id': str(ses)})))
     cx.execute("update citas set estado = 'atendida' where id = %s", (cita,))
 
     tr = cx.execute("""insert into transcripciones (sesion_id, estado, texto, proveedor, creada_en, generada_en, borrar_despues_de, etapa)
                        values (%s, 'lista', %s, 'deepgram-nova-3', %s, %s, %s, 'informe_listo') returning id""",
                     (ses, TRANSCRIPCION, fin, fin + timedelta(minutes=2), fin + timedelta(days=30))).fetchone()[0]
-    cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'transcripcion_lista', %s, %s)",
+    cx.execute("insert into eventos (trabajador_id, tipo, ocurrido_en, metadata) values (%s, 'transcripcion_lista', %s, %s)",
                (pid, fin + timedelta(minutes=2), psycopg.types.json.Jsonb({'sesion_id': str(ses)})))
 
     aprobado = etapa == 'completo'
@@ -473,20 +473,20 @@ def circuito(cx, c, psi, etapa: str) -> None:
                       fin + timedelta(minutes=3),
                       psi if aprobado else None,
                       fin + timedelta(hours=2) if aprobado else None)).fetchone()[0]
-    cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'informe_generado', %s, %s)",
+    cx.execute("insert into eventos (trabajador_id, tipo, ocurrido_en, metadata) values (%s, 'informe_generado', %s, %s)",
                (pid, fin + timedelta(minutes=3), psycopg.types.json.Jsonb({'informe_id': str(inf)})))
     if aprobado:
         # El disparador `informes_evento_aprobado` escucha UPDATE; aquí el
         # informe nace ya aprobado, así que el hito se registra a mano.
-        cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'informe_aprobado', %s, %s)",
+        cx.execute("insert into eventos (trabajador_id, tipo, ocurrido_en, metadata) values (%s, 'informe_aprobado', %s, %s)",
                    (pid, fin + timedelta(hours=2),
                     psycopg.types.json.Jsonb({'informe_id': str(inf), 'sesion_id': str(ses)})))
         # Aprobar cierra el acompañamiento: el psicólogo deja de ver a la
         # persona (RF-006-06) y el circuito queda completo de punta a punta.
         cx.execute("update derivaciones set cerrada_en = %s where id = %s",
                    (fin + timedelta(hours=2, minutes=5), deriv))
-        cx.execute("update participantes set estado = 'finalizado' where id = %s", (pid,))
-        cx.execute("insert into eventos (participante_id, tipo, ocurrido_en, metadata) values (%s, 'salida_seguimiento', %s, %s)",
+        cx.execute("update trabajadores set estado = 'finalizado' where id = %s", (pid,))
+        cx.execute("insert into eventos (trabajador_id, tipo, ocurrido_en, metadata) values (%s, 'salida_seguimiento', %s, %s)",
                    (pid, fin + timedelta(hours=2, minutes=5),
                     psycopg.types.json.Jsonb({'motivo': 'acompañamiento completado'})))
 
@@ -515,7 +515,7 @@ def predicciones(cx, todos: list) -> int:
                     z += float(pesos[i]) * (float(x[nombre]) - float(medias[i])) / float(desv[i])
                 prob = round(1 / (1 + np.exp(-z)), 3)
                 cuando = datetime.combine(ref, datetime.min.time(), TZ) + timedelta(hours=18, minutes=30)
-                cx.execute("""insert into eventos (participante_id, tipo, ocurrido_en, metadata)
+                cx.execute("""insert into eventos (trabajador_id, tipo, ocurrido_en, metadata)
                               values (%s, 'prediccion_modelo', %s, %s)""",
                            (c['pid'], cuando, psycopg.types.json.Jsonb({
                                'version': version, 'tarea': tarea, 'dia': ref.isoformat(),

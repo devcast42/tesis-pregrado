@@ -4,7 +4,7 @@
  *  Funciona porque react-native-web mapea las llamadas de React al DOM real,
  *  y createElement('svg', ...) produce un elemento SVG válido en web.
  *
- *  No se usa en la app móvil del participante: el panel del investigador
+ *  No se usa en la app móvil del trabajador: el panel del investigador
  *  corre solo en web. Si se llama desde nativo, muestra un placeholder. */
 
 import { createElement, type ReactNode } from 'react'

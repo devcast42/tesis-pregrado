@@ -123,7 +123,7 @@ export function DialogoEmpresa({ onCerrar, onCreada }: { onCerrar: () => void; o
             <Campo icono={<IconoCorreo tamano={15} color={color.primarioProfundo} />} rotulo="Su correo"
               valor={d.contacto_correo ?? ''} onChange={(v) => set('contacto_correo', v)} placeholder="nombre@empresa.pe"
               invalido={correoRaro} aviso={correoRaro ? 'Ese correo no parece válido.' : undefined}
-              apoyo="Contacto de la empresa, no de un participante. También lo ve el psicólogo de un caso abierto." />
+              apoyo="Contacto de la empresa, no de un trabajador. También lo ve el psicólogo de un caso abierto." />
 
             <Campo icono={<IconoNota tamano={15} color={color.primarioProfundo} />} rotulo="Notas"
               valor={d.notas ?? ''} onChange={(v) => set('notas', v)} placeholder="Lo que convenga recordar del convenio" multilinea />

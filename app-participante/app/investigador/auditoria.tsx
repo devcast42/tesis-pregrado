@@ -2,7 +2,7 @@
  *  Diseño: Figma 2IqfFSK20uCzmuMg6SvaUZ «Auditoría · Investigador Principal».
  *
  *  La pantalla responde una sola pregunta: ¿alguien abrió la identidad de un
- *  participante sin tener una derivación abierta que lo justifique? Por eso
+ *  trabajador sin tener una derivación abierta que lo justifique? Por eso
  *  arriba va el veredicto —verde o ámbar, con el número y el botón para ver
  *  justo esos casos— y debajo el registro completo.
  *
@@ -31,23 +31,23 @@ const MONO = Platform.OS === 'web' ? 'ui-monospace, SFMono-Regular, Menlo, monos
 const TIERRA = '#8C4A2B'
 
 type Acceso = {
-  id: number; ocurrido_en: string; participante_id: string; codigo_anonimo: string; organizacion_id: string
+  id: number; ocurrido_en: string; trabajador_id: string; codigo_anonimo: string; organizacion_id: string
   por: 'psicologo' | 'investigador'; psicologo_id: string | null; operador: string; motivo: string | null
   con_derivacion: boolean; derivacion_codigo: string | null
 }
 
 async function cargarAccesos(psicologos: Psicologo[], circuito: CircuitoApoyo[]): Promise<Acceso[]> {
-  const { data } = await supabase.from('eventos').select('id, ocurrido_en, participante_id, metadata, participantes(codigo_anonimo, organizacion_id)')
+  const { data } = await supabase.from('eventos').select('id, ocurrido_en, trabajador_id, metadata, trabajadores(codigo_anonimo, organizacion_id)')
     .eq('tipo', 'acceso_identidad').order('ocurrido_en', { ascending: false }).limit(500)
   const nombres = new Map(psicologos.map((p) => [p.id, p.nombre]))
   return ((data ?? []) as any[]).map((ev) => {
     const m = ev.metadata ?? {}
     const por: Acceso['por'] = m.por === 'investigador' ? 'investigador' : 'psicologo'
-    // Había derivación abierta en ese momento si alguna del participante la cubre en el tiempo.
-    const deriv = circuito.find((c) => c.participante_id === ev.participante_id && c.derivado_en <= ev.ocurrido_en && (!c.cerrada_en || c.cerrada_en >= ev.ocurrido_en))
+    // Había derivación abierta en ese momento si alguna del trabajador la cubre en el tiempo.
+    const deriv = circuito.find((c) => c.trabajador_id === ev.trabajador_id && c.derivado_en <= ev.ocurrido_en && (!c.cerrada_en || c.cerrada_en >= ev.ocurrido_en))
     return {
-      id: ev.id, ocurrido_en: ev.ocurrido_en, participante_id: ev.participante_id,
-      codigo_anonimo: ev.participantes?.codigo_anonimo ?? '—', organizacion_id: ev.participantes?.organizacion_id ?? '',
+      id: ev.id, ocurrido_en: ev.ocurrido_en, trabajador_id: ev.trabajador_id,
+      codigo_anonimo: ev.trabajadores?.codigo_anonimo ?? '—', organizacion_id: ev.trabajadores?.organizacion_id ?? '',
       por, psicologo_id: m.psicologo_id ?? null,
       operador: por === 'investigador' ? 'Investigador principal' : nombres.get(m.psicologo_id) ?? 'Psicólogo',
       motivo: m.motivo ?? null,
@@ -89,9 +89,9 @@ export default function Auditoria() {
   if (!accesos) return <Panel rol="investigador"><Cargando /></Panel>
 
   const porRevisar = delAlcance.filter((a) => !a.con_derivacion).length
-  const personas = new Set(filtrados.map((a) => a.participante_id)).size
+  const personas = new Set(filtrados.map((a) => a.trabajador_id)).size
   const acotado = operador !== 'todos' || !!codigo || soloRevision
-  const exportarCsv = () => descargarTexto(`auditoria-accesos-${new Date().toISOString().slice(0, 10)}.csv`, aCsv(filtrados.map((a) => ({ id: a.id, fecha_hora: a.ocurrido_en, operador: a.operador, rol: a.por, participante: a.codigo_anonimo, motivo: a.motivo ?? '', derivacion_abierta: a.con_derivacion ? 'si' : 'no' }))), 'text/csv')
+  const exportarCsv = () => descargarTexto(`auditoria-accesos-${new Date().toISOString().slice(0, 10)}.csv`, aCsv(filtrados.map((a) => ({ id: a.id, fecha_hora: a.ocurrido_en, operador: a.operador, rol: a.por, trabajador: a.codigo_anonimo, motivo: a.motivo ?? '', derivacion_abierta: a.con_derivacion ? 'si' : 'no' }))), 'text/csv')
 
   return (
     <Panel rol="investigador">
@@ -184,12 +184,12 @@ export default function Auditoria() {
                     <Text style={[texto.datoFuerte, { color: color.texto }]}>{a.operador}</Text>
                     <Text style={[texto.dato, { color: color.textoMedio }]}>{a.por === 'investigador' ? 'Investigador' : 'Psicólogo'}</Text>
                   </View>
-                  <Pressable style={{ flex: 0.7 }} onPress={() => router.push(conFiltro(`/investigador/participante/${a.participante_id}`, filtro) as never)}>
+                  <Pressable style={{ flex: 0.7 }} onPress={() => router.push(conFiltro(`/investigador/trabajador/${a.trabajador_id}`, filtro) as never)}>
                     <Pastilla tono={a.con_derivacion ? TONO.grisOscuro : TONO.tierra} mono>{a.codigo_anonimo}</Pastilla>
                   </Pressable>
                   <View style={{ flex: 2.2, gap: 3 }}>
                     <Text style={[texto.dato, { color: color.texto }]}>
-                      {a.motivo ?? (a.por === 'investigador' ? 'Consulta desde la ficha del participante.' : 'Coordinación clínica del caso derivado.')}
+                      {a.motivo ?? (a.por === 'investigador' ? 'Consulta desde la ficha del trabajador.' : 'Coordinación clínica del caso derivado.')}
                     </Text>
                     {a.por === 'investigador'
                       ? <Mono>Rol con acceso propio · no requiere derivación</Mono>

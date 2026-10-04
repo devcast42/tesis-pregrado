@@ -1,6 +1,6 @@
 /** Agenda de instrumentos — implementa ESP-002 (RF-002-01, RF-002-08, RF-002-09, RF-002-11).
  *
- *  Decide qué le toca al participante hoy. Lógica pura y sin dependencias:
+ *  Decide qué le toca al trabajador hoy. Lógica pura y sin dependencias:
  *  se puede probar sin base de datos ni interfaz.
  *
  *  El calendario viene de la definición de cada formulario (`dias`,
@@ -85,7 +85,7 @@ export function vencimientoVigente(
  *
  *  `estable` solo aparece si nunca se respondió. Los demás aparecen cuando
  *  su calendario lo dice; los ya enviados en este ciclo se marcan completados
- *  en vez de desaparecer, para que el participante vea que cumplió.
+ *  en vez de desaparecer, para que el trabajador vea que cumplió.
  *
  *  RF-002-11 — un formulario con `despues_de` no aparece hasta que el otro
  *  esté completado en el mismo ciclo: el viernes primero el OLBI, luego las

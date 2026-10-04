@@ -1,9 +1,9 @@
 /** Perfil, ajustes y derechos éticos — implementa ESP-001 (RF-001-07 retiro,
  *  RF-001-08 huella), ESP-002 (RF-002-16 datos iniciales, hora del
  *  recordatorio). Diseño: Figma IcncrzVKVbewGGc6RkImCM, frame «Perfil ·
- *  Participante».
+ *  Trabajador».
  *
- *  Es la única pantalla desde la que el participante ejerce sus derechos
+ *  Es la única pantalla desde la que el trabajador ejerce sus derechos
  *  sobre el estudio. Por eso el retiro pide confirmación pero no pone
  *  obstáculos: retirarse tiene que ser tan fácil como haber aceptado. */
 
@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Alert, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { cerrarSesion, obtenerParticipante } from '../../modules/acceso/datos'
+import { cerrarSesion, obtenerTrabajador } from '../../modules/acceso/datos'
 import { registrarDecision } from '../../modules/consentimiento/datos'
 import { activo as huellaActiva, disponible as huellaDisponible, fijarActivo as fijarHuella } from '../../modules/acceso/bloqueo'
 import { datosIniciales, obtenerFormulario } from '../../modules/recoleccion/datos'
@@ -19,16 +19,16 @@ import {
   cancelarTodos, guardarHoraRecordatorio, horaRecordatorio, probarRecordatorio, recordatoriosDisponibles,
   type HoraRecordatorio,
 } from '../../modules/recoleccion/recordatorios'
-import { BarraSuperior } from '../../modules/participante/piezas'
+import { BarraSuperior } from '../../modules/trabajador/piezas'
 import { Cargando } from '../../modules/nucleo/ui'
 import {
   IconoAuto, IconoBalanza, IconoCheck, IconoCodigo, IconoEditar, IconoEquipo, IconoEscudo, IconoGrafica,
   IconoHuella, IconoMaletin, IconoPersona, IconoSalir, IconoCasa,
 } from '../../modules/nucleo/iconos'
 import { color, espacio, radio, texto } from '../../modules/nucleo/diseno'
-import type { ItemDef, Participante, Valores } from '../../modules/nucleo/tipos'
+import type { ItemDef, Trabajador, Valores } from '../../modules/nucleo/tipos'
 import { ahora, cargarDesfase, fijarDesfase } from '../../modules/nucleo/reloj'
-import { fechaLarga, semanaDelEstudio } from '../../modules/participante/textos'
+import { fechaLarga, semanaDelEstudio } from '../../modules/trabajador/textos'
 
 const dosDigitos = (n: number) => String(n).padStart(2, '0')
 
@@ -46,7 +46,7 @@ const MOSAICO: Record<string, { rotulo: string; icono: (c: string) => ReactNode;
 }
 
 export default function Perfil() {
-  const [participante, setParticipante] = useState<Participante | null>(null)
+  const [trabajador, setTrabajador] = useState<Trabajador | null>(null)
   const [hora, setHora] = useState<HoraRecordatorio | null>(null)
   const [horaTexto, setHoraTexto] = useState('')
   const [minutoTexto, setMinutoTexto] = useState('')
@@ -60,9 +60,9 @@ export default function Perfil() {
 
   const cargar = useCallback(async () => {
     await cargarDesfase().then(setDesfase)
-    const p = await obtenerParticipante()
+    const p = await obtenerTrabajador()
     if (!p) return router.replace('/')
-    setParticipante(p)
+    setTrabajador(p)
     const [disponible, activa] = await Promise.all([huellaDisponible(), huellaActiva()])
     setHuella({ disponible, activa })
     const [respuesta, def] = await Promise.all([datosIniciales(p.id), obtenerFormulario('estable')])
@@ -114,7 +114,7 @@ export default function Perfil() {
   }
 
   function confirmarRetiro() {
-    if (!participante) return
+    if (!trabajador) return
     Alert.alert(
       'Retirar mi participación',
       'Dejaremos de pedirte respuestas. Lo que ya respondiste se conserva bajo tu código anónimo, como acordamos en el consentimiento. Puedes volver a aceptar cuando quieras.',
@@ -126,7 +126,7 @@ export default function Perfil() {
             setOcupado(true)
             try {
               // RN-001-03 — el retiro se registra, no se borra nada.
-              await registrarDecision(participante.id, false)
+              await registrarDecision(trabajador.id, false)
               await cancelarTodos()
               router.replace('/')
             } finally { setOcupado(false) }
@@ -143,9 +143,9 @@ export default function Perfil() {
     ])
   }
 
-  if (!participante || datos === undefined) return <Cargando />
+  if (!trabajador || datos === undefined) return <Cargando />
 
-  const inscrito = new Date(participante.inscrito_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })
+  const inscrito = new Date(trabajador.inscrito_en).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })
 
   return (
     <View style={[e.pantalla, { paddingTop: insets.top }]}>
@@ -161,9 +161,9 @@ export default function Perfil() {
           <View style={e.fila}>
             <View style={e.cuadroIcono}><IconoHuella tamano={26} color={color.primarioProfundo} /></View>
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={[texto.seccion, { color: color.texto }]}>Participante {participante.codigo_anonimo}</Text>
+              <Text style={[texto.seccion, { color: color.texto }]}>Trabajador {trabajador.codigo_anonimo}</Text>
               <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-                Semana {semanaDelEstudio(participante.inscrito_en, ahora())} del estudio · desde el {inscrito}
+                Semana {semanaDelEstudio(trabajador.inscrito_en, ahora())} del estudio · desde el {inscrito}
               </Text>
             </View>
           </View>
@@ -307,7 +307,7 @@ export default function Perfil() {
         <View style={e.tarjeta}>
           <View style={e.fila}>
             <View style={e.cuadroIconoChico}><IconoBalanza tamano={18} color={color.primarioProfundo} /></View>
-            <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Tus derechos como participante</Text>
+            <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Tus derechos como trabajador</Text>
           </View>
           <Text style={[texto.apoyo, { color: color.textoMedio }]}>
             Puedes retirar tu consentimiento en cualquier momento, sin dar explicaciones y sin

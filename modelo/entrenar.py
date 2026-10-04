@@ -90,13 +90,13 @@ def cargar(incluir_demo: bool = False) -> pd.DataFrame:
     with psycopg.connect(DSN.format(clave=clave)) as cx:
         cx.execute('reset role')
         cur = cx.execute(f"""
-            select s.participante_id, s.semana, s.{ETIQUETA},
+            select s.trabajador_id, s.semana, s.{ETIQUETA},
                    {', '.join('s.' + r for r in RASGOS)},
                    p.codigo_anonimo
             from semanas_modelo s
-            join participantes p on p.id = s.participante_id
+            join trabajadores p on p.id = s.trabajador_id
             {filtro}
-            order by s.participante_id, s.semana
+            order by s.trabajador_id, s.semana
         """)
         D = pd.DataFrame(cur.fetchall(), columns=[d.name for d in cur.description])
     for c in RASGOS + [ETIQUETA]:
@@ -112,7 +112,7 @@ def preparar(D: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, np.ndarray]:
     d = d[d['n_dias'] > 0]
     for r in RASGOS:
         d[r] = d[r].fillna(d[r].median() if d[r].notna().any() else 0.0)
-    return d, d[ETIQUETA].to_numpy(int), d['participante_id'].astype(str).to_numpy()
+    return d, d[ETIQUETA].to_numpy(int), d['trabajador_id'].astype(str).to_numpy()
 
 
 def w0_de(version: str) -> dict | None:
@@ -373,7 +373,7 @@ def publicar(r: dict) -> None:
               (version, origen, tarea, rasgos, medias, desviaciones, pesos, intercepto,
                umbral_decision, metricas, fuente, activa, visible_para)
             values (%s, 'propio', 'pronostico', %s, %s, %s, %s, %s, %s, %s, %s, true,
-                    array['investigador','psicologo','participante'])
+                    array['investigador','psicologo','trabajador'])
             on conflict (version) do update set
               rasgos = excluded.rasgos, medias = excluded.medias,
               desviaciones = excluded.desviaciones, pesos = excluded.pesos,
@@ -389,7 +389,7 @@ def publicar(r: dict) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--demo', action='store_true',
-                    help='incluye participantes DEMO-*/SIM-*: ensayo, nunca un resultado')
+                    help='incluye trabajadores DEMO-*/SIM-*: ensayo, nunca un resultado')
     ap.add_argument('--publicar', action='store_true',
                     help='carga la versión en modelo_versiones y la deja activa')
     args = ap.parse_args()

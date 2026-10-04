@@ -1,4 +1,4 @@
-/** Pestañas del participante — implementa ESP-002 RF-002-15.
+/** Pestañas del trabajador — implementa ESP-002 RF-002-15.
  *  Diseño: Figma IcncrzVKVbewGGc6RkImCM (barra inferior de Apoyo y Perfil).
  *
  *  Tres lugares, no más: Hoy (lo que toca responder), Apoyo (pedir o entrar
@@ -24,7 +24,7 @@ function Etiqueta({ texto, activo }: { texto: string; activo: boolean }) {
   )
 }
 
-export default function PestanasParticipante() {
+export default function PestanasTrabajador() {
   const insets = useSafeAreaInsets()
   // En web la pestaña no tiene barra del sistema debajo; en Android con
   // borde a borde sí, y la barra tiene que subir por encima de ella.

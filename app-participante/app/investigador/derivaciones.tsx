@@ -140,7 +140,7 @@ export default function Derivaciones() {
                 </View>
                 {paginados.length === 0 && <Text style={[texto.apoyo, { color: color.textoMedio, paddingVertical: 12 }]}>{busqueda ? 'Ningún caso coincide con la búsqueda.' : 'Sin derivaciones en este corte.'}</Text>}
                 {paginados.map((c) => (
-                  <Pressable key={c.derivacion_id} onPress={() => router.push(conFiltro(`/investigador/participante/${c.participante_id}`, filtro) as never)} style={e.tablaFila}>
+                  <Pressable key={c.derivacion_id} onPress={() => router.push(conFiltro(`/investigador/trabajador/${c.trabajador_id}`, filtro) as never)} style={e.tablaFila}>
                     {/* El origen deja de ser columna: es un rasgo del caso y va
                         bajo su código, donde se lee sin ocupar una cabecera. */}
                     <View style={{ flex: 1.2, gap: 1 }}>
@@ -218,7 +218,7 @@ export default function Derivaciones() {
                         <View style={{ gap: 4 }}>
                           <Rotulo>Los que llevan más tiempo abiertos</Rotulo>
                           {abiertos.slice(0, 4).map((c) => (
-                            <Pressable key={c.derivacion_id} onPress={() => router.push(conFiltro(`/investigador/participante/${c.participante_id}`, filtro) as never)} style={[e.fila, { justifyContent: 'space-between', paddingVertical: 4 }]}>
+                            <Pressable key={c.derivacion_id} onPress={() => router.push(conFiltro(`/investigador/trabajador/${c.trabajador_id}`, filtro) as never)} style={[e.fila, { justifyContent: 'space-between', paddingVertical: 4 }]}>
                               <View style={[e.fila, { gap: 8 }]}><Codigo>{c.codigo_anonimo}</Codigo><Text style={[texto.dato, { color: color.textoMedio }]}>{nombreEmpresa(c.organizacion_id)}</Text></View>
                               <Mono tono={diasDesde(c.derivado_en) > 7 ? '#8C4A2B' : color.textoMedio}>{diasDesde(c.derivado_en)} d en curso · {ESTADO[c.estado] ?? c.estado}</Mono>
                             </Pressable>
@@ -258,7 +258,7 @@ export default function Derivaciones() {
               ))}
               <View style={e.panelGris}>
                 <View style={[e.fila, { gap: 6 }]}><IconoEscudoCheck tamano={13} color={color.primarioProfundo} /><Text style={[texto.datoFuerte, { color: color.texto }]}>Si alguien cancela</Text></View>
-                <Text style={[texto.dato, { color: color.textoMedio }]}>Tras una cancelación, el participante puede pedir otra cita cuando quiera desde la app; el sistema no insiste ni avisa al empleador.</Text>
+                <Text style={[texto.dato, { color: color.textoMedio }]}>Tras una cancelación, el trabajador puede pedir otra cita cuando quiera desde la app; el sistema no insiste ni avisa al empleador.</Text>
               </View>
             </Caja>
             <Caja estilo={{ gap: 8 }}>

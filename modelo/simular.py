@@ -320,22 +320,22 @@ def conectar():
 
 def limpiar(cx) -> int:
     """Borra la cohorte SIM-* y, si queda vacía, también su empresa: una
-    empresa sin participantes solo estorba en el panel del investigador."""
-    cur = cx.execute("select id from participantes where codigo_anonimo like %s", (PREFIJO + '%',))
+    empresa sin trabajadores solo estorba en el panel del investigador."""
+    cur = cx.execute("select id from trabajadores where codigo_anonimo like %s", (PREFIJO + '%',))
     ids = [r[0] for r in cur.fetchall()]
     if ids:
         cx.execute("delete from respuestas_items where respuesta_id in "
-                   "(select id from respuestas where participante_id = any(%s))", (ids,))
-        cx.execute("delete from respuestas where participante_id = any(%s)", (ids,))
-        cx.execute("delete from eventos where participante_id = any(%s)", (ids,))
-        cx.execute("delete from participantes where id = any(%s)", (ids,))
+                   "(select id from respuestas where trabajador_id = any(%s))", (ids,))
+        cx.execute("delete from respuestas where trabajador_id = any(%s)", (ids,))
+        cx.execute("delete from eventos where trabajador_id = any(%s)", (ids,))
+        cx.execute("delete from trabajadores where id = any(%s)", (ids,))
 
     org = cx.execute("select id from organizaciones where nombre = %s", (ORG,)).fetchone()
     if org:
         # Solo si de verdad no quedó nada colgando: la empresa se creó para
         # esta cohorte, pero no se borra a ciegas.
         resto = (
-            cx.execute("select count(*) from participantes where organizacion_id = %s", (org[0],)).fetchone()[0]
+            cx.execute("select count(*) from trabajadores where organizacion_id = %s", (org[0],)).fetchone()[0]
             + cx.execute("select count(*) from usuarios_rol where organizacion_id = %s", (org[0],)).fetchone()[0]
             + cx.execute("select count(*) from administradores where organizacion_id = %s", (org[0],)).fetchone()[0]
         )
@@ -368,7 +368,7 @@ def cargar(cx, cohorte: list[tuple[dict, list[dict]]], lunes0: date) -> None:
             else:
                 items.append((rid, k, float(v), None))
 
-    participantes = []
+    trabajadores = []
     for p, semanas in cohorte:
         pid = uuid.uuid4()
         codigo = f'{PREFIJO}{p["idx"]:03d}'
@@ -376,7 +376,7 @@ def cargar(cx, cohorte: list[tuple[dict, list[dict]]], lunes0: date) -> None:
         # `finalizado`: el seguimiento simulado terminó. No se marca
         # `detectado` porque no se crea derivación ni evento de detección:
         # estos datos existen solo para entrenar, no para la operación.
-        participantes.append((pid, org_id, codigo, 'finalizado', inscrito))
+        trabajadores.append((pid, org_id, codigo, 'finalizado', inscrito))
         anotar(pid, 'estable', 1, inscrito,
                {**p['estable'], 'rol': p['rol'], 'modalidad': p['modalidad']})
 
@@ -393,15 +393,15 @@ def cargar(cx, cohorte: list[tuple[dict, list[dict]]], lunes0: date) -> None:
 
     with cx.cursor() as cur:
         cur.executemany(
-            "insert into participantes (id, organizacion_id, codigo_anonimo, estado, inscrito_en) "
-            "values (%s, %s, %s, %s, %s)", participantes)
+            "insert into trabajadores (id, organizacion_id, codigo_anonimo, estado, inscrito_en) "
+            "values (%s, %s, %s, %s, %s)", trabajadores)
         cur.executemany(
-            "insert into respuestas (id, participante_id, formulario_clave, formulario_version, "
+            "insert into respuestas (id, trabajador_id, formulario_clave, formulario_version, "
             "iniciado_en, enviado_en) values (%s, %s, %s, %s, %s, %s)", respuestas)
         cur.executemany(
             "insert into respuestas_items (respuesta_id, item_clave, valor_num, valor_texto) "
             "values (%s, %s, %s, %s)", items)
-    print(f'insertados {len(participantes)} participantes, {len(respuestas)} respuestas, '
+    print(f'insertados {len(trabajadores)} trabajadores, {len(respuestas)} respuestas, '
           f'{len(items)} ítems en «{ORG}»')
 
 
@@ -419,7 +419,7 @@ def main() -> None:
         cx = conectar()
         n = limpiar(cx)
         cx.commit()
-        print(f'borrados {n} participantes {PREFIJO}*')
+        print(f'borrados {n} trabajadores {PREFIJO}*')
         return
 
     rng = np.random.default_rng(args.semilla)
@@ -438,7 +438,7 @@ def main() -> None:
         cx = conectar()
         borrados = limpiar(cx)
         if borrados:
-            print(f'\nreemplazando: borrados {borrados} participantes {PREFIJO}* anteriores')
+            print(f'\nreemplazando: borrados {borrados} trabajadores {PREFIJO}* anteriores')
         lunes0 = date.today() - timedelta(days=date.today().weekday()) - timedelta(weeks=SEMANAS + 1)
         cargar(cx, cohorte, lunes0)
         cx.commit()

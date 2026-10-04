@@ -25,7 +25,7 @@ type Props = {
 /** RF-002-09 — solo los ítems que corresponden hoy (`dias` del ítem).
  *  RF-002-10 — los marcados en `barajar` salen en orden aleatorio, decidido
  *  una vez por apertura: barajar en cada render movería las preguntas bajo
- *  el dedo del participante. Los no barajados conservan su posición relativa,
+ *  el dedo del trabajador. Los no barajados conservan su posición relativa,
  *  y el bloque barajado ocupa las posiciones que sus ítems tenían. */
 export function itemsDeHoy(definicion: DefinicionFormulario, referencia = ahora()): ItemDef[] {
   const hoy = diaIso(referencia)

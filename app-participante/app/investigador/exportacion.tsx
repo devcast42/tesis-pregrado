@@ -169,7 +169,7 @@ export default function Exportacion() {
               <View style={[e.fila, { gap: 6, alignItems: 'flex-start', flexWrap: 'nowrap' }]}>
                 <IconoEscudoCheck tamano={14} color={color.primarioProfundo} />
                 <Text style={[texto.dato, { color: color.textoMedio, flex: 1 }]}>
-                  Datos seudonimizados: solo el código del participante. Nombres y correos no se exportan.
+                  Datos seudonimizados: solo el código del trabajador. Nombres y correos no se exportan.
                 </Text>
               </View>
             </View>

@@ -1,4 +1,4 @@
-/** Citas con el psicólogo pedidas por el participante — implementa ESP-004
+/** Citas con el psicólogo pedidas por el trabajador — implementa ESP-004
  *  RF-004-13 … RF-004-16.
  *
  *  Todo pasa por funciones de base de datos: el cliente no elige psicólogo
@@ -15,7 +15,7 @@ export type Cita = {
   propuesta_para: string
   motivo: string | null
   estado: EstadoCita
-  cancelada_por: 'participante' | 'psicologo' | null
+  cancelada_por: 'trabajador' | 'psicologo' | null
   creada_en: string
   psicologo: string
 }
@@ -56,7 +56,7 @@ function mensajeDe(m: string): string {
 
 // ------------------------------------------------------------- Horarios
 
-/** Horas que se ofrecen (hora local del participante). Jornada laboral
+/** Horas que se ofrecen (hora local del trabajador). Jornada laboral
  *  amplia; el psicólogo confirma o propone otra. */
 export const HORAS_OFRECIDAS = [9, 10, 11, 12, 15, 16, 17, 18]
 

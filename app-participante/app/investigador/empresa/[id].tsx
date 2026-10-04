@@ -1,7 +1,7 @@
 /** Ficha de empresa — implementa ESP-008 y ESP-009 RF-009-15.
  *  Mismo lenguaje visual que Figma 2IqfFSK20uCzmuMg6SvaUZ (no tiene marco propio).
  *
- *  Aquí viven los maestros que dependen de una empresa: sus participantes
+ *  Aquí viven los maestros que dependen de una empresa: sus trabajadores
  *  (por código) y sus administradores. Los psicólogos NO: pertenecen al
  *  estudio. Dar de baja conserva las respuestas y no cierra la derivación
  *  abierta (RN-008-16). */
@@ -11,9 +11,9 @@ import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, Vi
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { Panel } from '../../../modules/panel/Sidebar'
 import { conFiltro, useFiltro } from '../../../modules/investigador/filtro'
-import { cerrarSeguimiento, participantes as cargarParticipantes, pulsoPorEmpresa, umbralesEmpresa, type FilaParticipanteV2 } from '../../../modules/investigador/panel'
+import { cerrarSeguimiento, trabajadores as cargarTrabajadores, pulsoPorEmpresa, umbralesEmpresa, type FilaTrabajadorV2 } from '../../../modules/investigador/panel'
 import {
-  listarAdmins, listarEmpresas, participacionDeEmpresa, restablecerParticipante,
+  listarAdmins, listarEmpresas, participacionDeEmpresa, restablecerTrabajador,
   type Administrador, type Empresa, type FilaParticipacion,
 } from '../../../modules/panel/datos'
 import { DialogoPersona } from '../../../modules/investigador/DialogoPersona'
@@ -23,14 +23,14 @@ import { color, espacio, radio, texto } from '../../../modules/nucleo/diseno'
 import { IconoAgregar, IconoEquipo, IconoEscudoCheck, IconoHistorial, IconoPersona, IconoVolver } from '../../../modules/nucleo/iconos'
 
 const MONO = Platform.OS === 'web' ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : undefined
-type Pestana = 'participantes' | 'admins'
+type Pestana = 'trabajadores' | 'admins'
 
 export default function DetalleEmpresa() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { filtro } = useFiltro()
-  const [pestana, setPestana] = useState<Pestana>('participantes')
+  const [pestana, setPestana] = useState<Pestana>('trabajadores')
   const [empresa, setEmpresa] = useState<Empresa | null>(null)
-  const [filas, setFilas] = useState<FilaParticipanteV2[] | null>(null)
+  const [filas, setFilas] = useState<FilaTrabajadorV2[] | null>(null)
   const [participacion, setParticipacion] = useState<FilaParticipacion[]>([])
   const [admins, setAdmins] = useState<Administrador[]>([])
   const [nivel, setNivel] = useState<'bajo' | 'a_vigilar' | 'alto' | null>(null)
@@ -46,7 +46,7 @@ export default function DetalleEmpresa() {
     setFalloCarga(null)
     try {
       const [empresas, p, pa, a, pulso, umbrales] = await Promise.all([
-        listarEmpresas(), cargarParticipantes({ organizacion_id: id }), participacionDeEmpresa(id), listarAdmins(id), pulsoPorEmpresa(), umbralesEmpresa(),
+        listarEmpresas(), cargarTrabajadores({ organizacion_id: id }), participacionDeEmpresa(id), listarAdmins(id), pulsoPorEmpresa(), umbralesEmpresa(),
       ])
       // Una empresa que no está no es un error de red: hay que decirlo, o la
       // pantalla se queda girando para siempre con un enlace viejo.
@@ -65,12 +65,12 @@ export default function DetalleEmpresa() {
   useFocusEffect(useCallback(() => { cargar() }, [cargar]))
 
   const aviso = (t: string, m: string) => Platform.OS === 'web' ? window.alert(`${t}\n\n${m}`) : Alert.alert(t, m)
-  async function restablecer(p: FilaParticipanteV2) {
+  async function restablecer(p: FilaTrabajadorV2) {
     setError(null)
-    try { const r = await restablecerParticipante(p.id); setCredencial({ titulo: `Nueva contraseña de ${p.codigo_anonimo}`, contrasena: r.contrasena, nota: 'No se vuelve a mostrar.' }) }
+    try { const r = await restablecerTrabajador(p.id); setCredencial({ titulo: `Nueva contraseña de ${p.codigo_anonimo}`, contrasena: r.contrasena, nota: 'No se vuelve a mostrar.' }) }
     catch (ex) { setError(ex instanceof Error ? ex.message : 'No se pudo restablecer.') }
   }
-  function darDeBaja(p: FilaParticipanteV2) {
+  function darDeBaja(p: FilaTrabajadorV2) {
     const texto = `Dar de baja a ${p.codigo_anonimo} por salida de la empresa.\n\nSus respuestas se conservan anonimizadas para el estudio; si tiene una derivación abierta, el psicólogo termina su caso. No se puede deshacer desde aquí.`
     const ok = Platform.OS === 'web' ? window.confirm(texto) : true
     if (!ok) return
@@ -91,7 +91,7 @@ export default function DetalleEmpresa() {
   )
   if (!filas || !empresa) return <Panel rol="investigador"><Cargando /></Panel>
 
-  const consent = new Map(participacion.map((x) => [x.participante_id, x.consentimiento]))
+  const consent = new Map(participacion.map((x) => [x.trabajador_id, x.consentimiento]))
   // «En seguimiento» es `estado = 'activo'`, y nada más: RF-007-06 deja fuera
   // del monitoreo a todo estado distinto, y RN-007-04 explica por qué al
   // detectado —su seguimiento diario terminó por diseño, no por incumplir—.
@@ -111,13 +111,13 @@ export default function DetalleEmpresa() {
   return (
     <Panel rol="investigador">
       <ScrollView style={{ flex: 1 }} contentContainerStyle={e.contenido}>
-        <Pressable onPress={() => router.push(conFiltro('/investigador/empresas', filtro) as never)} style={[e.fila, { gap: 4 }]}><IconoVolver tamano={12} color={color.textoMedio} /><Text style={[texto.dato, { color: color.textoMedio }]}>Empresas participantes</Text></Pressable>
+        <Pressable onPress={() => router.push(conFiltro('/investigador/empresas', filtro) as never)} style={[e.fila, { gap: 4 }]}><IconoVolver tamano={12} color={color.textoMedio} /><Text style={[texto.dato, { color: color.textoMedio }]}>Empresas trabajadores</Text></Pressable>
         <Encabezado eyebrow="Ficha de empresa" titulo={empresa.nombre}
           subtitulo={`En el estudio desde el ${new Date(empresa.creado_en).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })}.`}
           derecha={(
             <View style={[e.fila, { gap: 8 }]}>
               <Pastilla tono={nivel === 'alto' ? TONO.tierra : nivel === 'a_vigilar' ? TONO.ambar : nivel ? TONO.verde : TONO.gris} punto>{nivel === 'alto' ? 'Pulso: Nivel Alto' : nivel === 'a_vigilar' ? 'Pulso: A vigilar' : nivel ? 'Pulso: Estable' : 'Pulso: sin OLBI aún'}</Pastilla>
-              <BotonChico onPress={() => router.push(conFiltro('/investigador/participantes', { ...filtro, organizacion_id: id }) as never)} icono={<IconoEquipo tamano={13} color={color.texto} />}>Ver en Participantes</BotonChico>
+              <BotonChico onPress={() => router.push(conFiltro('/investigador/trabajadores', { ...filtro, organizacion_id: id }) as never)} icono={<IconoEquipo tamano={13} color={color.texto} />}>Ver en Trabajadores</BotonChico>
             </View>
           )} />
 
@@ -140,14 +140,14 @@ export default function DetalleEmpresa() {
         {/* Pestañas */}
         <View style={[e.fila, { justifyContent: 'space-between' }]}>
           <View style={e.segmentos}>
-            {([['participantes', 'Participantes', filas.length], ['admins', 'Administradores', admins.length]] as const).map(([k, t, n]) => (
+            {([['trabajadores', 'Trabajadores', filas.length], ['admins', 'Administradores', admins.length]] as const).map(([k, t, n]) => (
               <Pressable key={k} onPress={() => { setPestana(k); setFormulario(null) }} style={[e.segmento, pestana === k && e.segmentoOn]}>
                 <Text style={[texto.datoFuerte, { color: pestana === k ? color.primarioProfundo : color.textoMedio }]}>{t}</Text><Pastilla tono={pestana === k ? TONO.verde : TONO.gris}>{String(n)}</Pastilla>
               </Pressable>
             ))}
           </View>
           <Pressable onPress={() => { setFormulario(pestana); setError(null) }} style={e.botonLleno}>
-            <IconoAgregar tamano={13} color="#FFFFFF" /><Text style={[texto.datoFuerte, { color: '#FFFFFF' }]}>{pestana === 'participantes' ? 'Inscribir participante' : 'Crear administrador'}</Text>
+            <IconoAgregar tamano={13} color="#FFFFFF" /><Text style={[texto.datoFuerte, { color: '#FFFFFF' }]}>{pestana === 'trabajadores' ? 'Inscribir trabajador' : 'Crear administrador'}</Text>
           </Pressable>
         </View>
 
@@ -166,21 +166,21 @@ export default function DetalleEmpresa() {
           </View>
         )}
 
-        {pestana === 'participantes' ? (
+        {pestana === 'trabajadores' ? (
           <Caja estilo={{ gap: 4 }}>
             <View style={e.tablaCab}>
-              {[['Participante', 1], ['Estado', 0.9], ['Adherencia', 1.3], ['Último OLBI', 0.9], ['Derivación', 1.6], ['', 1.5]].map(([h, f]) => (
+              {[['Trabajador', 1], ['Estado', 0.9], ['Adherencia', 1.3], ['Último OLBI', 0.9], ['Derivación', 1.6], ['', 1.5]].map(([h, f]) => (
                 <Text key={String(h)} style={[texto.etiqueta, { color: color.textoMedio, fontSize: 9.5, flex: Number(f) }]}>{String(h).toUpperCase()}</Text>
               ))}
             </View>
-            {orden.length === 0 && <Text style={[texto.apoyo, { color: color.textoMedio, paddingVertical: 12 }]}>Todavía no hay participantes en esta empresa.</Text>}
+            {orden.length === 0 && <Text style={[texto.apoyo, { color: color.textoMedio, paddingVertical: 12 }]}>Todavía no hay trabajadores en esta empresa.</Text>}
             {orden.map((p) => {
               const c = consent.get(p.id)
               const fuera = p.estado === 'finalizado' || p.estado === 'retirado'
               return (
                 <View key={p.id} style={[e.tablaFila, fuera && { opacity: 0.6 }]}>
                   {/* El código es el enlace a la ficha: sobraba un botón «Ficha» que hacía lo mismo. */}
-                  <Pressable style={{ flex: 1 }} onPress={() => router.push(conFiltro(`/investigador/participante/${p.id}`, filtro) as never)}>
+                  <Pressable style={{ flex: 1 }} onPress={() => router.push(conFiltro(`/investigador/trabajador/${p.id}`, filtro) as never)}>
                     <Codigo>{p.codigo_anonimo}</Codigo>
                     <Mono>{`Semana ${Math.min(p.semana, 6)}`}</Mono>
                   </Pressable>
@@ -237,7 +237,7 @@ export default function DetalleEmpresa() {
 
       {formulario && (
         <DialogoPersona
-          modo={formulario === 'participantes' ? 'participante' : 'admin'}
+          modo={formulario === 'trabajadores' ? 'trabajador' : 'admin'}
           organizacionId={id}
           empresa={empresa.nombre}
           onCerrar={() => setFormulario(null)}

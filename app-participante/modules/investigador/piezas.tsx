@@ -6,7 +6,7 @@
 import type { ReactNode } from 'react'
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { color, espacio, radio, texto } from '../nucleo/diseno'
-import type { FilaParticipanteV2 } from './panel'
+import type { FilaTrabajadorV2 } from './panel'
 
 export const MONO = Platform.OS === 'web' ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : undefined
 
@@ -32,7 +32,7 @@ export function Pastilla({ children, tono = TONO.gris, punto, icono, mono }: {
   )
 }
 
-export function PastillaEstado({ estado }: { estado: FilaParticipanteV2['estado'] }) {
+export function PastillaEstado({ estado }: { estado: FilaTrabajadorV2['estado'] }) {
   const t = estado === 'detectado' ? TONO.tierra : estado === 'activo' ? TONO.verde : TONO.gris
   const nombre = { activo: 'Activo', detectado: 'Detectado', retirado: 'Retirado', finalizado: 'Finalizado' }[estado]
   return <Pastilla tono={t}>{nombre}</Pastilla>
@@ -110,13 +110,13 @@ export function BotonChico({ children, onPress, tono = 'borde', icono }: {
   )
 }
 
-/** Barra de adherencia (tabla de participantes). */
+/** Barra de adherencia (tabla de trabajadores). */
 /** Barra de adherencia. Recibe la TASA tal como la da la base: una fracción
  *  de 0 a 1, no un porcentaje.
  *
  *  Antes recibía «pct» y cada pantalla decidía si convertir. La lista de
- *  Participantes pasaba el 0.95 de la vista sin tocarlo y `Math.round` lo
- *  dejaba en «1%», con la barra vacía, para los 53 participantes. Con el
+ *  Trabajadores pasaba el 0.95 de la vista sin tocarlo y `Math.round` lo
+ *  dejaba en «1%», con la barra vacía, para los 53 trabajadores. Con el
  *  nombre del parámetro diciendo qué espera, no hay dónde equivocarse. */
 export function BarraPct({ tasa, tinta = color.primarioProfundo }: { tasa: number | null; tinta?: string }) {
   const pct = tasa == null ? null : Number(tasa) * 100

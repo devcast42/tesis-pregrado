@@ -20,8 +20,8 @@ export const MOTIVOS = [
   ['carga', 'Balance de carga asistencial'],
   ['disponibilidad', 'Psicólogo sin disponibilidad / licencia'],
   ['salida', 'Salida del psicólogo del estudio'],
-  ['participante', 'Solicitud del participante'],
-  ['idioma_afinidad', 'Afinidad o idioma con el participante'],
+  ['trabajador', 'Solicitud del trabajador'],
+  ['idioma_afinidad', 'Afinidad o idioma con el trabajador'],
   ['otro', 'Otro (queda registrado como «otro»)'],
 ] as const
 

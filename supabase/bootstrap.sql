@@ -3,7 +3,7 @@
 -- La inscripción del estudio es cerrada (ESP-001 §3): nadie se registra solo,
 -- ni siquiera el equipo de investigación. Este archivo crea el primer
 -- investigador y la primera empresa, que es lo mínimo para poder entrar al
--- panel e inscribir participantes desde ahí.
+-- panel e inscribir trabajadores desde ahí.
 --
 -- ANTES DE CORRERLO
 --   1. Crea tu usuario en el panel de Supabase:
@@ -86,4 +86,4 @@ select
   (select count(*) from usuarios_rol where rol = 'investigador') as investigadores,
   (select count(*) from psicologos where activo)                 as psicologos_activos,
   (select count(*) from organizaciones)                          as empresas,
-  (select count(*) from participantes)                           as participantes;
+  (select count(*) from trabajadores)                           as trabajadores;

@@ -64,7 +64,7 @@ export const supabase = createClient(url, anonKey, {
  *
  *  ⚠️ Úsalo siempre que una consulta deba devolver "lo mío". RLS acota lo que
  *  cada rol PUEDE ver, no lo que una consulta concreta DEBE devolver: el
- *  investigador ve todas las filas de usuarios_rol y de participantes por
+ *  investigador ve todas las filas de usuarios_rol y de trabajadores por
  *  diseño, así que un select sin filtro le devuelve la fila de otra persona. */
 export async function idUsuario(): Promise<string | null> {
   const { data } = await supabase.auth.getSession()

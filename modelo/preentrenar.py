@@ -148,7 +148,7 @@ values (
   '{json.dumps(metricas)}'::jsonb,
   '{version['fuente']}',
   true,
-  array['investigador', 'psicologo', 'participante']
+  array['investigador', 'psicologo', 'trabajador']
 )
 on conflict (version) do update set
   rasgos = excluded.rasgos, medias = excluded.medias, desviaciones = excluded.desviaciones,

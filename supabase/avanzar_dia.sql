@@ -3,10 +3,10 @@
 -- =============================================================================
 --
 -- Retrocede los timestamps de la base para simular que pasó el tiempo.
--- Con esto los participantes pueden volver a responder sus formularios hoy
+-- Con esto los trabajadores pueden volver a responder sus formularios hoy
 -- y las gráficas del panel muestran datos acumulados.
 --
--- ⚠️  SOLO PARA PRUEBAS. Nunca en el proyecto real con datos de participantes.
+-- ⚠️  SOLO PARA PRUEBAS. Nunca en el proyecto real con datos de trabajadores.
 --
 -- CUÁNTOS DÍAS AVANZAR (calendario semanal, ESP-002 rev. 2)
 -- ----------------------------------------------------------
@@ -61,7 +61,7 @@ begin
   raise notice '  Respuestas retrocedidas: %',         n_respuestas;
   raise notice '  Eventos    retrocedidos: %',         n_eventos;
   raise notice '';
-  raise notice 'Los participantes pueden volver a responder lo que toque hoy:';
+  raise notice 'Los trabajadores pueden volver a responder lo que toque hoy:';
   raise notice '  - lunes a jueves → diario';
   raise notice '  - viernes        → olbi + semanal (gracia sábado y domingo)';
   raise notice 'El día de la semana lo pone la app (Ajustes → fecha simulada en desarrollo).';
@@ -75,12 +75,12 @@ select
   p.estado,
   (select max(r.enviado_en)
      from respuestas r
-    where r.participante_id = p.id
+    where r.trabajador_id = p.id
       and r.formulario_clave = 'diario') as ultimo_diario,
   (select max(r.enviado_en)
      from respuestas r
-    where r.participante_id = p.id
+    where r.trabajador_id = p.id
       and r.formulario_clave = 'olbi') as ultimo_olbi
-from participantes p
+from trabajadores p
 join organizaciones o on o.id = p.organizacion_id
 order by p.codigo_anonimo;

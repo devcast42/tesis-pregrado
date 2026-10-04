@@ -3,7 +3,7 @@
  *  Diseño: Figma «Informe Clínico». El borrador que generó la transcripción
  *  se revisa sección por sección y se aprueba; el borrador original nunca se
  *  toca (RN-004-04). Si no hubo grabación, la misma estructura vacía para
- *  redacción manual (RF-004-12). El participante nunca lo ve (RN-004-03). */
+ *  redacción manual (RF-004-12). El trabajador nunca lo ve (RN-004-03). */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
@@ -189,7 +189,7 @@ export default function RevisionInforme() {
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Confidencialidad garantizada</Text>
           <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
-            {manual ? 'Nota redactada por ti.' : 'Borrador generado automáticamente.'} Nada se comparte hasta que lo apruebes; el participante nunca lo ve.
+            {manual ? 'Nota redactada por ti.' : 'Borrador generado automáticamente.'} Nada se comparte hasta que lo apruebes; el trabajador nunca lo ve.
           </Text>
         </View>
       </View>
@@ -337,7 +337,7 @@ function fechaHora(iso: string): string {
 function EstadoCircuito({ sesion, transcripcion, ahora, reintentando, onReintentar, onManual, ocupado }: {
   sesion: any; transcripcion: Transcripcion | null; ahora: number; reintentando: boolean; onReintentar: () => void; onManual: () => void; ocupado: boolean
 }) {
-  const ambos = !!(sesion?.consentimiento_participante && sesion?.consentimiento_psicologo)
+  const ambos = !!(sesion?.consentimiento_trabajador && sesion?.consentimiento_psicologo)
   const terminada = !!sesion?.finalizada_en
   const etapa = transcripcion?.etapa ?? (ambos ? 'sin_grabacion' : 'sin_consentimiento')
   const desde = transcripcion ? new Date(transcripcion.actualizada_en).getTime() : (sesion?.finalizada_en ? new Date(sesion.finalizada_en).getTime() : ahora)

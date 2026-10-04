@@ -3,7 +3,7 @@
 import { supabase } from '../nucleo/supabase'
 import type { ClaveFormulario, Formulario, Valores } from '../nucleo/tipos'
 import type { Calendarios } from './agenda'
-import type { Evaluacion, Prediccion } from '../participante/resultado'
+import type { Evaluacion, Prediccion } from '../trabajador/resultado'
 import { ahora } from '../nucleo/reloj'
 
 /** RF-002-02 — versión vigente del formulario, leída de base de datos.
@@ -27,13 +27,13 @@ export async function obtenerFormulario(clave: ClaveFormulario): Promise<Formula
  *  el indicador de tiempo de detección de la tesis. Capturarlo al enviar lo
  *  dejaría siempre en cero. */
 export async function registrarInicio(
-  participanteId: string,
+  trabajadorId: string,
   clave: ClaveFormulario,
 ): Promise<string> {
   const iniciadoEn = new Date().toISOString()
 
   await supabase.from('eventos').insert({
-    participante_id: participanteId,
+    trabajador_id: trabajadorId,
     tipo: 'evaluacion_iniciada',
     ocurrido_en: iniciadoEn,
     metadata: { formulario: clave },
@@ -46,17 +46,17 @@ export async function registrarInicio(
  *  almacena en ninguna parte: se recalcula siempre desde estos valores, para
  *  que un cambio de umbral o de fórmula no obligue a recolectar de nuevo. */
 export async function enviarRespuesta(params: {
-  participanteId: string
+  trabajadorId: string
   formulario: Formulario
   iniciadoEn: string
   valores: Valores
 }): Promise<{ id: string; evaluacion: Evaluacion | null }> {
-  const { participanteId, formulario, iniciadoEn, valores } = params
+  const { trabajadorId, formulario, iniciadoEn, valores } = params
 
   const { data: respuesta, error: errorRespuesta } = await supabase
     .from('respuestas')
     .insert({
-      participante_id: participanteId,
+      trabajador_id: trabajadorId,
       formulario_clave: formulario.clave,
       formulario_version: formulario.version,
       iniciado_en: iniciadoEn,
@@ -83,7 +83,7 @@ export async function enviarRespuesta(params: {
   if (errorItems) throw errorItems
 
   await supabase.from('eventos').insert({
-    participante_id: participanteId,
+    trabajador_id: trabajadorId,
     tipo: 'evaluacion_enviada',
     metadata: {
       formulario: formulario.clave,
@@ -134,12 +134,12 @@ export async function calendarios(): Promise<Calendarios> {
 
 /** Fecha del último envío de cada formulario. Insumo de la agenda. */
 export async function ultimosEnvios(
-  participanteId: string,
+  trabajadorId: string,
 ): Promise<Partial<Record<ClaveFormulario, string>>> {
   const { data } = await supabase
     .from('respuestas')
     .select('formulario_clave, enviado_en')
-    .eq('participante_id', participanteId)
+    .eq('trabajador_id', trabajadorId)
     .order('enviado_en', { ascending: false })
 
   const ultimo: Partial<Record<ClaveFormulario, string>> = {}
@@ -158,7 +158,7 @@ export async function ultimosEnvios(
  *  no reprochar del diseño). Semana en horario local del dispositivo, que es
  *  el que la persona vive. */
 export async function diasConCheckinEstaSemana(
-  participanteId: string,
+  trabajadorId: string,
   referencia = ahora(),
 ): Promise<Set<number>> {
   const lunes = inicioDeSemana(referencia)
@@ -166,7 +166,7 @@ export async function diasConCheckinEstaSemana(
   const { data } = await supabase
     .from('respuestas')
     .select('enviado_en')
-    .eq('participante_id', participanteId)
+    .eq('trabajador_id', trabajadorId)
     .in('formulario_clave', ['diario', 'olbi'])
     .gte('enviado_en', lunes.toISOString())
 
@@ -178,13 +178,13 @@ export async function diasConCheckinEstaSemana(
 }
 
 /** Lunes 00:00 local de la semana que contiene la fecha. */
-/** Todos los envíos de diario y OLBI del participante, para el detalle de
+/** Todos los envíos de diario y OLBI del trabajador, para el detalle de
  *  registros (RF-002-07). Solo fecha y formulario: nada de respuestas. */
-export async function enviosDelEstudio(participanteId: string): Promise<{ clave: 'diario' | 'olbi'; enviado_en: string }[]> {
+export async function enviosDelEstudio(trabajadorId: string): Promise<{ clave: 'diario' | 'olbi'; enviado_en: string }[]> {
   const { data } = await supabase
     .from('respuestas')
     .select('formulario_clave, enviado_en')
-    .eq('participante_id', participanteId)
+    .eq('trabajador_id', trabajadorId)
     .in('formulario_clave', ['diario', 'olbi'])
     .order('enviado_en')
   return (data ?? []).map((f) => ({ clave: f.formulario_clave as 'diario' | 'olbi', enviado_en: f.enviado_en as string }))
@@ -205,12 +205,12 @@ export function indiceLunes(fecha: Date): number {
 /** ESP-005 §8 — probabilidad (nowcast) de que el OLBI del viernes cruce el
  *  umbral, con la versión activa del modelo, y su registro como evento. El
  *  cálculo vive en Postgres; aquí solo se pide. `null` si no hay modelo
- *  visible para el participante o no respondió ningún día esta semana. */
+ *  visible para el trabajador o no respondió ningún día esta semana. */
 export async function prediccionActual(
-  participanteId: string,
+  trabajadorId: string,
   tarea: 'nowcast' | 'pronostico' = 'nowcast',
 ): Promise<Prediccion | null> {
-  const { data, error } = await supabase.rpc('registrar_prediccion', { p_participante: participanteId, p_tarea: tarea })
+  const { data, error } = await supabase.rpc('registrar_prediccion', { p_trabajador: trabajadorId, p_tarea: tarea })
   if (error || !data) return null
   const p = data as Prediccion
   return p.probabilidad == null ? null : { ...p, tarea }
@@ -219,9 +219,9 @@ export async function prediccionActual(
 /** RF-002-14 — la última predicción nowcast de esta semana (la del jueves,
  *  normalmente): lo que el modelo dijo antes de que el OLBI hablara. */
 export async function ultimaPrediccionSemana(
-  participanteId: string,
+  trabajadorId: string,
 ): Promise<{ probabilidad: number; dia: string; n_dias: number } | null> {
-  const { data, error } = await supabase.rpc('ultima_prediccion_semana', { p_participante: participanteId })
+  const { data, error } = await supabase.rpc('ultima_prediccion_semana', { p_trabajador: trabajadorId })
   if (error || !data) return null
   const d = data as { probabilidad: number; dia: string; n_dias: number }
   return typeof d.probabilidad === 'number' ? d : null
@@ -230,11 +230,11 @@ export async function ultimaPrediccionSemana(
 /** Última respuesta al formulario `estable`, como valores por clave, junto
  *  con la definición para poder mostrar etiquetas en lugar de códigos.
  *  Null si nunca se respondió. Se usa en Perfil (ESP-002 RF-002-16). */
-export async function datosIniciales(participanteId: string): Promise<{ valores: Valores; enviado_en: string } | null> {
+export async function datosIniciales(trabajadorId: string): Promise<{ valores: Valores; enviado_en: string } | null> {
   const { data: r } = await supabase
     .from('respuestas')
     .select('id, enviado_en')
-    .eq('participante_id', participanteId)
+    .eq('trabajador_id', trabajadorId)
     .eq('formulario_clave', 'estable')
     .order('enviado_en', { ascending: false })
     .limit(1)
@@ -256,8 +256,8 @@ export async function datosIniciales(participanteId: string): Promise<{ valores:
 export type Racha = { actual: number; mejor: number; hoy_cumplido: boolean }
 
 /** RF-002-07 — racha de días hábiles consecutivos, calculada en el servidor. */
-export async function racha(participanteId: string): Promise<Racha> {
-  const { data, error } = await supabase.rpc('racha', { p_participante: participanteId })
+export async function racha(trabajadorId: string): Promise<Racha> {
+  const { data, error } = await supabase.rpc('racha', { p_trabajador: trabajadorId })
   if (error || !data) return { actual: 0, mejor: 0, hoy_cumplido: false }
   return data as Racha
 }

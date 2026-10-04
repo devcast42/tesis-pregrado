@@ -1,4 +1,4 @@
-/** Resumen de la sesión para el participante — implementa ESP-004 RF-004-17.
+/** Resumen de la sesión para el trabajador — implementa ESP-004 RF-004-17.
  *
  *  Se abre al salir de la videollamada. Muestra el circuito paso a paso
  *  (procesar la conversación → recomendaciones con IA → PDF) y, al final, el

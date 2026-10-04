@@ -1,7 +1,7 @@
 /** Piezas de la vista móvil del psicólogo — ESP-006 RF-006-13 … RF-006-15.
  *
  *  Diseño: Figma VXFnbiXKzb0Hj92s2r2ulL, frames «Casos Derivados», «Detalle
- *  del Caso». Misma familia visual que el participante, más densa: quien la
+ *  del Caso». Misma familia visual que el trabajador, más densa: quien la
  *  usa es un profesional con prisa. Nunca rojo: la urgencia se dice con
  *  jerarquía y tono tierra. */
 
@@ -106,7 +106,7 @@ export function TarjetaCaso({ caso, onPress }: { caso: Caso; onPress: () => void
       )}
       {caso.cita_para && (caso.estado_caso === 'cita_por_confirmar' || caso.estado_caso === 'cita_confirmada') && (
         <View style={[e.franja, { backgroundColor: caso.estado_caso === 'cita_confirmada' ? color.exitoSuave : color.alertaSuave }]}>
-          <Text style={[texto.cuerpo, { color: color.texto, flex: 1 }]}>Cita pedida por el participante</Text>
+          <Text style={[texto.cuerpo, { color: color.texto, flex: 1 }]}>Cita pedida por el trabajador</Text>
           <Text style={[texto.datoFuerte, { color: color.texto }]}>{fechaHoraCorta(caso.cita_para)}</Text>
         </View>
       )}
@@ -128,7 +128,7 @@ export function TarjetaCaso({ caso, onPress }: { caso: Caso; onPress: () => void
           {caso.estado_caso === 'sesion_pendiente' ? 'Prioridad de contacto'
             : caso.estado_caso === 'cita_por_confirmar' ? 'Confirma o propón otra hora'
             : caso.estado_caso === 'cita_confirmada' ? 'Abre la sala a la hora acordada'
-            : caso.estado_caso === 'sala_lista' ? (caso.consentimiento_participante ? 'Consentimiento firmado' : 'Consentimiento pendiente')
+            : caso.estado_caso === 'sala_lista' ? (caso.consentimiento_trabajador ? 'Consentimiento firmado' : 'Consentimiento pendiente')
             : caso.estado_caso === 'informe_por_aprobar' ? 'Fase de cierre' : 'Caso cerrado'}
         </Text>
         <Pressable onPress={onPress} style={[e.boton, urgente && e.botonLleno]} accessibilityRole="button">

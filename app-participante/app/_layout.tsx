@@ -57,10 +57,10 @@ export default function Layout() {
         <Stack.Screen name="acceso" options={{ headerShown: false }} />
         <Stack.Screen name="bloqueo" options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }} />
 
-        {/* Participante */}
+        {/* Trabajador */}
         <Stack.Screen name="consentimiento" options={{ title: 'Consentimiento', headerBackVisible: false }} />
         {/* Pestañas Hoy · Apoyo · Perfil, con cabecera propia. */}
-        <Stack.Screen name="(participante)" options={{ headerShown: false }} />
+        <Stack.Screen name="(trabajador)" options={{ headerShown: false }} />
         <Stack.Screen name="formulario/[clave]" options={{ title: '' }} />
         <Stack.Screen name="consulta/[id]" options={{ title: 'Sesión de apoyo' }} />
         <Stack.Screen name="consulta/resumen/[id]" options={{ headerShown: false, presentation: 'transparentModal', animation: 'fade', gestureEnabled: false }} />
@@ -74,8 +74,8 @@ export default function Layout() {
 
         {/* Investigador — panel web con navegación propia, sin cabecera del Stack */}
         <Stack.Screen name="investigador/index" options={{ headerShown: false }} />
-        <Stack.Screen name="investigador/participantes" options={{ headerShown: false }} />
-        <Stack.Screen name="investigador/participante/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="investigador/trabajadores" options={{ headerShown: false }} />
+        <Stack.Screen name="investigador/trabajador/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="investigador/derivaciones" options={{ headerShown: false }} />
         <Stack.Screen name="investigador/empresas" options={{ headerShown: false }} />
         <Stack.Screen name="investigador/empresa/[id]" options={{ headerShown: false }} />
@@ -89,7 +89,7 @@ export default function Layout() {
 
         {/* Administrador de empresa */}
         <Stack.Screen name="admin/index" options={{ headerShown: false }} />
-        <Stack.Screen name="admin/participantes" options={{ headerShown: false }} />
+        <Stack.Screen name="admin/trabajadores" options={{ headerShown: false }} />
         <Stack.Screen name="admin/pulso" options={{ headerShown: false }} />
         <Stack.Screen name="admin/factores" options={{ headerShown: false }} />
         <Stack.Screen name="admin/informe" options={{ headerShown: false }} />

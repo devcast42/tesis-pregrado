@@ -18,8 +18,8 @@ import { Panel } from '../../modules/panel/Sidebar'
 import { conFiltro, useFiltro, useDatosDelFiltro } from '../../modules/investigador/filtro'
 import {
   adherenciaGlobal, circuito as cargarCircuito, citasEstudio, cohorte as cargarCohorte, desempeno as cargarDesempeno, mediana,
-  participantes as cargarParticipantes, versiones as cargarVersiones, adherenciaPorEmpresa,
-  type AdherenciaEmpresa, type CircuitoApoyo, type CitaEstudio, type CohorteSemana, type Desempeno, type FilaParticipanteV2, type VersionModelo,
+  trabajadores as cargarTrabajadores, versiones as cargarVersiones, adherenciaPorEmpresa,
+  type AdherenciaEmpresa, type CircuitoApoyo, type CitaEstudio, type CohorteSemana, type Desempeno, type FilaTrabajadorV2, type VersionModelo,
 } from '../../modules/investigador/panel'
 import { BotonChico, Caja, Mono, Pastilla, Rotulo, TONO } from '../../modules/investigador/piezas'
 import { Cargando } from '../../modules/nucleo/ui'
@@ -37,23 +37,23 @@ export default function Resumen() {
   const { filtro } = useFiltro()
   const [datos, setDatos] = useState<{
     cohorte: CohorteSemana[]; adherencia: { cumplidos: number; esperados: number; n: number }; empresas: AdherenciaEmpresa[]
-    circuito: CircuitoApoyo[]; citas: CitaEstudio[]; participantes: FilaParticipanteV2[]; versiones: VersionModelo[]; desempeno: Desempeno[]
+    circuito: CircuitoApoyo[]; citas: CitaEstudio[]; trabajadores: FilaTrabajadorV2[]; versiones: VersionModelo[]; desempeno: Desempeno[]
   } | null>(null)
 
   useDatosDelFiltro(() => setDatos(null), async (vigente) => {
-    const [cohorte, adherencia, empresas, circuito, citas, participantes, versiones, dNow, dPro] = await Promise.all([
+    const [cohorte, adherencia, empresas, circuito, citas, trabajadores, versiones, dNow, dPro] = await Promise.all([
       cargarCohorte(filtro), adherenciaGlobal(filtro), adherenciaPorEmpresa().catch(() => [] as AdherenciaEmpresa[]), cargarCircuito(filtro),
-      citasEstudio(filtro).catch(() => [] as CitaEstudio[]), cargarParticipantes(filtro), cargarVersiones(), cargarDesempeno('nowcast'), cargarDesempeno('pronostico'),
+      citasEstudio(filtro).catch(() => [] as CitaEstudio[]), cargarTrabajadores(filtro), cargarVersiones(), cargarDesempeno('nowcast'), cargarDesempeno('pronostico'),
     ])
     if (!vigente()) return
     setDatos({
-      cohorte, adherencia, circuito, citas, participantes, versiones, desempeno: [...dNow, ...dPro],
+      cohorte, adherencia, circuito, citas, trabajadores, versiones, desempeno: [...dNow, ...dPro],
       empresas: filtro.organizacion_id ? empresas.filter((e) => e.organizacion_id === filtro.organizacion_id) : empresas,
     })
   }, [filtro.organizacion_id])
 
   if (!datos) return <Panel rol="investigador"><Cargando /></Panel>
-  const { cohorte, adherencia, empresas, circuito, citas, participantes, versiones, desempeno } = datos
+  const { cohorte, adherencia, empresas, circuito, citas, trabajadores, versiones, desempeno } = datos
 
   const semanas = cohorte.slice(-8)
   /** La semana en curso ya tiene fila —hay check-ins de lunes y martes— pero
@@ -81,10 +81,10 @@ export default function Resumen() {
   // Quien está detectado ya no responde el diario: su seguimiento terminó por
   // diseño (RN-007-04) y la vista `adherencia` tampoco lo incluye. Contarlo
   // aquí hacía decir «57 activos completando EMA» habiendo 53.
-  const activos = participantes.filter((p) => p.estado === 'activo').length
-  const detectadosAhora = participantes.filter((p) => p.estado === 'detectado').length
-  const retirados = participantes.filter((p) => p.estado === 'retirado').length
-  const cruzaronAlguna = participantes.filter((p) => p.detectado_en).length
+  const activos = trabajadores.filter((p) => p.estado === 'activo').length
+  const detectadosAhora = trabajadores.filter((p) => p.estado === 'detectado').length
+  const retirados = trabajadores.filter((p) => p.estado === 'retirado').length
+  const cruzaronAlguna = trabajadores.filter((p) => p.detectado_en).length
 
   /** El paso «consiguieron cita» no sale de `circuito_apoyo`: esa vista se
    *  calcula desde `eventos`, y la semilla de demostración nunca emite
@@ -92,7 +92,7 @@ export default function Resumen() {
    *  es null para todos y el embudo enseñaba «0 con cita» habiendo una
    *  confirmada y dos ya atendidas. Aquí se cuenta desde `citas_estudio`,
    *  que sí lleva el estado real de cada cita. */
-  const conCita = new Set(citas.filter((c) => c.estado === 'confirmada' || c.estado === 'atendida').map((c) => c.participante_id)).size
+  const conCita = new Set(citas.filter((c) => c.estado === 'confirmada' || c.estado === 'atendida').map((c) => c.trabajador_id)).size
 
   const embudo = [
     { titulo: 'Cruzaron el umbral', nota: 'su OLBI del viernes pasó el corte del estudio', valor: cruzaronAlguna },
@@ -103,7 +103,7 @@ export default function Resumen() {
   ]
 
   const niveles = { bajo: 0, a_vigilar: 0, alto: 0 } as Record<string, number>
-  for (const p of participantes) if (p.olbi_nivel) niveles[p.olbi_nivel] = (niveles[p.olbi_nivel] ?? 0) + 1
+  for (const p of trabajadores) if (p.olbi_nivel) niveles[p.olbi_nivel] = (niveles[p.olbi_nivel] ?? 0) + 1
   const conOlbi = niveles.bajo + niveles.a_vigilar + niveles.alto
 
   const activa = (t: string) => versiones.find((v) => v.tarea === t && v.activa)
@@ -122,7 +122,7 @@ export default function Resumen() {
             <Rotulo>Resumen del estudio · ESP-009</Rotulo>
             <Text style={[texto.titulo, { color: color.texto, fontSize: 26, lineHeight: 32 }]}>Cómo va el estudio</Text>
             <Text style={[texto.apoyo, { color: color.textoMedio, maxWidth: 640 }]}>
-              {`Las tres cifras que hay que sostener ante el jurado, y de dónde salen. ${participantes.length} personas inscritas, ${nSemana || '—'} ${nSemana === 1 ? 'semana' : 'semanas'} de seguimiento.`}
+              {`Las tres cifras que hay que sostener ante el jurado, y de dónde salen. ${trabajadores.length} personas inscritas, ${nSemana || '—'} ${nSemana === 1 ? 'semana' : 'semanas'} de seguimiento.`}
             </Text>
           </View>
           <View style={[e.fila, { gap: 10 }]}>
@@ -217,7 +217,7 @@ export default function Resumen() {
               <Text style={[texto.cifra, { color: '#FFFFFF', fontFamily: MONO, fontSize: 34 }]}>{respuestaViernes == null ? '—' : `${Math.round(respuestaViernes * 100)}%`}</Text>
               <Text style={[texto.dato, { color: '#DDF3EA' }]}>{ultima ? `${ultima.respondieron_viernes} de ${ultima.inscritos}` : ''}</Text>
             </View>
-            <FilaVerde k="Inscritas en total" v={String(participantes.length)} />
+            <FilaVerde k="Inscritas en total" v={String(trabajadores.length)} />
             <FilaVerde k="Respondiendo el día a día" v={String(activos)} />
             <FilaVerde k="Detectadas, con apoyo abierto" v={String(detectadosAhora)} tierra />
             <FilaVerde k="Retiradas" v={String(retirados)} />
@@ -226,9 +226,9 @@ export default function Resumen() {
               <Text style={[texto.dato, { color: '#DDF3EA', flex: 1 }]}>
                 {cruzaronAlguna < 10
                   ? `Con ${cruzaronAlguna} ${cruzaronAlguna === 1 ? 'caso detectado' : 'casos detectados'} en todo el estudio, las cifras del modelo son orientativas: no alcanzan para concluir nada.`
-                  : participantes.length >= MINIMO_PARA_CONCLUIR
-                    ? `Con ${participantes.length} personas y ${cruzaronAlguna} casos, el modelo ya se puede validar por partes, con las reservas del capítulo de límites.`
-                    : `Con ${participantes.length} personas la validación del modelo es exploratoria.`}
+                  : trabajadores.length >= MINIMO_PARA_CONCLUIR
+                    ? `Con ${trabajadores.length} personas y ${cruzaronAlguna} casos, el modelo ya se puede validar por partes, con las reservas del capítulo de límites.`
+                    : `Con ${trabajadores.length} personas la validación del modelo es exploratoria.`}
               </Text>
             </View>
           </View>
@@ -254,7 +254,7 @@ export default function Resumen() {
                 <View key={em.organizacion_id} style={{ gap: 4 }}>
                   <View style={[e.fila, { justifyContent: 'space-between' }]}>
                     <Text style={[texto.datoFuerte, { color: color.texto }]}>{em.nombre}</Text>
-                    <Mono tono={bajo ? AMBAR : color.primarioProfundo}>{`${pct(t)} · ${em.participantes_activos} personas`}</Mono>
+                    <Mono tono={bajo ? AMBAR : color.primarioProfundo}>{`${pct(t)} · ${em.trabajadores_activos} personas`}</Mono>
                   </View>
                   <View style={e.pista}>
                     <View style={[e.lleno, { width: `${(t ?? 0) * 100}%`, backgroundColor: bajo ? AMBAR : color.primarioProfundo }]} />
@@ -263,7 +263,7 @@ export default function Resumen() {
                 </View>
               )
             })}
-            {empresas.length === 0 && <Text style={[texto.dato, { color: color.textoMedio }]}>Sin empresas con participantes activos.</Text>}
+            {empresas.length === 0 && <Text style={[texto.dato, { color: color.textoMedio }]}>Sin empresas con trabajadores activos.</Text>}
             {bajoLaMeta.length > 0 && (
               <View style={e.notaAmbar}>
                 <Text style={[texto.dato, { color: AMBAR }]}>
@@ -374,9 +374,9 @@ export default function Resumen() {
               </View>
             ))}
             <Text style={[texto.dato, { color: color.textoSuave }]}>
-              {conOlbi === participantes.length
+              {conOlbi === trabajadores.length
                 ? `Las ${conOlbi} han contestado algún OLBI. La escala es el Oldenburg Burnout Inventory.`
-                : `${conOlbi} de ${participantes.length} han contestado algún OLBI; del resto todavía no hay con qué medir. La escala es el Oldenburg Burnout Inventory.`}
+                : `${conOlbi} de ${trabajadores.length} han contestado algún OLBI; del resto todavía no hay con qué medir. La escala es el Oldenburg Burnout Inventory.`}
             </Text>
           </Caja>
         </View>

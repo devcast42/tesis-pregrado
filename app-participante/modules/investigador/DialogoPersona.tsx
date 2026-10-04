@@ -1,4 +1,4 @@
-/** Alta de participante y de administrador de empresa — ESP-008.
+/** Alta de trabajador y de administrador de empresa — ESP-008.
  *
  *  Los dos piden lo mismo —nombre y correo— y los dos devuelven una
  *  contraseña que se enseña UNA vez. Eso es lo que manda en el diseño: la
@@ -6,23 +6,23 @@
  *  lugar de en un aviso detrás del formulario donde se pierde de vista.
  *
  *  Aquí no se pregunta edad, rol, antigüedad ni modalidad: eso lo responde el
- *  propio participante en el formulario `estable` al entrar. Pedirlo también
+ *  propio trabajador en el formulario `estable` al entrar. Pedirlo también
  *  aquí daría dos versiones del mismo dato, y la buena es la suya. */
 
 import { useState } from 'react'
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
-import { crearAdmin, crearPsicologo, inscribirParticipante } from '../panel/datos'
+import { crearAdmin, crearPsicologo, inscribirTrabajador } from '../panel/datos'
 import { BotonChico, Codigo, Mono, Rotulo } from './piezas'
 import { color, espacio, radio, texto, veloModal } from '../nucleo/diseno'
 import { IconoCandado, IconoCerrar, IconoCorreo, IconoCredencial, IconoEscudoCheck, IconoPersona } from '../nucleo/iconos'
 
-export type ModoPersona = 'participante' | 'admin' | 'psicologo'
+export type ModoPersona = 'trabajador' | 'admin' | 'psicologo'
 
 type Credencial = { titulo: string; codigo?: string; correo?: string; contrasena: string; nota: string }
 
 const COPIA = {
-  participante: {
-    titulo: 'Inscribir participante',
+  trabajador: {
+    titulo: 'Inscribir trabajador',
     boton: 'Inscribir',
     nota: 'Entrégala junto con el consentimiento informado. No se vuelve a mostrar.',
   },
@@ -40,7 +40,7 @@ const COPIA = {
 
 export function DialogoPersona({ modo, organizacionId, empresa, onCerrar, onCreada }: {
   modo: ModoPersona
-  /** Solo para participante y admin: el psicólogo es del estudio, no de una empresa. */
+  /** Solo para trabajador y admin: el psicólogo es del estudio, no de una empresa. */
   organizacionId?: string
   empresa: string
   onCerrar: () => void; onCreada: () => void
@@ -66,8 +66,8 @@ export function DialogoPersona({ modo, organizacionId, empresa, onCerrar, onCrea
       if (modo === 'psicologo') {
         const r = await crearPsicologo({ correo: datos.correo, nombre: datos.nombre, colegiatura: colegiatura.trim() })
         setCredencial({ titulo: `Acceso creado para ${nombre.trim()}`, correo: r.correo ?? datos.correo, contrasena: r.contrasena, nota: t.nota })
-      } else if (modo === 'participante') {
-        const r = await inscribirParticipante(datos)
+      } else if (modo === 'trabajador') {
+        const r = await inscribirTrabajador(datos)
         setCredencial({ titulo: `${nombre.trim()} queda como ${r.codigo_anonimo}`, codigo: r.codigo_anonimo, correo: datos.correo, contrasena: r.contrasena, nota: t.nota })
       } else {
         const r = await crearAdmin(datos)
@@ -79,7 +79,7 @@ export function DialogoPersona({ modo, organizacionId, empresa, onCerrar, onCrea
     } catch (ex) {
       setError(ex instanceof Error ? ex.message
         : ex && typeof ex === 'object' && 'message' in ex ? String((ex as { message: unknown }).message ?? '')
-        : `No se pudo ${modo === 'participante' ? 'inscribir' : 'crear el acceso'}.`)
+        : `No se pudo ${modo === 'trabajador' ? 'inscribir' : 'crear el acceso'}.`)
     } finally { setOcupado(false) }
   }
 

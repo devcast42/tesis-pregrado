@@ -1,8 +1,8 @@
-/** Resumen para el participante — implementa ESP-004 RF-004-17.
+/** Resumen para el trabajador — implementa ESP-004 RF-004-17.
  *
  *  No es el informe clínico (RN-004-03): es un documento propio, en segunda
  *  persona, con acuerdos y recomendaciones de autocuidado, generado a partir
- *  de la misma transcripción que usa el psicólogo. Solo el participante lo lee. */
+ *  de la misma transcripción que usa el psicólogo. Solo el trabajador lo lee. */
 
 import { Linking, Platform } from 'react-native'
 import { supabase } from '../nucleo/supabase'
@@ -29,19 +29,19 @@ export type Resumen = {
   actualizado_en: string
 }
 
-const BUCKET = 'resumenes-participante'
+const BUCKET = 'resumenes-trabajador'
 
 /** Pide (o consulta) el resumen de una sesión. Idempotente: si ya está
  *  listo devuelve el estado; si falta algo, dice qué se espera. */
 export async function solicitarResumen(sesionId: string): Promise<EstadoResumen> {
-  const { data, error } = await supabase.functions.invoke('resumen-participante', { body: { sesion_id: sesionId } })
+  const { data, error } = await supabase.functions.invoke('resumen-trabajador', { body: { sesion_id: sesionId } })
   if (error) throw new Error('No se pudo consultar el resumen. Revisa tu conexión.')
   return data as EstadoResumen
 }
 
 export async function misResumenes(): Promise<Resumen[]> {
   const { data, error } = await supabase
-    .from('resumenes_participante')
+    .from('resumenes_trabajador')
     .select('id, sesion_id, etapa, origen, detalle, pdf_ruta, creado_en, actualizado_en')
     .order('creado_en', { ascending: false })
   if (error) throw error

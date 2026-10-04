@@ -13,7 +13,7 @@ import { Platform } from 'react-native'
  *    midiendo. El verde azulado apagado sobre neutros cálidos se lee como
  *    cuidado, no como evaluación.
  *
- *  · Rojo reservado a errores de la app, nunca a los datos del participante.
+ *  · Rojo reservado a errores de la app, nunca a los datos del trabajador.
  *    Nadie debe ver su propio estado pintado de alarma (ESP-004 RN-004-03 es
  *    la versión fuerte de esta misma idea).
  *
@@ -42,7 +42,7 @@ export const color = {
   primarioOscuro: '#115E59',
   primarioSuave: '#EFF9F7',
 
-  // Del rediseño de la app del participante (Figma). El primario profundo
+  // Del rediseño de la app del trabajador (Figma). El primario profundo
   // es el color de tinta sobre fondos claros; los claros son fondos de
   // acento sobre el primario y del "hoy" en el ritmo semanal.
   primarioProfundo: '#005C55',
@@ -121,7 +121,7 @@ export const TOQUE_MINIMO = 52
  *  `flex: 1` mide cero y el diálogo existe en el DOM pero no se ve en ninguna
  *  parte. Pasaba con los cuatro de la aplicación: el buscador de la barra
  *  lateral, la reasignación de psicólogo, la desactivación y el cierre del día
- *  del participante.
+ *  del trabajador.
  *
  *  Se posiciona el fondo él mismo. En web `fixed` lo ancla a la ventana; en
  *  iOS y Android el `Modal` ya ocupa la pantalla y `absolute` con los cuatro

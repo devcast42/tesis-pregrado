@@ -85,7 +85,7 @@ type Seccion = { ruta: string; titulo: string; grupo?: string; icono?: (c: strin
 const SECCIONES: Record<'investigador' | 'admin', Seccion[]> = {
   investigador: [
     { ruta: '/investigador', titulo: 'Resumen' },
-    { ruta: '/investigador/participantes', titulo: 'Participantes' },
+    { ruta: '/investigador/trabajadores', titulo: 'Trabajadores' },
     { ruta: '/investigador/derivaciones', titulo: 'Derivaciones' },
     { ruta: '/investigador/empresas', titulo: 'Empresas', grupo: 'Maestros' },
     { ruta: '/investigador/psicologos', titulo: 'Psicólogos', grupo: 'Maestros' },
@@ -95,7 +95,7 @@ const SECCIONES: Record<'investigador' | 'admin', Seccion[]> = {
     { ruta: '/admin', titulo: 'Inicio', icono: (c) => <IconoCuadricula tamano={18} color={c} /> },
     { ruta: '/admin/pulso', titulo: 'Pulso', icono: (c) => <IconoGrafica tamano={18} color={c} /> },
     { ruta: '/admin/factores', titulo: 'Factores de trabajo', icono: (c) => <IconoAjustes tamano={16} color={c} /> },
-    { ruta: '/admin/participantes', titulo: 'Personas y participación', icono: (c) => <IconoEquipo tamano={18} color={c} /> },
+    { ruta: '/admin/trabajadores', titulo: 'Personas y participación', icono: (c) => <IconoEquipo tamano={18} color={c} /> },
     { ruta: '/admin/informe', titulo: 'Informe mensual', icono: (c) => <IconoArchivo tamano={18} color={c} /> },
   ],
 }

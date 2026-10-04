@@ -6,7 +6,7 @@ métricas mejores, no un error. Por eso se verifican en código y no a ojo.
 
     CA-005-01  ninguna entrada usa datos posteriores al viernes de la semana t
     CA-005-02  ningún ítem olbi_* de la semana etiquetada entra como rasgo
-    CA-005-03  cada participante cae en un solo pliegue
+    CA-005-03  cada trabajador cae en un solo pliegue
     CA-005-04  nadie aporta semanas posteriores a su primer cruce
     CA-005-05  los rasgos de §4.1 coinciden en SQL y en Python
     CA-005-06  la predicción en Postgres coincide con la de Python
@@ -67,7 +67,7 @@ def ca_01(cx):
     posteriores, el rasgo vendría del futuro."""
     n = cx.execute("""
         with dia_usado as (
-          select r.participante_id,
+          select r.trabajador_id,
                  semana_de(r.enviado_en) as semana,
                  (r.enviado_en at time zone tz_estudio())::date as dia
           from respuestas r
@@ -76,12 +76,12 @@ def ca_01(cx):
         select count(*) from dia_usado
         where extract(isodow from dia)::int > 4
           and exists (select 1 from semanas_modelo s
-                      where s.participante_id = dia_usado.participante_id
+                      where s.trabajador_id = dia_usado.trabajador_id
                         and s.semana = dia_usado.semana
                         and s.n_dias > 0)
           -- ...y esa semana no tiene ningún día lunes-jueves que explique el rasgo
           and not exists (select 1 from respuestas r2
-                          where r2.participante_id = dia_usado.participante_id
+                          where r2.trabajador_id = dia_usado.trabajador_id
                             and r2.formulario_clave = 'diario'
                             and semana_de(r2.enviado_en) = dia_usado.semana
                             and extract(isodow from (r2.enviado_en at time zone tz_estudio())::date)::int between 1 and 4)
@@ -94,7 +94,7 @@ def ca_01(cx):
         where s.horas_sobretiempo is not null
           and not exists (
             select 1 from respuestas r
-            where r.participante_id = s.participante_id
+            where r.trabajador_id = s.trabajador_id
               and r.formulario_clave = 'semanal'
               and semana_de(r.enviado_en) = s.semana)
     """).fetchone()[0]
@@ -146,11 +146,11 @@ def ca_02b(cx):
 
 # ---------------------------------------------------------------- CA-005-03
 
-@prueba('CA-005-03 cada participante cae en un solo pliegue')
+@prueba('CA-005-03 cada trabajador cae en un solo pliegue')
 def ca_03(cx):
     filas = cx.execute("""
-        select participante_id::text, semana, coalesce(alto_t, false)
-        from semanas_modelo order by participante_id, semana
+        select trabajador_id::text, semana, coalesce(alto_t, false)
+        from semanas_modelo order by trabajador_id, semana
     """).fetchall()
     assert filas, 'semanas_modelo está vacía'
     grupos = np.array([f[0] for f in filas])
@@ -172,10 +172,10 @@ def ca_03(cx):
 def ca_04(cx):
     n = cx.execute("""
         with cruce as (
-          select participante_id, min(semana) filter (where alto) as primera
-          from olbi_semanal_etiquetado group by participante_id)
+          select trabajador_id, min(semana) filter (where alto) as primera
+          from olbi_semanal_etiquetado group by trabajador_id)
         select count(*) from semanas_modelo s
-        join cruce c using (participante_id)
+        join cruce c using (trabajador_id)
         where c.primera is not null and s.semana > c.primera
     """).fetchone()[0]
     assert n == 0, f'{n} filas posteriores al primer cruce'
@@ -183,10 +183,10 @@ def ca_04(cx):
     # nunca se observa porque la persona sale del seguimiento.
     n2 = cx.execute("""
         with cruce as (
-          select participante_id, min(semana) filter (where alto) as primera
-          from olbi_semanal_etiquetado group by participante_id)
+          select trabajador_id, min(semana) filter (where alto) as primera
+          from olbi_semanal_etiquetado group by trabajador_id)
         select count(*) from semanas_modelo s
-        join cruce c using (participante_id)
+        join cruce c using (trabajador_id)
         where c.primera is not null and s.semana = c.primera and s.alto_t1 is not null
     """).fetchone()[0]
     assert n2 == 0, f'{n2} filas de la semana del cruce con etiqueta de pronóstico'
@@ -202,9 +202,9 @@ def ca_05(cx):
     from preentrenar import rasgos as rasgos_py
 
     filas = cx.execute("""
-        select participante_id::text, semana, n_dias,
+        select trabajador_id::text, semana, n_dias,
                t_media, t_ultimo, t_max, t_pendiente, e_media, d_media
-        from semanas_modelo where n_dias > 0 order by participante_id, semana
+        from semanas_modelo where n_dias > 0 order by trabajador_id, semana
     """).fetchall()
     assert filas, 'no hay filas con señal diaria que comparar'
 
@@ -218,7 +218,7 @@ def ca_05(cx):
                      max(i.valor_num) filter (where i.item_clave='od_03') od_03,
                      max(i.valor_num) filter (where i.item_clave='od_06') od_06
               from respuestas r join respuestas_items i on i.respuesta_id = r.id
-              where r.participante_id = %s and r.formulario_clave = 'diario'
+              where r.trabajador_id = %s and r.formulario_clave = 'diario'
                 and semana_de(r.enviado_en) = %s
                 and extract(isodow from (r.enviado_en at time zone tz_estudio())::date)::int between 1 and 4
               group by dia, r.enviado_en) v
@@ -242,7 +242,7 @@ def ca_05(cx):
                 assert abs(float(py[nombre]) - float(rs[nombre])) < 1e-6, \
                     f'{pid[:8]} {semana} {nombre}: python {py[nombre]} vs rasgos_semana {rs[nombre]}'
         comparadas += 1
-    return f'{comparadas} participante-semanas idénticas en vista, función SQL y Python'
+    return f'{comparadas} trabajador-semanas idénticas en vista, función SQL y Python'
 
 
 # ---------------------------------------------------------------- CA-005-06

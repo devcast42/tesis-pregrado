@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react'
 import { Alert } from 'react-native'
 import { router, useLocalSearchParams, useNavigation } from 'expo-router'
-import { obtenerParticipante } from '../../modules/acceso/datos'
+import { obtenerTrabajador } from '../../modules/acceso/datos'
 import {
   calendarios, enviarRespuesta, obtenerFormulario, prediccionActual, registrarInicio, ultimaPrediccionSemana,
 } from '../../modules/recoleccion/datos'
@@ -15,14 +15,14 @@ import type { ClaveFormulario, Formulario, Valores } from '../../modules/nucleo/
 import { Cargando } from '../../modules/nucleo/ui'
 import {
   consejoDelDia, dejarConsejo, guardarResultado, resultadoDesde,
-} from '../../modules/participante/resultado'
+} from '../../modules/trabajador/resultado'
 
 export default function PantallaFormulario() {
   const { clave, cierre: mostrarCierre } = useLocalSearchParams<{ clave: ClaveFormulario; cierre?: string }>()
   const navegacion = useNavigation()
 
   const [formulario, setFormulario] = useState<Formulario | null>(null)
-  const [participanteId, setParticipanteId] = useState<string | null>(null)
+  const [trabajadorId, setTrabajadorId] = useState<string | null>(null)
   const [iniciadoEn, setIniciadoEn] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 
@@ -32,16 +32,16 @@ export default function PantallaFormulario() {
     let vigente = true
 
     async function preparar() {
-      const participante = await obtenerParticipante()
-      if (!participante || !vigente) return
+      const trabajador = await obtenerTrabajador()
+      if (!trabajador || !vigente) return
 
       const def = await obtenerFormulario(clave)
       if (!vigente) return
 
-      const marca = await registrarInicio(participante.id, clave)
+      const marca = await registrarInicio(trabajador.id, clave)
       if (!vigente) return
 
-      setParticipanteId(participante.id)
+      setTrabajadorId(trabajador.id)
       setFormulario(def)
       setIniciadoEn(marca)
       navegacion.setOptions({ title: def.definicion.titulo })
@@ -58,11 +58,11 @@ export default function PantallaFormulario() {
   }, [clave, navegacion])
 
   async function enviar(valores: Valores) {
-    if (!formulario || !participanteId || !iniciadoEn) return
+    if (!formulario || !trabajadorId || !iniciadoEn) return
 
     setEnviando(true)
     try {
-      const { evaluacion } = await enviarRespuesta({ participanteId, formulario, iniciadoEn, valores })
+      const { evaluacion } = await enviarRespuesta({ trabajadorId, formulario, iniciadoEn, valores })
 
       // RF-002-12 — retroalimentación. El OLBI del viernes deja su resultado
       // guardado; el check-in diario deja un consejo según el día.
@@ -72,8 +72,8 @@ export default function PantallaFormulario() {
         // para que la última predicción de la semana siga siendo la del
         // nowcast y no la que se acaba de registrar.
         const [retrospectiva, pronostico] = await Promise.all([
-          ultimaPrediccionSemana(participanteId),
-          prediccionActual(participanteId, 'pronostico'),
+          ultimaPrediccionSemana(trabajadorId),
+          prediccionActual(trabajadorId, 'pronostico'),
         ])
         await guardarResultado({ ...resultadoDesde(evaluacion), retrospectiva, pronostico })
         cierre = 'resultado'

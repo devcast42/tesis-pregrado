@@ -8,7 +8,7 @@
  *  filtraba ninguna consulta: solo se imprimía como rótulo, y el manifiesto
  *  de exportación lo anotaba como si se hubiera aplicado. Volver a tenerlo
  *  exige decidir antes si «semana 3» es una semana del calendario o la
- *  tercera de cada participante, que empiezan en fechas distintas.
+ *  tercera de cada trabajador, que empiezan en fechas distintas.
  *
  *  No hay contexto de React de por medio: la fuente de verdad es la URL, así
  *  una pantalla puede leer el filtro antes de montar el panel. */

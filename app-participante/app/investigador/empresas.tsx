@@ -124,7 +124,7 @@ export default function Empresas() {
               </View>
 
               <Dato rotulo="Personas" valor={String(f.en_seguimiento)}
-                apoyo={f.participantes !== f.en_seguimiento ? `de ${f.participantes} inscritas` : 'inscritas'} />
+                apoyo={f.trabajadores !== f.en_seguimiento ? `de ${f.trabajadores} inscritas` : 'inscritas'} />
               {/* Sin dato no se dice «cumple la meta»: una empresa recién dada
                   de alta no cumple nada todavía. */}
               <Dato rotulo="Adherencia" valor={adh?.tasa_promedio != null ? `${Math.round(adh.tasa_promedio * 100)}%` : '—'}
@@ -137,7 +137,7 @@ export default function Empresas() {
             </View>
           )
         })}
-        {filas.length === 0 && <Caja><Text style={[texto.apoyo, { color: color.textoMedio }]}>Todavía no hay empresas. Registra la primera para poder inscribir participantes.</Text></Caja>}
+        {filas.length === 0 && <Caja><Text style={[texto.apoyo, { color: color.textoMedio }]}>Todavía no hay empresas. Registra la primera para poder inscribir trabajadores.</Text></Caja>}
 
         {/* Los cortes: se tocan dos veces al año, van plegados. */}
         <Pressable onPress={() => setCortes((v) => !v)} style={e.plegable}>
@@ -210,7 +210,7 @@ export default function Empresas() {
       {formulario && (
         <DialogoEmpresa
           onCerrar={() => setFormulario(false)}
-          onCreada={(nueva) => { setFormulario(false); setMensaje({ tono: 'ok', texto: `${nueva.nombre} registrada. Ya se le pueden crear administradores e inscribir participantes.` }); cargar() }} />
+          onCreada={(nueva) => { setFormulario(false); setMensaje({ tono: 'ok', texto: `${nueva.nombre} registrada. Ya se le pueden crear administradores e inscribir trabajadores.` }); cargar() }} />
       )}
     </Panel>
   )

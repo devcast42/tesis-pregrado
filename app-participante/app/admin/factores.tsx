@@ -72,7 +72,7 @@ export default function FactoresEmpresario() {
                 </View>
                 <View style={e.fila}>
                   <IconoEquipo tamano={16} color={color.primarioProfundo} />
-                  <Text style={[texto.apoyoFuerte, { color: color.texto }]}>{ultima.respondientes} participantes activos</Text>
+                  <Text style={[texto.apoyoFuerte, { color: color.texto }]}>{ultima.respondientes} trabajadores activos</Text>
                 </View>
               </View>
             </Caja>

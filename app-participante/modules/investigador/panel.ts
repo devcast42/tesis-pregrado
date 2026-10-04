@@ -20,7 +20,7 @@ export type TipoPendiente =
 
 export type Pendiente = {
   tipo: TipoPendiente
-  participante_id: string
+  trabajador_id: string
   codigo_anonimo: string
   organizacion_id: string
   empresa: string | null
@@ -36,9 +36,9 @@ export async function bandeja(filtro?: FiltroGlobal): Promise<Pendiente[]> {
   return (data ?? []) as Pendiente[]
 }
 
-// ----------------------------------------------------------- Participantes
+// ----------------------------------------------------------- Trabajadores
 
-export type FilaParticipanteV2 = {
+export type FilaTrabajadorV2 = {
   id: string
   codigo_anonimo: string
   organizacion_id: string
@@ -71,12 +71,12 @@ export type FilaParticipanteV2 = {
 const URGENCIA_ESTADO: Record<string, number> = { detectado: 0, activo: 1, retirado: 2, finalizado: 3 }
 
 /** Orden por defecto: urgencia / riesgo relativo (RF-009-07). */
-export async function participantes(filtro?: FiltroGlobal): Promise<FilaParticipanteV2[]> {
-  let q = supabase.from('panel_participantes_v2').select('*')
+export async function trabajadores(filtro?: FiltroGlobal): Promise<FilaTrabajadorV2[]> {
+  let q = supabase.from('panel_trabajadores_v2').select('*')
   if (filtro?.organizacion_id) q = q.eq('organizacion_id', filtro.organizacion_id)
   const { data, error } = await q
   if (error) throw error
-  return ((data ?? []) as FilaParticipanteV2[]).sort((a, b) => {
+  return ((data ?? []) as FilaTrabajadorV2[]).sort((a, b) => {
     const ea = URGENCIA_ESTADO[a.estado] ?? 9, eb = URGENCIA_ESTADO[b.estado] ?? 9
     if (ea !== eb) return ea - eb
     const na = a.nowcast ?? -1, nb = b.nowcast ?? -1
@@ -85,13 +85,13 @@ export async function participantes(filtro?: FiltroGlobal): Promise<FilaParticip
   })
 }
 
-/** Cuántos participantes siguen activos. Es lo único que necesita la barra
- *  superior, que la pintaba trayéndose `panel_participantes_v2` entera —58
+/** Cuántos trabajadores siguen activos. Es lo único que necesita la barra
+ *  superior, que la pintaba trayéndose `panel_trabajadores_v2` entera —58
  *  filas anchas con seis CTE materializadas, la consulta más cara del panel—
  *  en cada pantalla, para después contar en el navegador. Aquí cuenta la
- *  base sobre `participantes`, que el investigador ya puede leer. */
+ *  base sobre `trabajadores`, que el investigador ya puede leer. */
 export async function cuantosActivos(filtro?: FiltroGlobal): Promise<number | null> {
-  let q = supabase.from('participantes').select('id', { count: 'exact', head: true }).eq('estado', 'activo')
+  let q = supabase.from('trabajadores').select('id', { count: 'exact', head: true }).eq('estado', 'activo')
   if (filtro?.organizacion_id) q = q.eq('organizacion_id', filtro.organizacion_id)
   const { count, error } = await q
   return error ? null : count ?? 0
@@ -100,11 +100,11 @@ export async function cuantosActivos(filtro?: FiltroGlobal): Promise<number | nu
 // -------------------------------------------------------------------- Ficha
 
 export type Ficha = {
-  participante_id: string
+  trabajador_id: string
   codigo_anonimo: string
   empresa: string | null
   organizacion_id: string
-  estado: FilaParticipanteV2['estado']
+  estado: FilaTrabajadorV2['estado']
   inscrito_en: string
   semana: number
   adherencia: { esperados: number; cumplidos: number; tasa: number | null; viernes_esperados: number; viernes_cumplidos: number; dias_sin_checkin: number | null } | null
@@ -116,14 +116,14 @@ export type Ficha = {
 }
 
 export async function ficha(id: string): Promise<Ficha | null> {
-  const { data, error } = await supabase.rpc('ficha_participante', { p_id: id })
+  const { data, error } = await supabase.rpc('ficha_trabajador', { p_id: id })
   if (error) throw error
   return (data as Ficha | null) ?? null
 }
 
 export type Envio = { dia: string; formulario_clave: string; formulario_version: number; enviado_en: string; segundos: number | null }
 export async function calendario(id: string): Promise<Envio[]> {
-  const { data } = await supabase.from('calendario_respuestas').select('*').eq('participante_id', id).order('enviado_en')
+  const { data } = await supabase.from('calendario_respuestas').select('*').eq('trabajador_id', id).order('enviado_en')
   return (data ?? []) as Envio[]
 }
 
@@ -133,7 +133,7 @@ export type DiaSerie = {
   indice_diario: number | null; horas_trabajadas: number | null; horas_sueno: number | null; horas_fin_de_semana: number | null
 }
 export async function serieDiaria(id: string): Promise<DiaSerie[]> {
-  const { data } = await supabase.from('serie_diaria_v2').select('*').eq('participante_id', id).order('dia')
+  const { data } = await supabase.from('serie_diaria_v2').select('*').eq('trabajador_id', id).order('dia')
   // Un día = una fila: si hubo dos envíos el mismo día (pruebas), se queda el último.
   const porDia = new Map<string, DiaSerie>()
   for (const d of (data ?? []) as DiaSerie[]) porDia.set(d.dia, d)
@@ -146,7 +146,7 @@ export type OlbiSemana = {
   umbral_agotamiento: number; umbral_desvinculacion: number
 }
 export async function olbiSemanal(id: string): Promise<OlbiSemana[]> {
-  const { data } = await supabase.from('olbi_semanal_etiquetado').select('*').eq('participante_id', id).order('semana')
+  const { data } = await supabase.from('olbi_semanal_etiquetado').select('*').eq('trabajador_id', id).order('semana')
   return (data ?? []) as OlbiSemana[]
 }
 
@@ -157,7 +157,7 @@ export type Prediccion = {
   resultado_real: boolean | null; agotamiento_real: number | null; desvinculacion_real: number | null; acierto: boolean | null
 }
 export async function predicciones(id: string): Promise<Prediccion[]> {
-  const { data } = await supabase.from('predicciones_participante').select('*').eq('participante_id', id).order('ocurrido_en')
+  const { data } = await supabase.from('predicciones_trabajador').select('*').eq('trabajador_id', id).order('ocurrido_en')
   return (data ?? []) as Prediccion[]
 }
 
@@ -169,7 +169,7 @@ export async function respuestasConItems(id: string): Promise<RespuestaConItems[
   const { data } = await supabase
     .from('respuestas')
     .select('id, formulario_clave, formulario_version, enviado_en, respuestas_items(item_clave, valor_num, valor_texto)')
-    .eq('participante_id', id)
+    .eq('trabajador_id', id)
     .order('enviado_en', { ascending: false })
   return ((data ?? []) as any[]).map((r) => ({ ...r, items: r.respuestas_items ?? [] }))
 }
@@ -186,12 +186,12 @@ export async function definiciones(): Promise<Record<string, { version: number; 
 
 export type Hito = { tipo: string; ocurrido_en: string; metadata: Record<string, any> }
 export async function lineaTiempo(id: string): Promise<Hito[]> {
-  const { data } = await supabase.from('linea_tiempo_participante').select('*').eq('participante_id', id).order('ocurrido_en')
+  const { data } = await supabase.from('linea_tiempo_trabajador').select('*').eq('trabajador_id', id).order('ocurrido_en')
   return (data ?? []) as Hito[]
 }
 
 export async function verIdentidad(id: string): Promise<{ nombre: string; correo_contacto: string } | null> {
-  const { data, error } = await supabase.rpc('obtener_identidad', { p_participante_id: id })
+  const { data, error } = await supabase.rpc('obtener_identidad', { p_trabajador_id: id })
   if (error) throw error
   const fila = Array.isArray(data) ? data[0] : data
   return fila ? { nombre: fila.nombre, correo_contacto: fila.correo_contacto } : null
@@ -278,7 +278,7 @@ export async function cohorte(filtro?: FiltroGlobal): Promise<CohorteSemana[]> {
 }
 
 export type CircuitoApoyo = {
-  derivacion_id: string; participante_id: string; codigo_anonimo: string; organizacion_id: string
+  derivacion_id: string; trabajador_id: string; codigo_anonimo: string; organizacion_id: string
   psicologo_id: string | null; psicologo: string | null; origen: string
   detectado_en: string | null; derivado_en: string; primera_sesion_en: string | null; informe_aprobado_en: string | null; cerrada_en: string | null
   sesiones: number; informes_pendientes: number
@@ -305,7 +305,7 @@ export async function exportaciones(): Promise<ExportacionRegistrada[]> {
 // ------------------------------------------------------------ Citas del estudio
 
 export type CitaEstudio = {
-  id: string; participante_id: string; codigo_anonimo: string; organizacion_id: string; derivacion_id: string; psicologo_id: string
+  id: string; trabajador_id: string; codigo_anonimo: string; organizacion_id: string; derivacion_id: string; psicologo_id: string
   propuesta_para: string
   /** El enum de la base es `atendida`, no `realizada`. El tipo decía la
    *  segunda y el `as CitaEstudio[]` lo tapaba: el desglose de Derivaciones
@@ -324,14 +324,14 @@ export async function citasEstudio(filtro?: FiltroGlobal): Promise<CitaEstudio[]
 
 /** Las citas de una persona, para su ficha.
  *
- *  `ficha_participante` no las trae: la función no es SECURITY DEFINER y
+ *  `ficha_trabajador` no las trae: la función no es SECURITY DEFINER y
  *  `citas` no tiene ninguna política de RLS para el investigador —solo el
- *  participante y su psicólogo la leen—, así que el campo `cita` de la ficha
+ *  trabajador y su psicólogo la leen—, así que el campo `cita` de la ficha
  *  llegaba siempre en nulo y la pantalla decía «sin cita pedida» de alguien
  *  que la tenía confirmada. La vista `citas_estudio` es la puerta que sí le
  *  corresponde (RF-009-10), y es la que se usa aquí. */
-export async function citasDelParticipante(id: string): Promise<CitaEstudio[]> {
-  const { data } = await supabase.from('citas_estudio').select('*').eq('participante_id', id).order('propuesta_para', { ascending: false })
+export async function citasDelTrabajador(id: string): Promise<CitaEstudio[]> {
+  const { data } = await supabase.from('citas_estudio').select('*').eq('trabajador_id', id).order('propuesta_para', { ascending: false })
   return (data ?? []) as CitaEstudio[]
 }
 
@@ -405,7 +405,7 @@ export function isoLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export const ETIQUETA_ESTADO: Record<FilaParticipanteV2['estado'], string> = {
+export const ETIQUETA_ESTADO: Record<FilaTrabajadorV2['estado'], string> = {
   activo: 'Activo', detectado: 'Detectado', retirado: 'Retirado', finalizado: 'Finalizado',
 }
 
@@ -422,7 +422,7 @@ export function fechaHoraPET(iso: string): string {
 export type AdherenciaEmpresa = {
   organizacion_id: string
   nombre: string
-  participantes_activos: number
+  trabajadores_activos: number
   al_dia: number
   en_riesgo: number
   inactivos: number

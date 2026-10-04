@@ -2,7 +2,7 @@
  *
  *  Es la vista agregada: una fila por semana de calendario, para todas las
  *  empresas o para la filtrada. Contesta «¿cómo va el grupo?», no «¿cómo va
- *  esta persona?», que es lo de Participantes.
+ *  esta persona?», que es lo de Trabajadores.
  *
  *  Antes lo contaba todo en una sola tabla de quince columnas abreviadas
  *  —DETECT., RETIR., AGOT., DESV., FIN DE SEM.— que mezclaba tres preguntas

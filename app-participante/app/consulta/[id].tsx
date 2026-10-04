@@ -1,6 +1,6 @@
-/** Videoconsulta, lado del participante — implementa ESP-004 RF-004-02.
+/** Videoconsulta, lado del trabajador — implementa ESP-004 RF-004-02.
  *
- *  El participante consiente su propia grabación aquí. Nunca ve el informe
+ *  El trabajador consiente su propia grabación aquí. Nunca ve el informe
  *  clínico (RN-004-03): al colgar pasa a su propio resumen (RF-004-17). */
 
 import { useCallback, useEffect, useState } from 'react'
@@ -13,7 +13,7 @@ import type { Credenciales } from '../../modules/consulta/tipos'
 import { Apoyo, Boton, Cargando, Pantalla, Parrafo, Titulo } from '../../modules/nucleo/ui'
 import { espacio } from '../../modules/nucleo/diseno'
 
-export default function ConsultaParticipante() {
+export default function ConsultaTrabajador() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const [sesion, setSesion] = useState<any>(null)
   const [credenciales, setCredenciales] = useState<Credenciales | null>(null)
@@ -32,7 +32,7 @@ export default function ConsultaParticipante() {
     try {
       await supabase
         .from('sesiones_consulta')
-        .update({ consentimiento_participante: true })
+        .update({ consentimiento_trabajador: true })
         .eq('id', id)
       await cargar()
       // Si la otra parte ya autorizó y ya hay alguien en la sala, la
@@ -85,7 +85,7 @@ export default function ConsultaParticipante() {
       </Parrafo>
 
       <View style={e.acciones}>
-        {sesion.consentimiento_participante ? (
+        {sesion.consentimiento_trabajador ? (
           <Apoyo>Autorizaste la grabación de esta sesión.</Apoyo>
         ) : (
           <Boton variante="secundario" onPress={autorizar} cargando={ocupado === 'autorizar'} inhabilitado={ocupado === 'entrar'}>

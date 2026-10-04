@@ -221,7 +221,7 @@ export default function Hoy() {
 /** Una fila = un caso. El botón dice a dónde lleva, no lo que ojalá hiciera. */
 function Fila({ p }: { p: Pendiente }) {
   const { filtro } = useFiltro()
-  const ficha = () => router.push(conFiltro(`/investigador/participante/${p.participante_id}`, filtro) as never)
+  const ficha = () => router.push(conFiltro(`/investigador/trabajador/${p.trabajador_id}`, filtro) as never)
   const empresa = () => router.push(`/investigador/empresa/${p.organizacion_id}` as never)
   const dias = `${p.dias} ${p.dias === 1 ? 'día' : 'días'}`
 
