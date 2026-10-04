@@ -191,13 +191,82 @@ export async function aprobarInforme(
 }
 
 /** RF-006-06 — al cerrar, el psicólogo pierde el acceso a este participante. */
-export async function cerrarDerivacion(derivacionId: string) {
-  const { error } = await supabase
-    .from('derivaciones')
-    .update({ cerrada_en: new Date().toISOString() })
-    .eq('id', derivacionId)
+export const DESENLACES = {
+  mejora: 'Mejoró y no necesita seguir',
+  derivado_externo: 'Derivado a atención externa',
+  abandono: 'Dejó de venir',
+  sin_contacto: 'Nunca se pudo contactar',
+  otro: 'Otro',
+} as const
 
+export type Desenlace = keyof typeof DESENLACES
+
+/** Cerrar pasa a exigir desenlace. Sin él, el servicio no tiene forma de
+ *  demostrar que sirve, que es lo primero que pregunta quien lo paga.
+ *  `seguimiento_hasta` deja a la persona en el radar sin mantener el caso
+ *  abierto ni pedirle nada a ella. */
+export async function cerrarDerivacion(
+  derivacionId: string,
+  desenlace: Desenlace,
+  nota?: string,
+  seguimientoHasta?: string | null,
+) {
+  const { error } = await supabase.rpc('cerrar_derivacion', {
+    p_derivacion: derivacionId,
+    p_desenlace: desenlace,
+    p_nota: nota ?? null,
+    p_seguimiento_hasta: seguimientoHasta ?? null,
+  })
   if (error) throw error
+}
+
+/** El psicólogo propone la cita en vez de esperar a que se la pidan. Nace
+ *  confirmada: la propone quien tendría que confirmarla. */
+export async function proponerCita(derivacionId: string, para: string, motivo?: string) {
+  const { error } = await supabase.rpc('proponer_cita', {
+    p_derivacion: derivacionId, p_para: para, p_motivo: motivo ?? null,
+  })
+  if (error) throw error
+}
+
+export type CitaAgenda = {
+  cita_id: string
+  derivacion_id: string
+  participante_id: string
+  nombre: string | null
+  codigo_anonimo: string
+  propuesta_para: string
+  estado: 'solicitada' | 'confirmada'
+  motivo: string | null
+  dia: string
+  sesion_en_curso: boolean
+}
+
+export async function agenda(): Promise<CitaAgenda[]> {
+  const { data } = await supabase.from('agenda_psicologo').select('*').order('propuesta_para')
+  return (data ?? []) as CitaAgenda[]
+}
+
+export type EpisodioHistoria = {
+  participante_id: string
+  nombre: string | null
+  codigo_anonimo: string
+  derivacion_id: string
+  abierta_en: string
+  cerrada_en: string | null
+  origen: string
+  sesiones: number
+  ultima_sesion: string | null
+  informes_aprobados: number
+}
+
+/** Todos los episodios de una persona, o de todas si no se pasa id. Un caso
+ *  que se cierra y vuelve a abrirse eran dos filas sin relación. */
+export async function historiaClinica(participanteId?: string): Promise<EpisodioHistoria[]> {
+  let q = supabase.from('historia_clinica').select('*').order('abierta_en', { ascending: false })
+  if (participanteId) q = q.eq('participante_id', participanteId)
+  const { data } = await q
+  return (data ?? []) as EpisodioHistoria[]
 }
 
 export async function psicologoActual() {

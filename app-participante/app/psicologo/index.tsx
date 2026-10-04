@@ -13,7 +13,7 @@ import { listarCasos, psicologoActual, type Caso } from '../../modules/psicologo
 import { TarjetaCaso } from '../../modules/psicologo/piezas'
 import { Cargando } from '../../modules/nucleo/ui'
 import { color, espacio, radio, texto } from '../../modules/nucleo/diseno'
-import { IconoArchivo, IconoHoja, IconoPersona } from '../../modules/nucleo/iconos'
+import { IconoArchivo, IconoCalendario, IconoHoja, IconoPersona } from '../../modules/nucleo/iconos'
 
 export default function Casos() {
   const [casos, setCasos] = useState<Caso[] | null>(null)
@@ -75,8 +75,20 @@ export default function Casos() {
           </Text>
         </View>
         <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
-          Participantes del estudio con criterios de derivación confidencial activados.
+          Las personas que te derivaron. Abre una para ver su ficha y atenderla.
         </Text>
+
+        {/* La agenda es lo primero que abre un profesional por la mañana, así
+            que va arriba y no escondida en un menú. */}
+        <Pressable
+          onPress={() => router.push('/psicologo/agenda')}
+          style={({ pressed }) => [e.accesoAgenda, pressed && { opacity: 0.85 }]}
+          accessibilityRole="button"
+        >
+          <IconoCalendario tamano={18} color={color.primarioProfundo} />
+          <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Tu agenda</Text>
+          <Text style={[texto.apoyo, { color: color.textoMedio }]}>Ver citas</Text>
+        </Pressable>
 
         <View style={e.pestanas}>
           {(['activos', 'cerrados'] as const).map((p) => (
@@ -122,6 +134,7 @@ export default function Casos() {
 }
 
 const e = StyleSheet.create({
+  accesoAgenda: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, backgroundColor: color.superficie, borderRadius: radio.md, padding: espacio.base, borderWidth: 1, borderColor: color.borde },
   pantalla: { flex: 1, backgroundColor: color.fondo },
   barra: {
     flexDirection: 'row', alignItems: 'center', gap: espacio.sm,

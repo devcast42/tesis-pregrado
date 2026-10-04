@@ -12,7 +12,8 @@ import { useCallback, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import {
-  cancelarCitaComoPsicologo, cerrarDerivacion, confirmarCita, crearSesion, obtenerCaso, obtenerIdentidad, perfilCaso, pronosticoCaso, trayectoriaOlbi,
+  cancelarCitaComoPsicologo, cerrarDerivacion, confirmarCita, crearSesion, DESENLACES, obtenerCaso, obtenerIdentidad, perfilCaso, pronosticoCaso, trayectoriaOlbi,
+  type Desenlace,
   type Caso, type PerfilCaso, type PuntajeOlbi,
 } from '../../../modules/psicologo/datos'
 import { BarraUmbral, Evolucion, Pastilla, Rotulo, Tarjeta, fechaHoraCorta, haceCuanto } from '../../../modules/psicologo/piezas'
@@ -95,17 +96,21 @@ export default function DetalleCaso() {
       'Perderás el acceso a este participante. ¿Por qué se cierra?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Sesión realizada', onPress: () => cerrarConMotivo('sesion_realizada') },
-        { text: 'No responde', onPress: () => cerrarConMotivo('no_responde') },
-        { text: 'Rechazó la sesión', onPress: () => cerrarConMotivo('rechazo') },
+        { text: DESENLACES.mejora, onPress: () => cerrarConDesenlace('mejora') },
+        { text: DESENLACES.derivado_externo, onPress: () => cerrarConDesenlace('derivado_externo') },
+        { text: DESENLACES.abandono, onPress: () => cerrarConDesenlace('abandono') },
+        { text: DESENLACES.sin_contacto, onPress: () => cerrarConDesenlace('sin_contacto') },
       ],
     )
   }
 
-  async function cerrarConMotivo(_motivo: string) {
+  /** El desenlace se guarda. Antes se preguntaba y se tiraba: la función
+   *  recibía el motivo en `_motivo` y cerraba sin él, así que nadie podía
+   *  saber si el acompañamiento sirvió. */
+  async function cerrarConDesenlace(desenlace: Desenlace) {
     if (!caso) return
     try {
-      await cerrarDerivacion(caso.derivacion_id)
+      await cerrarDerivacion(caso.derivacion_id, desenlace)
       router.back()
     } catch {
       Alert.alert('No se pudo cerrar', 'Inténtalo de nuevo.')
@@ -130,6 +135,15 @@ export default function DetalleCaso() {
           <View style={{ flex: 1 }} />
           {caso.empresa && <Text style={[texto.cuerpo, { color: color.textoMedio }]}>{caso.empresa}</Text>}
         </View>
+        {/* Si esta persona ya pasó por aquí, atenderla sin saber qué pasó la
+            vez anterior es empezar de cero. */}
+        <Pressable
+          onPress={() => router.push(`/psicologo/persona/${caso.participante_id}`)}
+          style={({ pressed }) => [{ alignSelf: 'flex-start' }, pressed && { opacity: 0.7 }]}
+          accessibilityRole="link"
+        >
+          <Text style={[texto.apoyo, { color: color.primarioProfundo }]}>Ver su historia completa →</Text>
+        </Pressable>
         <View style={e.fila}>
           <View style={{ flex: 1 }}>
             <Text style={[texto.etiqueta, { color: color.textoSuave }]}>ROL TÉCNICO</Text>
