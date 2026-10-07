@@ -60,8 +60,14 @@ EN_W0 = {'t_media': 'T_media', 't_ultimo': 'T_ultimo', 't_max': 'T_max',
 CONTEXTO = ['sueno_media', 'horas_media']
 RASGOS = ANIMO + CONTEXTO
 
-ETIQUETA = 'alto_t1'          # el OLBI de la semana siguiente
-W0 = 'preentrenamiento-pronostico-v1'
+# El OLBI ya no cae un viernes fijo: lo dispara `olbi_toca` cuando el modelo
+# avisa, cuando sale el sorteo o cuando lleva un mes sin medirse. Así que la
+# pregunta deja de ser «¿cómo saldrá el viernes que viene?» y pasa a ser «¿si
+# le pidiéramos el OLBI ahora, saldría alto?». Es la misma que responde el
+# preentrenamiento, que se entrenó con prefijos de 1 a 4 días justo para poder
+# opinar cualquier día.
+ETIQUETA = 'alto_t'           # el OLBI que cierra esta semana
+W0 = 'preentrenamiento-v1'
 VERSION = 'producto-v1'
 
 # Fuerza de la penalización hacia w0 en los rasgos de ánimo. Grande = me fío
@@ -311,7 +317,7 @@ def informe(incluir_demo: bool) -> dict:
     w0 = w0_de(W0)
     res = {
         'version': VERSION,
-        'tarea': 'el próximo OLBI saldrá alto',
+        'tarea': 'si le pidiéramos el OLBI ahora, saldría alto',
         'etiqueta': ETIQUETA,
         'n_filas': int(len(d)),
         'n_personas': personas,
@@ -367,12 +373,12 @@ def publicar(r: dict) -> None:
     clave = os.environ['SUPABASE_DB_PASSWORD']
     with psycopg.connect(DSN.format(clave=clave)) as cx:
         cx.execute('reset role')
-        cx.execute("update modelo_versiones set activa = false where tarea = 'pronostico'")
+        cx.execute("update modelo_versiones set activa = false where tarea = 'nowcast'")
         cx.execute("""
             insert into modelo_versiones
               (version, origen, tarea, rasgos, medias, desviaciones, pesos, intercepto,
                umbral_decision, metricas, fuente, activa, visible_para)
-            values (%s, 'propio', 'pronostico', %s, %s, %s, %s, %s, %s, %s, %s, true,
+            values (%s, 'propio', 'nowcast', %s, %s, %s, %s, %s, %s, %s, %s, true,
                     array['investigador','psicologo','trabajador'])
             on conflict (version) do update set
               rasgos = excluded.rasgos, medias = excluded.medias,

@@ -54,6 +54,16 @@ export function mismoDia(iso: string | undefined, referencia = ahora()): boolean
   )
 }
 
+/** ¿Se envió dentro de la semana en curso? El OLBI ya no tiene día fijo, así
+ *  que «completado» deja de ser «hoy» y pasa a ser «esta semana». */
+export function mismoDiaSemana(iso: string | undefined, referencia = ahora()): boolean {
+  if (!iso) return false
+  const lunes = new Date(referencia)
+  lunes.setHours(0, 0, 0, 0)
+  lunes.setDate(lunes.getDate() - (diaIso(lunes) - 1))
+  return new Date(iso).getTime() >= lunes.getTime()
+}
+
 export function diasDesde(iso: string | undefined, referencia = ahora()): number {
   if (!iso) return Infinity
   return (referencia.getTime() - new Date(iso).getTime()) / 86_400_000
@@ -94,6 +104,11 @@ export function agendaDeHoy(
   ultimosEnvios: Partial<Record<ClaveFormulario, string>>,
   calendarios: Calendarios = {},
   referencia = ahora(),
+  /** Si el OLBI corresponde hoy. Lo decide el servidor (`olbi_toca`), no el
+   *  calendario: puede tocar porque el modelo avisó, porque salió en el
+   *  sorteo semanal o porque lleva un mes sin medirse. Un formulario sin
+   *  `dias` y sin esto no aparece nunca. */
+  olbiToca = false,
 ): ItemAgenda[] {
   const claves: ClaveFormulario[] = ['estable', 'diario', 'olbi', 'semanal']
   const completado: Partial<Record<ClaveFormulario, boolean>> = {}
@@ -104,6 +119,15 @@ export function agendaDeHoy(
 
     if (clave === 'estable') {
       return ultimo ? [] : [item(clave, false, calendario)]
+    }
+
+    // El OLBI y las tres preguntas que lo siguen ya no los dispara el día.
+    if ((clave === 'olbi' || clave === 'semanal') && calendario && !calendario.dias) {
+      if (!olbiToca) return []
+      const hecho = !!ultimo && mismoDiaSemana(ultimo, referencia)
+      completado[clave] = hecho
+      if (calendario.despues_de && !completado[calendario.despues_de]) return []
+      return [item(clave, hecho, calendario)]
     }
 
     if (calendario?.dias) {
@@ -131,7 +155,7 @@ const TITULO_RESPALDO: Record<ClaveFormulario, string> = {
   estable: 'Datos iniciales',
   diario: 'Check-in de hoy',
   semanal: 'Sobre tu semana',
-  olbi: 'Cuestionario del viernes',
+  olbi: 'Cuestionario completo',
 }
 
 function item(clave: ClaveFormulario, completado: boolean, p?: PresentacionFormulario): ItemAgenda {

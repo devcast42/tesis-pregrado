@@ -261,3 +261,21 @@ export async function racha(trabajadorId: string): Promise<Racha> {
   if (error || !data) return { actual: 0, mejor: 0, hoy_cumplido: false }
   return data as Racha
 }
+
+
+export type OlbiToca = {
+  toca: boolean
+  motivo?: 'modelo' | 'sorteo' | 'sin_medir' | 'ya_respondido' | 'no_toca'
+  probabilidad?: number
+}
+
+/** Si hoy corresponde el cuestionario completo. Lo decide el servidor: puede
+ *  tocar porque el modelo avisó, porque salió en el sorteo semanal —que es la
+ *  única medida limpia que queda del modelo— o porque lleva un mes sin
+ *  medirse. Nunca lo decide la app: el umbral y el sorteo viven donde viven
+ *  los pesos. */
+export async function olbiToca(): Promise<OlbiToca> {
+  const { data, error } = await supabase.rpc('olbi_toca')
+  if (error || !data) return { toca: false }
+  return data as OlbiToca
+}

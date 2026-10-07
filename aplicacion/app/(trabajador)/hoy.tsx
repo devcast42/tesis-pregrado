@@ -18,7 +18,8 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { obtenerTrabajador } from '../../modules/acceso/datos'
 import {
-  calendarios, diasConCheckinEstaSemana, indiceLunes, inicioDeSemana, prediccionActual, racha as consultarRacha, ultimaPrediccionSemana, ultimosEnvios, type Racha,
+  calendarios, diasConCheckinEstaSemana, indiceLunes, inicioDeSemana, olbiToca, prediccionActual,
+  racha as consultarRacha, ultimaPrediccionSemana, ultimosEnvios, type Racha,
 } from '../../modules/recoleccion/datos'
 import { agendaDeHoy, type ItemAgenda } from '../../modules/recoleccion/agenda'
 import { sincronizarRecordatorios } from '../../modules/recoleccion/recordatorios'
@@ -149,7 +150,7 @@ export default function Hoy() {
       sincronizarRecordatorios({ diario: cal.diario?.duracion, olbi: cal.olbi?.duracion }).catch(() => {})
     }
     setTrabajador(p)
-    setAgenda(agendaDeHoy(envios, cal))
+    setAgenda(agendaDeHoy(envios, cal, undefined, (await olbiToca()).toca))
     setDiasRespondidos(dias)
     setSesion(s)
     // RF-002-12 — el resultado del viernes se puede volver a ver toda la

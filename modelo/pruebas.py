@@ -106,12 +106,17 @@ def ca_01(cx):
 
 @prueba('CA-005-02 ninguna entrada sale de la semana que se predice')
 def ca_02(cx):
-    """La etiqueta es el OLBI de t+1. Todas las entradas resumen la semana t,
-    así que ningún ítem del OLBI ni ningún puntaje puede estar entre ellas:
-    si lo estuviera, el modelo estaría leyendo su propia respuesta."""
+    """La etiqueta es el OLBI que cierra la semana t, y las entradas son los
+    días de esa misma semana. Por eso `e_previo`/`d_previo` —que son ese OLBI—
+    no pueden estar entre ellas: el modelo estaría leyendo la respuesta que
+    tiene que adivinar, sacaría una precisión magnífica y no detectaría nada.
+
+    Con la etiqueta anterior (`alto_t1`, el viernes siguiente) esto era menos
+    grave, porque ese OLBI ya era pasado. Ahora es la comprobación que sostiene
+    todo lo demás."""
     import entrenar
     rasgos = set(entrenar.RASGOS)
-    assert entrenar.ETIQUETA == 'alto_t1', 'la etiqueta dejó de ser el OLBI siguiente'
+    assert entrenar.ETIQUETA == 'alto_t', 'la etiqueta dejó de ser el OLBI de esta semana'
     assert not any(r.startswith('olbi_') for r in rasgos), \
         'hay ítems olbi_* crudos entre los rasgos'
     assert not ({'e_previo', 'd_previo', 'alto_t', 'alto_t1'} & rasgos), \
