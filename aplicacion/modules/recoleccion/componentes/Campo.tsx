@@ -67,13 +67,17 @@ function rampaDe(item: ItemDef, n: number): string[] {
  *  `locationX` llega siempre relativo a la barra entera y no al trozo que se
  *  tocó, que es lo que hacía saltar el valor al arrastrar. */
 function Barra({
-  puntos, valor, onChange, rampa, etiquetas,
+  puntos, valor, onChange, rampa, etiquetas, extremos,
 }: {
   puntos: (number | string)[]
   valor: ValorItem | undefined
   onChange: (v: ValorItem) => void
   rampa: string[]
   etiquetas?: string[]
+  /** Lo que se escribe bajo las puntas. Corto a propósito: «Totalmente en
+   *  desacuerdo» se parte en dos líneas en un teléfono y descuadra la fila,
+   *  mientras que el texto completo sigue apareciendo abajo al elegir. */
+  extremos?: [string, string]
 }) {
   const [ancho, setAncho] = useState(0)
   const n = puntos.length
@@ -90,6 +94,10 @@ function Barra({
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (e) => mover(e.nativeEvent.locationX),
       onPanResponderMove: (e) => mover(e.nativeEvent.locationX),
+      // Sin esto el ScrollView se queda el gesto en cuanto el dedo se
+      // desvía un poco en vertical, y el pomo salta o se queda clavado.
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
     }),
   )
   // El responder se crea una vez; `mover` tiene que ver siempre el ancho y los
@@ -136,10 +144,10 @@ function Barra({
       {/* Las etiquetas de los extremos, siempre visibles: en sueño y jornada
           son rangos («menos de 6 h»), y sin ellas el deslizador no dice qué
           se está eligiendo hasta que ya lo elegiste. */}
-      {etiquetas && etiquetas.length > 0 && (
+      {extremos && (
         <View style={e.extremosFila}>
-          <Text style={[texto.dato, e.extremoTexto]}>{etiquetas[0]}</Text>
-          <Text style={[texto.dato, e.extremoTexto, { textAlign: 'right' }]}>{etiquetas[n - 1]}</Text>
+          <Text style={[texto.dato, e.extremoTexto]} numberOfLines={1}>{extremos[0]}</Text>
+          <Text style={[texto.dato, e.extremoTexto, { textAlign: 'right' }]} numberOfLines={1}>{extremos[1]}</Text>
         </View>
       )}
       <Text style={[texto.apoyo, e.piePista]}>{pie}</Text>
@@ -158,6 +166,8 @@ function Escala({ item, valor, onChange }: Pick<Props, 'item' | 'valor' | 'onCha
       onChange={onChange}
       rampa={rampaDe(item, puntos.length)}
       etiquetas={(item.escala as { etiquetas?: string[] } | undefined)?.etiquetas}
+      extremos={(item.escala as { extremos?: [string, string] } | undefined)?.extremos
+        ?? ['En desacuerdo', 'De acuerdo']}
     />
   )
 }
@@ -189,6 +199,7 @@ function Opciones({ item, valor, onChange }: Pick<Props, 'item' | 'valor' | 'onC
       onChange={onChange}
       rampa={rampaDe(item, opciones.length)}
       etiquetas={opciones.map((o) => o.etiqueta)}
+      extremos={[opciones[0].etiqueta, opciones[opciones.length - 1].etiqueta]}
     />
   )
 }
