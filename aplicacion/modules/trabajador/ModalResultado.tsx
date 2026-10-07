@@ -270,8 +270,8 @@ export function Probabilidad({ p }: { p: Prediccion }) {
       </View>
       <Text style={[texto.cuerpo, { color: color.texto, flex: 1 }]}>
         {pronostico
-          ? 'de probabilidad de que el próximo viernes salga alto'
-          : 'de probabilidad de que el cuestionario del viernes salga alto'}
+          ? 'de probabilidad de que el cuestionario te saliera alto'
+          : 'de probabilidad de que el cuestionario te saliera alto'}
       </Text>
     </View>
   )
@@ -286,7 +286,7 @@ function Explicacion({ p }: { p: Prediccion }) {
     {
       titulo: '¿Qué es este número?',
       cuerpo: pronostico
-        ? 'La probabilidad, según el modelo del estudio, de que tu próximo cuestionario del viernes salga alto. Se calcula con toda tu semana.'
+        ? 'La probabilidad de que el cuestionario completo te saliera alto si lo respondieras hoy. Se calcula con lo que llevas contestado esta semana, y es lo que decide cuándo se te pide.'
         : 'La probabilidad, según el modelo del estudio, de que tu cuestionario de este viernes salga alto. Se actualiza con cada check-in.',
     },
   ]
