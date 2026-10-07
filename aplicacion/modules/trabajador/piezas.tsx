@@ -205,8 +205,12 @@ function Circulo({ estado, racheado }: { estado: EstadoDia; racheado: boolean })
 
 /** La acción principal del día, sobre fondo primario con un aura orgánica. */
 export function TarjetaHero({
-  titulo, descripcion, accion, onPress,
+  titulo, descripcion, accion, onPress, insignia,
 }: {
+  /** Sustituye a «Acción principal de hoy». Lo usa el cuestionario completo,
+   *  que ya no cae un día fijo: aparecer sin decir por qué se lee como un
+   *  fallo de la app. */
+  insignia?: string
   titulo: string
   descripcion: string
   accion: string
@@ -217,7 +221,7 @@ export function TarjetaHero({
       <View style={e.heroAura} />
       <View style={e.heroPastilla}>
         <IconoDestello tamano={12.5} color={color.primarioTenue} />
-        <Text style={[texto.etiqueta, { color: color.primarioTenue }]}>ACCIÓN PRINCIPAL DE HOY</Text>
+        <Text style={[texto.etiqueta, { color: color.primarioTenue }]}>{(insignia ?? 'Acción principal de hoy').toUpperCase()}</Text>
       </View>
       <Text style={[texto.seccion, { color: '#FFFFFF' }]}>{titulo}</Text>
       <Text style={[texto.cuerpo, e.heroDescripcion]}>{descripcion}</Text>

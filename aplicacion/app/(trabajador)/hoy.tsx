@@ -260,6 +260,7 @@ export default function Hoy() {
 
         {principal && (
           <TarjetaHero
+            insignia={principal.clave === 'olbi' && motivoOlbi ? POR_QUE[motivoOlbi] : undefined}
             titulo={encabezado(principal)}
             descripcion={principal.descripcion ?? PRESENTACION[principal.clave].descripcion}
             accion={PRESENTACION[principal.clave].accion}
@@ -278,7 +279,10 @@ export default function Hoy() {
           />
         ))}
 
-        {todoListo && enSeguimiento && completados.length > 0 && (
+        {/* Antes solo salía cuando no quedaba nada pendiente, así que el día
+            que el cuestionario aparecía de golpe, el check-in ya respondido
+            desaparecía de la pantalla y parecía que no se había enviado. */}
+        {enSeguimiento && completados.length > 0 && (
           <RegistrosDelDia
             registros={completados.map((i) => ({
               titulo: i.titulo,
