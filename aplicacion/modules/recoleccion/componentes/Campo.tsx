@@ -83,31 +83,45 @@ function Barra({
   const n = puntos.length
   const seleccionado = puntos.findIndex((p) => p === valor)
 
-  const indiceEn = useCallback((x: number) => {
-    if (!ancho) return 0
-    return Math.max(0, Math.min(n - 1, Math.round((x / ancho) * (n - 1))))
-  }, [ancho, n])
+  /** Dónde empieza la pista en la pantalla. Hace falta porque el gesto llega
+   *  en coordenadas absolutas: `locationX` parecía más cómodo, pero durante el
+   *  arrastre llega relativo a la vista que recibió el toque y en Android
+   *  acaba siendo inconsistente. Ese era el salto. */
+  const pista = useRef<View>(null)
+  const izquierda = useRef(0)
+
+  const medir = () => {
+    pista.current?.measure?.((_x, _y, w, _h, px) => {
+      if (w) setAncho(w)
+      if (typeof px === 'number') izquierda.current = px
+    })
+  }
+
+  // El responder se crea una vez, así que `mover` no puede capturar el estado:
+  // vive en una ref que se reescribe en cada render.
+  const moverRef = useRef<(x: number) => void>(() => {})
+  moverRef.current = (xPantalla: number) => {
+    if (!ancho) return
+    const x = xPantalla - izquierda.current
+    const i = Math.max(0, Math.min(n - 1, Math.round((x / ancho) * (n - 1))))
+    // Sin comparar con el valor actual: en un arrastre rápido React todavía no
+    // ha vuelto a renderizar, así que el valor que se vería aquí sería el de
+    // hace dos movimientos y el pomo se saltaría paradas.
+    onChange(puntos[i])
+  }
 
   const responder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (e) => mover(e.nativeEvent.locationX),
-      onPanResponderMove: (e) => mover(e.nativeEvent.locationX),
+      onPanResponderGrant: (_e, g) => { medir(); moverRef.current(g.x0) },
+      onPanResponderMove: (_e, g) => moverRef.current(g.moveX),
       // Sin esto el ScrollView se queda el gesto en cuanto el dedo se
       // desvía un poco en vertical, y el pomo salta o se queda clavado.
       onPanResponderTerminationRequest: () => false,
       onShouldBlockNativeResponder: () => true,
     }),
   )
-  // El responder se crea una vez; `mover` tiene que ver siempre el ancho y los
-  // puntos actuales, así que vive en una ref en vez de capturarse.
-  const moverRef = useRef<(x: number) => void>(() => {})
-  const mover = (x: number) => moverRef.current(x)
-  moverRef.current = (x: number) => {
-    const i = indiceEn(x)
-    if (i !== seleccionado) onChange(puntos[i])
-  }
 
   const cara = seleccionado >= 0 ? rampa[seleccionado] : null
   const pie = seleccionado >= 0 ? (etiquetas?.[seleccionado] ?? String(puntos[seleccionado])) : 'Arrastra o toca'
@@ -115,8 +129,9 @@ function Barra({
   return (
     <View style={e.barraGrupo}>
       <View
+        ref={pista}
         style={e.pista}
-        onLayout={(ev) => setAncho(ev.nativeEvent.layout.width)}
+        onLayout={medir}
         {...responder.current.panHandlers}
         accessibilityRole="adjustable"
         accessibilityValue={{ min: 0, max: n - 1, now: Math.max(0, seleccionado) }}
