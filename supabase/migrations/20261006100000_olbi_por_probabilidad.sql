@@ -50,9 +50,14 @@ begin
     end if;
   end if;
 
-  -- 2. El sorteo. `hashtext` es determinista, así que no cambia durante la
-  --    semana ni hace falta registrar el resultado en ninguna tabla.
-  if abs(hashtext(v_id::text || v_lunes::text)) % 4 = 0 then
+  -- 2. El sorteo, y solo el viernes: cerrar la semana es cuando el
+  --    cuestionario tiene más sentido y cuando la gente ya lo espera. El
+  --    sábado y el domingo siguen valiendo para que nadie lo pierda por un
+  --    viernes ocupado.
+  --    `hashtext` es determinista sobre (persona, semana), así que no cambia
+  --    aunque abra la app diez veces y no hay que registrar a quién le tocó.
+  if extract(isodow from (now() at time zone tz_estudio())) >= 5
+     and abs(hashtext(v_id::text || v_lunes::text)) % 4 = 0 then
     return jsonb_build_object('toca', true, 'motivo', 'sorteo');
   end if;
 
