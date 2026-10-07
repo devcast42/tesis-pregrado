@@ -44,6 +44,20 @@ import type { Trabajador } from '../../modules/nucleo/tipos'
  *  cuando cambian las preguntas: tenerlos copiados aquí hizo que la tarjeta
  *  siguiera prometiendo «25 segundos y dos datos» después de pasar el diario
  *  a nueve preguntas. */
+/** Por qué apareció el cuestionario hoy. Decirlo importa: aparecer sin más
+ *  en un día cualquiera se lee como un fallo, y «porque te tocó en el sorteo»
+ *  no es lo mismo que «porque tus respuestas de esta semana lo sugieren». */
+const POR_QUE: Record<string, string> = {
+  modelo: 'Por tus respuestas',
+  sorteo: 'Te tocó esta semana',
+  sin_medir: 'Llevas un mes sin responderlo',
+}
+
+function insigniaDe(clave: string, motivo: string | null): string {
+  if (clave === 'olbi' && motivo) return POR_QUE[motivo] ?? PRESENTACION.olbi.insignia
+  return PRESENTACION[clave].insignia
+}
+
 const PRESENTACION: Record<string, { insignia: string; accion: string; descripcion: string }> = {
   estable: {
     insignia: 'Solo una vez',
@@ -56,7 +70,9 @@ const PRESENTACION: Record<string, { insignia: string; accion: string; descripci
     accion: 'Comenzar check-in',
   },
   olbi: {
-    insignia: 'Cada viernes',
+    // Sustituida en tiempo de ejecución por `insigniaDe`: el cuestionario ya
+    // no cae un día fijo, así que la insignia dice POR QUÉ apareció.
+    insignia: 'De vez en cuando',
     descripcion: 'Un espacio más profundo para cerrar la semana: dieciséis afirmaciones sobre tu relación con el trabajo.',
     accion: 'Responder ahora',
   },
@@ -75,6 +91,7 @@ function encabezado(item: ItemAgenda): string {
 export default function Hoy() {
   const [trabajador, setTrabajador] = useState<Trabajador | null>(null)
   const [agenda, setAgenda] = useState<ItemAgenda[] | null>(null)
+  const [motivoOlbi, setMotivoOlbi] = useState<string | null>(null)
   const [diasRespondidos, setDiasRespondidos] = useState<Set<number>>(new Set())
   const [sesion, setSesion] = useState<SesionDisponible | null>(null)
   const [refrescando, setRefrescando] = useState(false)
@@ -150,7 +167,9 @@ export default function Hoy() {
       sincronizarRecordatorios({ diario: cal.diario?.duracion, olbi: cal.olbi?.duracion }).catch(() => {})
     }
     setTrabajador(p)
-    setAgenda(agendaDeHoy(envios, cal, undefined, (await olbiToca()).toca))
+    const olbi = await olbiToca()
+    setMotivoOlbi(olbi.motivo ?? null)
+    setAgenda(agendaDeHoy(envios, cal, undefined, olbi.toca))
     setDiasRespondidos(dias)
     setSesion(s)
     // RF-002-12 — el resultado del viernes se puede volver a ver toda la
@@ -251,7 +270,7 @@ export default function Hoy() {
         {secundarios.map((item) => (
           <TarjetaSecundaria
             key={item.clave}
-            insignia={PRESENTACION[item.clave].insignia}
+            insignia={insigniaDe(item.clave, motivoOlbi)}
             titulo={encabezado(item)}
             descripcion={item.descripcion ?? PRESENTACION[item.clave].descripcion}
             accion={PRESENTACION[item.clave].accion}
