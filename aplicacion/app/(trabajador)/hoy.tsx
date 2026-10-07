@@ -48,9 +48,9 @@ import type { Trabajador } from '../../modules/nucleo/tipos'
  *  en un día cualquiera se lee como un fallo, y «porque te tocó en el sorteo»
  *  no es lo mismo que «porque tus respuestas de esta semana lo sugieren». */
 const POR_QUE: Record<string, string> = {
-  modelo: 'Por tus respuestas',
+  modelo: 'Por cómo va tu semana',
   sorteo: 'Te tocó esta semana',
-  sin_medir: 'Llevas un mes sin responderlo',
+  sin_medir: 'Hace un mes que no lo respondes',
 }
 
 function insigniaDe(clave: string, motivo: string | null): string {
@@ -279,18 +279,20 @@ export default function Hoy() {
           />
         ))}
 
-        {/* Antes solo salía cuando no quedaba nada pendiente, así que el día
-            que el cuestionario aparecía de golpe, el check-in ya respondido
-            desaparecía de la pantalla y parecía que no se había enviado. */}
-        {enSeguimiento && completados.length > 0 && (
-          <RegistrosDelDia
-            registros={completados.map((i) => ({
-              titulo: i.titulo,
-              detalle: PRESENTACION[i.clave].insignia,
-              estado: 'HOY',
-            }))}
+        {/* Lo ya respondido se queda donde estaba, apagado y con su marca.
+            Mandarlo a una lista aparte justo después de enviarlo hacía dudar
+            de si se había guardado. */}
+        {enSeguimiento && completados.map((item) => (
+          <TarjetaSecundaria
+            key={item.clave}
+            completado
+            insignia={insigniaDe(item.clave, motivoOlbi)}
+            titulo={item.titulo}
+            descripcion={item.descripcion ?? PRESENTACION[item.clave].descripcion}
+            accion={PRESENTACION[item.clave].accion}
+            onPress={() => {}}
           />
-        )}
+        ))}
 
         {sesion && <TarjetaApoyo onPress={() => router.push(`/consulta/${sesion.id}`)} />}
 
@@ -311,7 +313,7 @@ export default function Hoy() {
         <PieEtico codigo={trabajador.codigo_anonimo} onAjustes={irAAjustes} />
       </ScrollView>
 
-      <ModalResultado modo={modal} resultado={resultado} consejo={consejo} prediccion={prediccion} onCerrar={() => {
+      <ModalResultado modo={modal} resultado={resultado} consejo={consejo} prediccion={prediccion} motivoOlbi={motivoOlbi} onCerrar={() => {
         setModal(null)
         if (celebrarPendiente) { setCelebrarPendiente(false); setCelebrar(true); setTimeout(() => setCelebrar(false), 2000) }
       }} />

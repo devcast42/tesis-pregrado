@@ -35,6 +35,8 @@ type Props = {
   resultado: ResultadoSemana | null
   consejo: string | null
   prediccion: Prediccion | null
+  /** Por qué toca el cuestionario, si toca. */
+  motivoOlbi?: string | null
   onCerrar: () => void
 }
 
@@ -52,7 +54,7 @@ const TONO_CONFIANZA: Record<NivelConfianza, { borde: string; tinta: string; fon
   alta: { borde: '#BBE5C8', tinta: color.exito, fondo: color.exitoSuave },
 }
 
-export function ModalResultado({ modo, resultado, consejo, prediccion, onCerrar }: Props) {
+export function ModalResultado({ modo, resultado, consejo, prediccion, motivoOlbi, onCerrar }: Props) {
   const insets = useSafeAreaInsets()
   const visible = modo !== null
   const mostrarResultado = modo === 'resultado' && resultado !== null
@@ -75,7 +77,7 @@ export function ModalResultado({ modo, resultado, consejo, prediccion, onCerrar 
           </View>
 
           <ScrollView contentContainerStyle={[e.contenido, { paddingBottom: espacio.xxl + insets.bottom }]} showsVerticalScrollIndicator={false}>
-            {mostrarResultado ? <Resultado r={resultado} /> : <Cierre consejo={consejo} prediccion={prediccion} />}
+            {mostrarResultado ? <Resultado r={resultado} /> : <Cierre consejo={consejo} prediccion={prediccion} motivoOlbi={motivoOlbi} />}
             <Boton onPress={onCerrar}>Volver al inicio</Boton>
           </ScrollView>
         </View>
@@ -86,7 +88,33 @@ export function ModalResultado({ modo, resultado, consejo, prediccion, onCerrar 
 
 // ------------------------------------------------------------ Cierre diario
 
-function Cierre({ consejo, prediccion }: { consejo: string | null; prediccion: Prediccion | null }) {
+/** Por qué toca el cuestionario, dicho tras el check-in.
+ *
+ *  Antes aparecía sin aviso en la pantalla principal: respondías tus seis
+ *  toques, volvías, y había un cuestionario de cuatro minutos esperando sin
+ *  explicación. Avisar aquí, con el motivo, convierte una sorpresa en una
+ *  consecuencia de lo que acabas de responder. */
+const AVISO_OLBI: Record<string, { titulo: string; texto: string }> = {
+  modelo: {
+    titulo: 'Toca el cuestionario completo',
+    texto: 'Por cómo va tu semana conviene mirarlo con más detalle. Son 16 preguntas, unos 4 minutos.',
+  },
+  sorteo: {
+    titulo: 'Esta semana te tocó a ti',
+    texto: 'Cada semana le toca a una parte del equipo, al azar. Son 16 preguntas, unos 4 minutos.',
+  },
+  sin_medir: {
+    titulo: 'Hace un mes que no lo respondes',
+    texto: 'Conviene medir de vez en cuando aunque todo vaya bien. Son 16 preguntas, unos 4 minutos.',
+  },
+}
+
+function Cierre({ consejo, prediccion, motivoOlbi }: {
+  consejo: string | null
+  prediccion: Prediccion | null
+  motivoOlbi?: string | null
+}) {
+  const aviso = motivoOlbi ? AVISO_OLBI[motivoOlbi] : null
   return (
     <>
       <View style={e.gracias}>
@@ -98,6 +126,14 @@ function Cierre({ consejo, prediccion }: { consejo: string | null; prediccion: P
           </Text>
         </View>
       </View>
+
+      {aviso && (
+        <View style={[e.tarjeta, { borderColor: color.primario, borderWidth: 1 }]}>
+          <Rotulo punto>LO SIGUIENTE</Rotulo>
+          <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{aviso.titulo}</Text>
+          <Text style={[texto.cuerpo, { color: color.textoMedio }]}>{aviso.texto}</Text>
+        </View>
+      )}
 
       {consejo && (
         <View style={e.tarjeta}>

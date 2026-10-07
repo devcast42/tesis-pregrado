@@ -236,14 +236,33 @@ export function TarjetaHero({
 // --------------------------------------------------------------- Secundaria
 
 export function TarjetaSecundaria({
-  insignia, titulo, descripcion, accion, onPress,
+  insignia, titulo, descripcion, accion, onPress, completado,
 }: {
   insignia: string
   titulo: string
   descripcion: string
   accion: string
   onPress: () => void
+  /** Lo ya respondido se queda en su sitio, apagado y con su marca, en vez de
+   *  irse a una lista aparte: moverlo de lugar justo después de enviarlo hace
+   *  dudar de si se envió. */
+  completado?: boolean
 }) {
+  if (completado) {
+    return (
+      <View style={[e.tarjeta, e.tarjetaHecha]}>
+        <View style={e.filaHecha}>
+          <View style={e.selloHecho}>
+            <IconoCheck tamano={13} color={color.primarioProfundo} />
+          </View>
+          <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+            <Text style={[texto.cuerpoFuerte, { color: color.textoMedio }]} numberOfLines={1}>{titulo}</Text>
+            <Text style={[texto.dato, { color: color.textoSuave }]}>Respondido hoy</Text>
+          </View>
+        </View>
+      </View>
+    )
+  }
   return (
     <View style={e.tarjeta}>
       <View style={e.insigniaArena}>
@@ -400,6 +419,9 @@ const SOMBRA_TENUE = {
 }
 
 const e = StyleSheet.create({
+  tarjetaHecha: { backgroundColor: color.superficieSuave, shadowOpacity: 0, elevation: 0 },
+  filaHecha: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  selloHecho: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#DDF3EA', alignItems: 'center', justifyContent: 'center' },
   barraSuperior: {
     flexDirection: 'row', alignItems: 'center', gap: espacio.md,
     paddingHorizontal: 20, paddingVertical: 10, backgroundColor: color.superficie,
