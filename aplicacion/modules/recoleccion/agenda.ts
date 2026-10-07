@@ -124,15 +124,24 @@ export function agendaDeHoy(
     // El OLBI y las tres preguntas que lo siguen ya no los dispara el día.
     if ((clave === 'olbi' || clave === 'semanal') && calendario && !calendario.dias) {
       if (!olbiToca) return []
+      // Primero los seis toques, después el cuestionario. Ofrecer cuatro
+      // minutos antes que quince segundos es la forma más rápida de que no
+      // se conteste ninguno de los dos.
+      if (calendario.despues_de && !completado[calendario.despues_de]) return []
       const hecho = !!ultimo && mismoDiaSemana(ultimo, referencia)
       completado[clave] = hecho
-      if (calendario.despues_de && !completado[calendario.despues_de]) return []
       return [item(clave, hecho, calendario)]
     }
 
     if (calendario?.dias) {
       const vencimiento = vencimientoVigente(calendario, referencia)
-      if (!vencimiento) return []
+      if (!vencimiento) {
+        // Hoy no toca. Cuenta como satisfecho para `despues_de`: el fin de
+        // semana no hay check-in, y si bloqueara, el cuestionario no podría
+        // aparecer nunca.
+        completado[clave] = true
+        return []
+      }
       const hecho = !!ultimo && new Date(ultimo).getTime() >= vencimiento.getTime()
       completado[clave] = hecho
       if (calendario.despues_de && !completado[calendario.despues_de]) return []

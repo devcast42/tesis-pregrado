@@ -82,9 +82,13 @@ comment on function olbi_toca(uuid) is
 -- `dias` pasa a null en el OLBI y en el cuestionario de la semana: ya no los
 -- dispara el día, los dispara `olbi_toca`. El `semanal` conserva su
 -- `despues_de`, así que sigue apareciendo detrás del OLBI y nunca solo.
+-- `despues_de` encadena el cuestionario detrás del check-in del día: primero
+-- los seis toques, después los cuatro minutos. Ofrecerlos al revés es la forma
+-- más rápida de que no se conteste ninguno de los dos.
 insert into formularios (clave, version, definicion)
 select 'olbi', 3, (definicion - 'dias' - 'gracia_dias')
      || jsonb_build_object('titulo', 'Cuestionario completo',
+                           'despues_de', 'diario',
                            'descripcion', 'Son 16 preguntas. Se pide de vez en cuando, no todas las semanas.')
   from formularios where clave = 'olbi' and version = 2
 on conflict (clave, version) do update set definicion = excluded.definicion;
