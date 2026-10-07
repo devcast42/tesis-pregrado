@@ -3,7 +3,8 @@
  *  Renderiza un ítem según su `tipo`. No conoce ningún instrumento concreto:
  *  agregar una pregunta al estudio es editar un JSON, no tocar este archivo. */
 
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useRef, useState } from 'react'
+import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native'
 import type { ItemDef, ValorItem } from '../../nucleo/tipos'
 import { color, espacio, radio, texto, TOQUE_MINIMO } from '../../nucleo/diseno'
 import { Entrada } from '../../nucleo/ui'
@@ -32,72 +33,116 @@ export function Campo({ item, valor, onChange, faltante }: Props) {
   )
 }
 
-/** Emojis de los extremos cuando la definición no los trae.
+/** La cara del pomo, de mejor a peor.
  *
- *  La mayoría de los ítems son negativos —cuanto más de acuerdo, peor—, así
- *  que el extremo izquierdo es el bueno. Pero la mitad del OLBI está escrita
- *  en positivo («me siento lleno de energía») y lleva `invertido`: ahí el
- *  recorrido va al revés y los emojis también, o la barra dice lo contrario
- *  de lo que la frase pregunta. */
-const EXTREMOS: [string, string] = ['🙂', '😫']
-
-function extremosDe(item: ItemDef): [string, string] {
-  const propios = (item.escala as { emojis?: [string, string] } | undefined)?.emojis
-  if (propios) return propios
-  return item.invertido ? [EXTREMOS[1], EXTREMOS[0]] : EXTREMOS
+ *  Se elige una rampa del largo de la escala para que los extremos siempre
+ *  sean la mejor y la peor cara: con cinco puntos hay un neutro en medio, con
+ *  cuatro no, que es exactamente la diferencia entre el diario y el OLBI. */
+const RAMPAS: Record<number, string[]> = {
+  2: ['🙂', '😫'],
+  3: ['🙂', '😐', '😫'],
+  4: ['😄', '🙂', '😟', '😫'],
+  5: ['😄', '🙂', '😐', '😟', '😫'],
 }
 
-/** Barra de tramos, no deslizador de verdad.
+/** La rampa de un ítem, volteada si hace falta.
  *
- *  Se ve como un deslizador —se rellena, lleva emojis en las puntas— pero se
- *  contesta de un toque. Arrastrar es más lento y más impreciso, y esto se
- *  responde cuatro veces al día.
+ *  La mayoría de las preguntas son negativas —cuanto más de acuerdo, peor—,
+ *  pero media del OLBI está escrita en positivo («me siento lleno de energía»)
+ *  y lleva `invertido`. Sin voltear, esos ítems pondrían la cara triste en el
+ *  extremo bueno y la barra diría lo contrario de lo que pregunta la frase. */
+function rampaDe(item: ItemDef, n: number): string[] {
+  const propia = (item.escala as { emojis?: string[] } | undefined)?.emojis
+  const base = propia ?? RAMPAS[n] ?? RAMPAS[5]
+  return item.invertido ? [...base].reverse() : base
+}
+
+/** Deslizador: se arrastra o se toca, y el pomo lleva la cara del valor.
  *
- *  El valor sigue siendo un entero. No es cosmético: los pesos preentrenados
- *  se calcularon sobre la escala de 1 a 5, y un continuo cambiaría la
- *  distribución de las respuestas. */
+ *  El valor sigue siendo un entero —se ajusta al punto más cercano—. No es
+ *  cosmético: los pesos preentrenados se calcularon sobre la escala de 1 a 5,
+ *  y un continuo cambiaría la distribución de las respuestas.
+ *
+ *  Los tramos no reciben toques: el contenedor es quien responde, y así
+ *  `locationX` llega siempre relativo a la barra entera y no al trozo que se
+ *  tocó, que es lo que hacía saltar el valor al arrastrar. */
 function Barra({
-  puntos, valor, onChange, emojis, etiquetas,
+  puntos, valor, onChange, rampa, etiquetas,
 }: {
   puntos: (number | string)[]
   valor: ValorItem | undefined
   onChange: (v: ValorItem) => void
-  emojis?: [string, string]
+  rampa: string[]
   etiquetas?: string[]
 }) {
+  const [ancho, setAncho] = useState(0)
+  const n = puntos.length
   const seleccionado = puntos.findIndex((p) => p === valor)
-  const [izq, der] = emojis ?? EXTREMOS
+
+  const indiceEn = useCallback((x: number) => {
+    if (!ancho) return 0
+    return Math.max(0, Math.min(n - 1, Math.round((x / ancho) * (n - 1))))
+  }, [ancho, n])
+
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => mover(e.nativeEvent.locationX),
+      onPanResponderMove: (e) => mover(e.nativeEvent.locationX),
+    }),
+  )
+  // El responder se crea una vez; `mover` tiene que ver siempre el ancho y los
+  // puntos actuales, así que vive en una ref en vez de capturarse.
+  const moverRef = useRef<(x: number) => void>(() => {})
+  const mover = (x: number) => moverRef.current(x)
+  moverRef.current = (x: number) => {
+    const i = indiceEn(x)
+    if (i !== seleccionado) onChange(puntos[i])
+  }
+
+  const cara = seleccionado >= 0 ? rampa[seleccionado] : null
+  const pie = seleccionado >= 0 ? (etiquetas?.[seleccionado] ?? String(puntos[seleccionado])) : 'Arrastra o toca'
 
   return (
     <View style={e.barraGrupo}>
-      <View style={e.barraFila}>
-        <Text style={e.emoji}>{izq}</Text>
-        <View style={e.barra}>
+      <View
+        style={e.pista}
+        onLayout={(ev) => setAncho(ev.nativeEvent.layout.width)}
+        {...responder.current.panHandlers}
+        accessibilityRole="adjustable"
+        accessibilityValue={{ min: 0, max: n - 1, now: Math.max(0, seleccionado) }}
+      >
+        <View style={e.riel} pointerEvents="none">
+          {seleccionado >= 0 && (
+            <View style={[e.rielLleno, { width: `${(seleccionado / (n - 1)) * 100}%` }]} />
+          )}
+        </View>
+        <View style={e.paradas} pointerEvents="none">
           {puntos.map((punto, i) => (
-            <Pressable
-              key={String(punto)}
-              onPress={() => onChange(punto)}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: i === seleccionado }}
-              accessibilityLabel={etiquetas?.[i] ?? String(punto)}
-              style={({ pressed }) => [
-                e.tramo,
-                i === 0 && e.tramoPrimero,
-                i === puntos.length - 1 && e.tramoUltimo,
-                // Se rellena hasta donde tocaste: eso es lo que un deslizador
-                // comunica y una fila de botones no.
-                seleccionado >= 0 && i <= seleccionado && e.tramoLleno,
-                i === seleccionado && e.tramoPunta,
-                pressed && e.tramoPresionado,
-              ]}
-            />
+            <View key={String(punto)} style={[e.parada, i <= seleccionado && e.paradaLlena]} />
           ))}
         </View>
-        <Text style={e.emoji}>{der}</Text>
+        {seleccionado >= 0 && ancho > 0 && (
+          <View
+            pointerEvents="none"
+            style={[e.pomo, { left: (seleccionado / (n - 1)) * (ancho - POMO) }]}
+          >
+            <Text style={e.pomoCara}>{cara}</Text>
+          </View>
+        )}
       </View>
-      <Text style={[texto.apoyo, e.piePista]}>
-        {seleccionado >= 0 ? (etiquetas?.[seleccionado] ?? String(puntos[seleccionado])) : 'Toca la barra'}
-      </Text>
+
+      {/* Las etiquetas de los extremos, siempre visibles: en sueño y jornada
+          son rangos («menos de 6 h»), y sin ellas el deslizador no dice qué
+          se está eligiendo hasta que ya lo elegiste. */}
+      {etiquetas && etiquetas.length > 0 && (
+        <View style={e.extremosFila}>
+          <Text style={[texto.dato, e.extremoTexto]}>{etiquetas[0]}</Text>
+          <Text style={[texto.dato, e.extremoTexto, { textAlign: 'right' }]}>{etiquetas[n - 1]}</Text>
+        </View>
+      )}
+      <Text style={[texto.apoyo, e.piePista]}>{pie}</Text>
     </View>
   )
 }
@@ -105,29 +150,21 @@ function Barra({
 function Escala({ item, valor, onChange }: Pick<Props, 'item' | 'valor' | 'onChange'>) {
   const min = item.escala?.min ?? 1
   const max = item.escala?.max ?? 5
+  const puntos = Array.from({ length: max - min + 1 }, (_, i) => min + i)
   return (
     <Barra
-      puntos={Array.from({ length: max - min + 1 }, (_, i) => min + i)}
+      puntos={puntos}
       valor={valor}
       onChange={onChange}
-      emojis={extremosDe(item)}
+      rampa={rampaDe(item, puntos.length)}
       etiquetas={(item.escala as { etiquetas?: string[] } | undefined)?.etiquetas}
     />
   )
 }
 
-function Booleano({ valor, onChange }: Pick<Props, 'valor' | 'onChange'>) {
-  return (
-    <View style={e.fila}>
-      <Opcion etiqueta="Sí" activo={valor === true} onPress={() => onChange(true)} />
-      <Opcion etiqueta="No" activo={valor === false} onPress={() => onChange(false)} />
-    </View>
-  )
-}
-
-/** Sueño y jornada van en la misma barra: son rangos ordenados, y una lista
- *  vertical de cuatro botones comunica peor que un recorrido de menos a más.
- *  Las opciones sin orden —rol, modalidad— siguen como lista. */
+/** Sueño y jornada van en el mismo deslizador: son rangos ordenados, y una
+ *  lista vertical de cuatro botones comunica peor que un recorrido de menos a
+ *  más. Las opciones sin orden —rol, modalidad— siguen como lista. */
 function Opciones({ item, valor, onChange }: Pick<Props, 'item' | 'valor' | 'onChange'>) {
   const opciones = item.opciones ?? []
   if (!opciones.every((o) => typeof o.valor === 'number')) {
@@ -150,12 +187,24 @@ function Opciones({ item, valor, onChange }: Pick<Props, 'item' | 'valor' | 'onC
       puntos={opciones.map((o) => o.valor)}
       valor={valor}
       onChange={onChange}
-      emojis={extremosDe(item)}
+      rampa={rampaDe(item, opciones.length)}
       etiquetas={opciones.map((o) => o.etiqueta)}
     />
   )
 }
 
+function Booleano({ valor, onChange }: Pick<Props, 'valor' | 'onChange'>) {
+  return (
+    <View style={e.fila}>
+      <Opcion etiqueta="Sí" activo={valor === true} onPress={() => onChange(true)} />
+      <Opcion etiqueta="No" activo={valor === false} onPress={() => onChange(false)} />
+    </View>
+  )
+}
+
+/** Sueño y jornada van en la misma barra: son rangos ordenados, y una lista
+ *  vertical de cuatro botones comunica peor que un recorrido de menos a más.
+ *  Las opciones sin orden —rol, modalidad— siguen como lista. */
 function Numero({ valor, onChange }: Pick<Props, 'valor' | 'onChange'>) {
   return (
     <Entrada
@@ -212,18 +261,25 @@ function Opcion({
   )
 }
 
+/** Diámetro del pomo. Vive fuera de los estilos porque la posición se
+ *  calcula con él: el centro no puede salirse de la pista. */
+const POMO = 34
+
 const e = StyleSheet.create({
   barraGrupo: { gap: espacio.xs, marginTop: espacio.sm },
-  barraFila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm },
-  emoji: { fontSize: 22 },
-  barra: { flex: 1, flexDirection: 'row', gap: 3, height: TOQUE_MINIMO },
-  tramo: { flex: 1, backgroundColor: color.superficieSuave, borderWidth: 1, borderColor: color.borde },
-  tramoPrimero: { borderTopLeftRadius: radio.md, borderBottomLeftRadius: radio.md },
-  tramoUltimo: { borderTopRightRadius: radio.md, borderBottomRightRadius: radio.md },
-  tramoLleno: { backgroundColor: color.primarioSuave, borderColor: color.primario },
-  tramoPunta: { backgroundColor: color.primario, borderColor: color.primario },
-  tramoPresionado: { opacity: 0.7 },
-  piePista: { color: color.textoMedio, textAlign: 'center' },
+  // La pista es más alta que el riel a propósito: lo que se arrastra tiene
+  // que aceptar un dedo entero, no la línea de 6 px que se ve.
+  pista: { height: TOQUE_MINIMO, justifyContent: 'center' },
+  riel: { height: 6, borderRadius: 3, backgroundColor: color.superficieSuave, overflow: 'hidden' },
+  rielLleno: { height: 6, borderRadius: 3, backgroundColor: color.primario },
+  paradas: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between' },
+  parada: { width: 4, height: 4, borderRadius: 2, backgroundColor: color.borde },
+  paradaLlena: { backgroundColor: color.primarioProfundo },
+  pomo: { position: 'absolute', width: POMO, height: POMO, borderRadius: POMO / 2, backgroundColor: color.superficie, borderWidth: 2, borderColor: color.primario, alignItems: 'center', justifyContent: 'center' },
+  pomoCara: { fontSize: 20, lineHeight: 26 },
+  extremosFila: { flexDirection: 'row', justifyContent: 'space-between', gap: espacio.sm },
+  extremoTexto: { color: color.textoSuave, flex: 1 },
+  piePista: { color: color.texto, textAlign: 'center' },
   campo: {
     gap: espacio.md,
     paddingVertical: espacio.base,

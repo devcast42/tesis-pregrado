@@ -48,6 +48,7 @@ insert into formularios (clave, version, definicion) values ('diario', 4, '{
     { "clave": "od_06", "texto": "Hoy trabajé casi mecánicamente, sin pensar mucho en lo que hacía.", "tipo": "escala",
       "escala": { "min": 1, "max": 5, "etiquetas": ["Totalmente en desacuerdo", "Más bien en desacuerdo", "Ni sí ni no", "Más bien de acuerdo", "Totalmente de acuerdo"] } },
     { "clave": "horas_sueno", "texto": "¿Cuánto dormiste anoche?", "tipo": "opcion",
+      "escala": { "emojis": ["😫", "😟", "🙂", "😄"] },
       "opciones": [
         { "valor": 5.0, "etiqueta": "Menos de 6 h" },
         { "valor": 6.5, "etiqueta": "6 a 7 h" },
@@ -55,6 +56,7 @@ insert into formularios (clave, version, definicion) values ('diario', 4, '{
         { "valor": 8.5, "etiqueta": "Más de 8 h" }
       ] },
     { "clave": "horas_trabajadas", "texto": "¿Cuántas horas trabajaste hoy?", "tipo": "opcion",
+      "escala": { "emojis": ["😄", "🙂", "😟", "😫"] },
       "opciones": [
         { "valor": 7.0, "etiqueta": "Menos de 8 h" },
         { "valor": 8.5, "etiqueta": "8 a 9 h" },
