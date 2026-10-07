@@ -40,13 +40,13 @@ insert into formularios (clave, version, definicion) values ('diario', 4, '{
   "barajar": ["od_04", "od_12", "od_03", "od_06"],
   "items": [
     { "clave": "od_04", "texto": "Hoy, después del trabajo, necesitaré más tiempo del habitual para relajarme y recuperarme.", "tipo": "escala",
-      "min": 1, "max": 5, "etiquetas": ["Totalmente en desacuerdo", "Más bien en desacuerdo", "Ni sí ni no", "Más bien de acuerdo", "Totalmente de acuerdo"] },
+      "escala": { "min": 1, "max": 5, "etiquetas": ["Totalmente en desacuerdo", "Más bien en desacuerdo", "Ni sí ni no", "Más bien de acuerdo", "Totalmente de acuerdo"] } },
     { "clave": "od_12", "texto": "Hoy termino el trabajo exhausto y fatigado.", "tipo": "escala",
-      "min": 1, "max": 5, "etiquetas": ["Totalmente en desacuerdo", "Más bien en desacuerdo", "Ni sí ni no", "Más bien de acuerdo", "Totalmente de acuerdo"] },
+      "escala": { "min": 1, "max": 5, "etiquetas": ["Totalmente en desacuerdo", "Más bien en desacuerdo", "Ni sí ni no", "Más bien de acuerdo", "Totalmente de acuerdo"] } },
     { "clave": "od_03", "texto": "Hoy hablé de mi trabajo de forma negativa.", "tipo": "escala",
-      "min": 1, "max": 5, "etiquetas": ["Totalmente en desacuerdo", "Más bien en desacuerdo", "Ni sí ni no", "Más bien de acuerdo", "Totalmente de acuerdo"] },
+      "escala": { "min": 1, "max": 5, "etiquetas": ["Totalmente en desacuerdo", "Más bien en desacuerdo", "Ni sí ni no", "Más bien de acuerdo", "Totalmente de acuerdo"] } },
     { "clave": "od_06", "texto": "Hoy trabajé casi mecánicamente, sin pensar mucho en lo que hacía.", "tipo": "escala",
-      "min": 1, "max": 5, "etiquetas": ["Totalmente en desacuerdo", "Más bien en desacuerdo", "Ni sí ni no", "Más bien de acuerdo", "Totalmente de acuerdo"] },
+      "escala": { "min": 1, "max": 5, "etiquetas": ["Totalmente en desacuerdo", "Más bien en desacuerdo", "Ni sí ni no", "Más bien de acuerdo", "Totalmente de acuerdo"] } },
     { "clave": "horas_sueno", "texto": "¿Cuánto dormiste anoche?", "tipo": "opcion",
       "opciones": [
         { "valor": 5.0, "etiqueta": "Menos de 6 h" },
