@@ -10,7 +10,8 @@ import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, T
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { obtenerSesion, reintentarCircuito } from '../../../modules/consulta/datos'
 import {
-  abrirInformeManual, aprobarInforme, guardarRevision, obtenerCaso, obtenerInforme, obtenerTranscripcion, psicologoActual, type Caso, type Informe, type Transcripcion,
+  abrirInformeManual, aprobarInforme, guardarRevision, obtenerCaso, obtenerInforme, obtenerTranscripcion, psicologoActual, VALORACIONES,
+  type Caso, type Informe, type Transcripcion, type Valoracion,
 } from '../../../modules/psicologo/datos'
 import { BarraUmbral, Pastilla, Tarjeta, haceCuanto } from '../../../modules/psicologo/piezas'
 import { Boton, Cargando } from '../../../modules/nucleo/ui'
@@ -38,6 +39,7 @@ export default function RevisionInforme() {
   const [sesion, setSesion] = useState<any>(null)
   const [transcripcion, setTranscripcion] = useState<Transcripcion | null>(null)
   const [reintentando, setReintentando] = useState(false)
+  const [valoracion, setValoracion] = useState<Valoracion | null>(null)
   const [ahoraTick, setAhoraTick] = useState(Date.now())
   const [verTranscripcion, setVerTranscripcion] = useState(false)
   const [nota, setNota] = useState<string>('')
@@ -143,7 +145,7 @@ export default function RevisionInforme() {
   }
 
   async function aprobarAhora() {
-    if (!informe) return
+    if (!informe || !valoracion) return
     setOcupado(true)
     try {
       const yo = await psicologoActual()
@@ -151,7 +153,7 @@ export default function RevisionInforme() {
       // Lo que se aprueba es exactamente lo que está en pantalla; la copia de
       // trabajo queda guardada tal cual para que coincidan.
       await guardarAhora()
-      await aprobarInforme(informe.id, aContenido(secciones), yo.id)
+      await aprobarInforme(informe.id, aContenido(secciones), valoracion!)
       router.back()
     } catch {
       Alert.alert('No se pudo aprobar', 'Inténtalo de nuevo.')
@@ -319,7 +321,37 @@ export default function RevisionInforme() {
           Informe aprobado. El borrador original se conserva sin cambios.
         </Text>
       ) : (
-        <Boton onPress={aprobar} cargando={ocupado}>Aprobar informe</Boton>
+        <View style={{ gap: espacio.md }}>
+          {/* La única etiqueta de verdad que existe para el burnout. El OLBI
+              es un cuestionario autoaplicado; esto es el juicio de quien
+              habló con la persona. No la ve la empresa: vive con el informe.
+              Es obligatoria porque un campo opcional no lo rellena nadie, y
+              media etiqueta no sirve para nada. */}
+          <View style={{ gap: espacio.sm }}>
+            <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Tu valoración</Text>
+            <Text style={[texto.apoyo, { color: color.textoMedio }]}>
+              Queda en el informe. Tu empresa no la ve.
+            </Text>
+            {(Object.keys(VALORACIONES) as Valoracion[]).map((k) => (
+              <Pressable
+                key={k}
+                onPress={() => setValoracion(k)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: valoracion === k }}
+                style={({ pressed }) => [
+                  e.valoracion,
+                  valoracion === k && e.valoracionActiva,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <Text style={[texto.cuerpo, { color: valoracion === k ? color.primarioProfundo : color.texto }]}>
+                  {VALORACIONES[k]}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Boton onPress={aprobar} cargando={ocupado} inhabilitado={!valoracion}>Aprobar informe</Boton>
+        </View>
       ))}
     </ScrollView>
     </KeyboardAvoidingView>
@@ -474,6 +506,8 @@ function aTexto(valor: unknown): string {
 }
 
 const e = StyleSheet.create({
+  valoracion: { borderWidth: 1, borderColor: color.borde, borderRadius: radio.md, paddingHorizontal: espacio.base, paddingVertical: espacio.md, backgroundColor: color.superficie },
+  valoracionActiva: { borderColor: color.primario, backgroundColor: color.primarioSuave },
   contenido: { padding: 20, paddingBottom: espacio.xxl, gap: espacio.md, width: '100%', maxWidth: 480, alignSelf: 'center', backgroundColor: color.fondo, flexGrow: 1 },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm },
   separador: { paddingBottom: espacio.sm, borderBottomWidth: 1, borderBottomColor: color.borde },

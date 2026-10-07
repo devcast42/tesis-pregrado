@@ -172,25 +172,38 @@ export async function guardarRevision(informeId: string, contenido: Record<strin
 /** RF-004-11 y RN-004-02 — solo el psicólogo aprueba, y al aprobar queda
  *  registrado quién responde por el contenido. El borrador original no se
  *  toca: un disparador en la base de datos lo impide. */
+export const VALORACIONES = {
+  burnout: 'Sí, cuadro de burnout',
+  otro_cuadro: 'Malestar real, pero otro cuadro',
+  sin_burnout: 'No, no hay burnout',
+  no_concluyente: 'No concluyente',
+} as const
+
+export type Valoracion = keyof typeof VALORACIONES
+
+/** Aprobar exige la valoración clínica.
+ *
+ *  Es la única etiqueta de verdad que existe para el burnout: el OLBI es un
+ *  cuestionario autoaplicado y el sistema entrena contra él por falta de algo
+ *  mejor. Un campo opcional no lo rellenaría nadie y no serviría de nada.
+ *
+ *  No se expone a la empresa: vive con el informe, y el informe es del
+ *  psicólogo y de su paciente. */
 export async function aprobarInforme(
   informeId: string,
   contenidoCorregido: Record<string, unknown>,
-  psicologoId: string,
+  valoracion: Valoracion,
+  nota?: string,
 ) {
-  const { error } = await supabase
-    .from('informes')
-    .update({
-      contenido_aprobado: contenidoCorregido,
-      estado: 'aprobado',
-      aprobado_por: psicologoId,
-      aprobado_en: new Date().toISOString(),
-    })
-    .eq('id', informeId)
-
+  const { error } = await supabase.rpc('aprobar_informe', {
+    p_informe: informeId,
+    p_contenido: contenidoCorregido,
+    p_valoracion: valoracion,
+    p_nota: nota ?? null,
+  })
   if (error) throw error
 }
 
-/** RF-006-06 — al cerrar, el psicólogo pierde el acceso a este trabajador. */
 export const DESENLACES = {
   mejora: 'Mejoró y no necesita seguir',
   derivado_externo: 'Derivado a atención externa',
@@ -201,10 +214,6 @@ export const DESENLACES = {
 
 export type Desenlace = keyof typeof DESENLACES
 
-/** Cerrar pasa a exigir desenlace. Sin él, el servicio no tiene forma de
- *  demostrar que sirve, que es lo primero que pregunta quien lo paga.
- *  `seguimiento_hasta` deja a la persona en el radar sin mantener el caso
- *  abierto ni pedirle nada a ella. */
 export async function cerrarDerivacion(
   derivacionId: string,
   desenlace: Desenlace,
