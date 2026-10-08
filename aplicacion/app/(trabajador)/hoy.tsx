@@ -19,7 +19,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { obtenerTrabajador } from '../../modules/acceso/datos'
 import {
   calendarios, diasConCheckinEstaSemana, indiceLunes, inicioDeSemana, olbiToca, prediccionActual,
-  racha as consultarRacha, semanaEnCurso, ultimaPrediccionSemana, ultimosEnvios, type DiaSemana, type Racha,
+  estadosDelDia, historial, racha as consultarRacha, semanaEnCurso, ultimaPrediccionSemana, ultimosEnvios,
+  type DiaDelHistorial, type DiaSemana, type Racha,
 } from '../../modules/recoleccion/datos'
 import { agendaDeHoy, type ItemAgenda } from '../../modules/recoleccion/agenda'
 import { citaVigente, fechaHora, misCitas, type Cita } from '../../modules/consulta/citas'
@@ -27,7 +28,7 @@ import { sincronizarRecordatorios } from '../../modules/recoleccion/recordatorio
 import { sesionDisponible, type SesionDisponible } from '../../modules/consulta/datos'
 import {
   BarraSuperior, BloqueCierre, PastillaRacha, PieEtico, Pensamiento, RegistrosDelDia, RitmoSemanal,
-  Saludo, TarjetaApoyo, TarjetaHero, TarjetaSecundaria, type EstadoDia,
+  NavegadorDias, Saludo, TarjetaApoyo, TarjetaHero, TarjetaSecundaria, type EstadoDia,
 } from '../../modules/trabajador/piezas'
 import { fechaLarga, fraseDelDia, saludoPorHora, semanaDelEstudio } from '../../modules/trabajador/textos'
 import { Cargando } from '../../modules/nucleo/ui'
@@ -52,6 +53,53 @@ const POR_QUE: Record<string, string> = {
   modelo: 'Por cómo va tu semana',
   sorteo: 'Te tocó esta semana',
   sin_medir: 'Hace un mes que no lo respondes',
+}
+
+function etiquetaDia(iso?: string): string {
+  if (!iso) return ''
+  const d = new Date(`${iso}T12:00:00`)
+  const t = d.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })
+  return t.charAt(0).toUpperCase() + t.slice(1)
+}
+
+const TITULO_TAREA = { diario: 'Check-in', olbi: 'Cuestionario completo', cita: 'Pedir tu cita' } as const
+
+/** Un día de atrás, en solo lectura.
+ *
+ *  Lo que caducó no se puede responder desde aquí: el check-in preguntaba por
+ *  aquel día y contestarlo hoy sería inventar. Lo que sigue pendiente se hace
+ *  desde hoy, donde aparece como retrasado. */
+function DiaPasado({ d, hoy }: { d: DiaDelHistorial; hoy: string }) {
+  const est = estadosDelDia(d, hoy)
+  const filas = (['diario', 'olbi', 'cita'] as const)
+    .map((k) => ({ k, estado: est[k] }))
+    .filter((x) => x.estado !== null)
+
+  if (filas.length === 0) {
+    return (
+      <TarjetaSecundaria
+        estado="caducado" insignia="" titulo="Nada que hacer ese día"
+        pie="Fin de semana o fuera del seguimiento" descripcion="" accion="" onPress={() => {}}
+      />
+    )
+  }
+  return (
+    <>
+      {filas.map(({ k, estado }) => (
+        <TarjetaSecundaria
+          key={k}
+          estado={estado === 'hecho' ? undefined : 'caducado'}
+          completado={estado === 'hecho'}
+          insignia=""
+          titulo={TITULO_TAREA[k]}
+          pie={estado === 'hecho' ? 'Respondido ese día' : 'Se quedó sin responder'}
+          descripcion=""
+          accion=""
+          onPress={() => {}}
+        />
+      ))}
+    </>
+  )
 }
 
 function insigniaDe(clave: string, motivo: string | null): string {
@@ -95,6 +143,10 @@ export default function Hoy() {
   const [motivoOlbi, setMotivoOlbi] = useState<string | null>(null)
   const [semana, setSemana] = useState<DiaSemana[]>([])
   const [cita, setCita] = useState<Cita | null>(null)
+  // 0 = hoy, −1 = ayer. Mirar atrás es solo lectura: lo que caducó no se
+  // puede responder, y lo que sigue pendiente se hace desde hoy.
+  const [offsetDia, setOffsetDia] = useState(0)
+  const [historialDias, setHistorialDias] = useState<DiaDelHistorial[]>([])
   const [derivado, setDerivado] = useState(false)
   const [diasRespondidos, setDiasRespondidos] = useState<Set<number>>(new Set())
   const [sesion, setSesion] = useState<SesionDisponible | null>(null)
@@ -110,6 +162,8 @@ export default function Hoy() {
   const [celebrar, setCelebrar] = useState(false)
   const { mostrar } = useLocalSearchParams<{ mostrar?: string }>()
   const insets = useSafeAreaInsets()
+  const diaMirado = offsetDia < 0 ? historialDias[-offsetDia] : null
+  const hoyMismo = offsetDia === 0
 
   // RF-002-12 — al volver de un formulario con `mostrar`, se abre el modal
   // de cierre. El parámetro se consume una vez: cerrar el modal no lo reabre.
@@ -171,7 +225,10 @@ export default function Hoy() {
       sincronizarRecordatorios({ diario: cal.diario?.duracion, olbi: cal.olbi?.duracion }).catch(() => {})
     }
     setTrabajador(p)
-    const [olbi, serieSemana, citas] = await Promise.all([olbiToca(), semanaEnCurso(p.id), misCitas()])
+    const [olbi, serieSemana, citas, hist] = await Promise.all([
+      olbiToca(), semanaEnCurso(p.id), misCitas(), historial(p.id),
+    ])
+    setHistorialDias(hist)
     setCita(citaVigente(citas))
     setDerivado(p.estado === 'detectado')
     setMotivoOlbi(olbi.motivo ?? null)
@@ -249,23 +306,35 @@ export default function Hoy() {
           onAjustes={irAAjustes}
         />
 
-        {!enSeguimiento && (
+        {historialDias.length > 1 && (
+          <NavegadorDias
+            offset={offsetDia}
+            onCambiar={(n) => setOffsetDia(Math.max(-(historialDias.length - 1), Math.min(0, n)))}
+            etiqueta={offsetDia === 0 ? 'Hoy' : offsetDia === -1 ? 'Ayer' : etiquetaDia(historialDias[-offsetDia]?.dia)}
+          />
+        )}
+
+        {offsetDia < 0 && diaMirado && (
+          <DiaPasado d={diaMirado} hoy={historialDias[0]?.dia ?? ''} />
+        )}
+
+        {offsetDia === 0 && !enSeguimiento && (
           <BloqueCierre
             mensaje="Tu seguimiento de check-ins terminó por ahora. El equipo del estudio te acompaña desde aquí: revisa tu resultado y, cuando esté disponible, tu sesión de apoyo."
             nota="Tus respuestas anteriores siguen protegidas y disociadas de tu empresa."
           />
         )}
 
-        {todoListo && enSeguimiento && (
+        {hoyMismo && todoListo && enSeguimiento && (
           <BloqueCierre
             mensaje={cierre}
             nota="Responder cada día es lo que le da valor a este estudio. Si un día no puedes, no pasa nada: responde al siguiente."
           />
         )}
 
-        {enSeguimiento && <RitmoSemanal dias={dias} racha={rachaActual?.actual ?? 0} celebrar={celebrar} onPress={() => router.push('/registros')} />}
+        {hoyMismo && enSeguimiento && <RitmoSemanal dias={dias} racha={rachaActual?.actual ?? 0} celebrar={celebrar} onPress={() => router.push('/registros')} />}
 
-        {principal && (
+        {hoyMismo && principal && (
           <TarjetaHero
             insignia={principal.clave === 'olbi' && motivoOlbi ? POR_QUE[motivoOlbi] : undefined}
             titulo={encabezado(principal)}
@@ -275,7 +344,7 @@ export default function Hoy() {
           />
         )}
 
-        {secundarios.map((item) => (
+        {hoyMismo && secundarios.map((item) => (
           <TarjetaSecundaria
             key={item.clave}
             destacada={item.clave === 'olbi'}
@@ -290,7 +359,7 @@ export default function Hoy() {
         {/* Lo ya respondido se queda donde estaba, apagado y con su marca.
             Mandarlo a una lista aparte justo después de enviarlo hacía dudar
             de si se había guardado. */}
-        {enSeguimiento && completados.map((item) => (
+        {hoyMismo && enSeguimiento && completados.map((item) => (
           <TarjetaSecundaria
             key={item.clave}
             completado
@@ -307,7 +376,7 @@ export default function Hoy() {
         {/* Pedir la cita es una acción más del día, no algo escondido en
             otra pestaña: si al salir del resultado no la pide, aquí la tiene
             esperando. Y una vez pedida se queda, hecha, como los demás. */}
-        {derivado && !cita && (
+        {hoyMismo && derivado && !cita && (
           <TarjetaSecundaria
             destacada
             insignia="Tu sesión de apoyo"
@@ -317,7 +386,7 @@ export default function Hoy() {
             onPress={() => router.push('/apoyo')}
           />
         )}
-        {cita && (
+        {hoyMismo && cita && (
           <TarjetaSecundaria
             completado
             insignia="Tu sesión de apoyo"
@@ -329,9 +398,9 @@ export default function Hoy() {
           />
         )}
 
-        {sesion && <TarjetaApoyo onPress={() => router.push(`/consulta/${sesion.id}`)} />}
+        {hoyMismo && sesion && <TarjetaApoyo onPress={() => router.push(`/consulta/${sesion.id}`)} />}
 
-        {prediccion && !finDeSemana && hoy < 4 && <TarjetaProbabilidad p={prediccion} />}
+        {hoyMismo && prediccion && !finDeSemana && hoy < 4 && <TarjetaProbabilidad p={prediccion} />}
 
         {resultado && (
           <TarjetaSecundaria

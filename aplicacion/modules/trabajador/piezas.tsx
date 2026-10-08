@@ -12,7 +12,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native'
 import { color, espacio, fuente, radio, texto } from '../nucleo/diseno'
 import { Logo } from '../nucleo/Logo'
 import {
-  IconoAbrir, IconoApoyo, IconoCandado, IconoCheck, IconoDestello,
+  IconoAbrir, IconoApoyo, IconoCandado, IconoCerrar, IconoCheck, IconoDestello,
   IconoFlecha, IconoFormulario, IconoHoja, IconoLlama, IconoPersona, IconoAjustes,
 } from '../nucleo/iconos'
 
@@ -236,8 +236,12 @@ export function TarjetaHero({
 // --------------------------------------------------------------- Secundaria
 
 export function TarjetaSecundaria({
-  insignia, titulo, descripcion, accion, onPress, completado, destacada, pie,
+  insignia, titulo, descripcion, accion, onPress, completado, destacada, pie, estado,
 }: {
+  /** `caducado` se quedó sin hacer y ya no se puede; `retrasado` venía de un
+   *  día anterior pero todavía se puede. La diferencia tiene que verse: uno
+   *  es historia y el otro es trabajo pendiente. */
+  estado?: 'pendiente' | 'hecho' | 'caducado' | 'retrasado'
   /** La línea de debajo cuando está hecho. Por defecto «Respondido», que vale
    *  para los formularios pero no para una cita. */
   pie?: string
@@ -255,6 +259,22 @@ export function TarjetaSecundaria({
    *  dudar de si se envió. */
   completado?: boolean
 }) {
+  if (estado === 'caducado') {
+    return (
+      <View style={[e.tarjeta, e.tarjetaCaducada]}>
+        <View style={e.filaHecha}>
+          <View style={e.selloCaducado}>
+            <IconoCerrar tamano={13} color={color.textoSuave} />
+          </View>
+          <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+            <Text style={[texto.cuerpoFuerte, { color: color.textoMedio }]} numberOfLines={2}>{titulo}</Text>
+            <Text style={[texto.dato, { color: color.textoSuave }]}>{pie ?? 'Se quedó sin responder'}</Text>
+          </View>
+        </View>
+      </View>
+    )
+  }
+
   if (completado) {
     return (
       <Pressable
@@ -276,10 +296,13 @@ export function TarjetaSecundaria({
       </Pressable>
     )
   }
+  const retrasado = estado === 'retrasado'
   return (
-    <View style={[e.tarjeta, destacada && e.tarjetaDestacada]}>
-      <View style={[e.insigniaArena, destacada && e.insigniaDestacada]}>
-        <Text style={[texto.etiqueta, { color: destacada ? '#1E4D8C' : color.textoArena }]}>{insignia.toUpperCase()}</Text>
+    <View style={[e.tarjeta, destacada && e.tarjetaDestacada, retrasado && e.tarjetaRetrasada]}>
+      <View style={[e.insigniaArena, destacada && e.insigniaDestacada, retrasado && e.insigniaRetrasada]}>
+        <Text style={[texto.etiqueta, { color: retrasado ? '#8A5A12' : destacada ? '#1E4D8C' : color.textoArena }]}>
+          {(retrasado ? 'Lo tenías pendiente' : insignia).toUpperCase()}
+        </Text>
       </View>
       <Text style={[texto.seccion, { color: color.texto }]}>{titulo}</Text>
       <Text style={[texto.cuerpo, e.tarjetaDescripcion]}>{descripcion}</Text>
@@ -436,6 +459,12 @@ const e = StyleSheet.create({
   filaHecha: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   selloHecho: { width: 30, height: 30, borderRadius: 15, backgroundColor: color.primario, alignItems: 'center', justifyContent: 'center' },
   tarjetaDestacada: { backgroundColor: '#F4F8FF', borderWidth: 1, borderColor: '#B9D4F5' },
+  navDias: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, backgroundColor: color.superficie, borderRadius: radio.md, paddingHorizontal: espacio.sm, paddingVertical: 6, borderWidth: 1, borderColor: color.borde },
+  navFlecha: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  tarjetaRetrasada: { backgroundColor: '#FFFBF2', borderWidth: 1, borderColor: '#EBD9B4' },
+  insigniaRetrasada: { backgroundColor: '#F7EBD2' },
+  tarjetaCaducada: { backgroundColor: color.superficieSuave, borderWidth: 1, borderColor: color.borde, shadowOpacity: 0, elevation: 0, paddingVertical: 14 },
+  selloCaducado: { width: 30, height: 30, borderRadius: 15, backgroundColor: color.borde, alignItems: 'center', justifyContent: 'center' },
   insigniaDestacada: { backgroundColor: '#DCEAFB' },
   barraSuperior: {
     flexDirection: 'row', alignItems: 'center', gap: espacio.md,
@@ -593,6 +622,43 @@ export function BarraSuperior({ titulo, onPerfil, derecha }: { titulo: string; o
           <IconoPersona tamano={16} color={color.primarioProfundo} />
         </Pressable>
       )}
+    </View>
+  )
+}
+
+
+/** Flechas para moverse por los días.
+ *
+ *  Hacia delante no se puede pasar de hoy: no hay nada que enseñar y la
+ *  flecha apagada lo dice sin tener que explicarlo. */
+export function NavegadorDias({ offset, onCambiar, etiqueta }: {
+  offset: number
+  onCambiar: (nuevo: number) => void
+  etiqueta: string
+}) {
+  const hoy = offset === 0
+  return (
+    <View style={e.navDias}>
+      <Pressable
+        onPress={() => onCambiar(offset - 1)}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Día anterior"
+        style={({ pressed }) => [e.navFlecha, pressed && { opacity: 0.6 }]}
+      >
+        <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>‹</Text>
+      </Pressable>
+      <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1, textAlign: 'center' }]}>{etiqueta}</Text>
+      <Pressable
+        onPress={() => !hoy && onCambiar(offset + 1)}
+        hitSlop={10}
+        disabled={hoy}
+        accessibilityRole="button"
+        accessibilityLabel="Día siguiente"
+        style={({ pressed }) => [e.navFlecha, hoy && { opacity: 0.25 }, pressed && !hoy && { opacity: 0.6 }]}
+      >
+        <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>›</Text>
+      </Pressable>
     </View>
   )
 }

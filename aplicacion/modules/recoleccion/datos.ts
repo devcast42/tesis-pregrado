@@ -305,3 +305,54 @@ export async function semanaEnCurso(trabajadorId: string): Promise<DiaSemana[]> 
     horas: r.horas_trabajadas == null ? null : Number(r.horas_trabajadas),
   }))
 }
+
+export type EstadoTarea = 'pendiente' | 'hecho' | 'caducado' | 'retrasado'
+
+export type DiaDelHistorial = {
+  dia: string
+  tocaba_diario: boolean
+  hizo_diario: boolean
+  olbi_pedido_el: string | null
+  hizo_olbi: boolean
+  cita_pedida_desde: string | null
+  pidio_cita: boolean
+}
+
+export async function historial(trabajadorId: string): Promise<DiaDelHistorial[]> {
+  const { data } = await supabase
+    .from('dia_a_dia')
+    .select('*')
+    .eq('trabajador_id', trabajadorId)
+    .order('dia', { ascending: false })
+    .limit(30)
+  return (data ?? []) as DiaDelHistorial[]
+}
+
+/** El estado de cada tarea en un día concreto.
+ *
+ *  `caducado` y `retrasado` no son lo mismo, y la diferencia no es de estilo:
+ *  el check-in de ayer ya no se puede responder —preguntaba por aquel día, y
+ *  contestarlo hoy sería inventar— mientras que el cuestionario y la cita sí,
+ *  porque miden las últimas semanas y siguen valiendo mañana. Por eso uno
+ *  caduca y los otros se arrastran. */
+export function estadosDelDia(d: DiaDelHistorial, hoy: string): {
+  diario: EstadoTarea | null
+  olbi: EstadoTarea | null
+  cita: EstadoTarea | null
+} {
+  const esHoy = d.dia === hoy
+  return {
+    diario: !d.tocaba_diario ? null
+      : d.hizo_diario ? 'hecho'
+      : esHoy ? 'pendiente'
+      : 'caducado',
+    olbi: d.hizo_olbi ? 'hecho'
+      : !d.olbi_pedido_el ? null
+      : d.olbi_pedido_el === d.dia ? (esHoy ? 'pendiente' : 'caducado')
+      : (esHoy ? 'retrasado' : 'caducado'),
+    cita: d.pidio_cita ? 'hecho'
+      : !d.cita_pedida_desde || d.cita_pedida_desde > d.dia ? null
+      : d.cita_pedida_desde === d.dia ? (esHoy ? 'pendiente' : 'caducado')
+      : (esHoy ? 'retrasado' : 'caducado'),
+  }
+}
