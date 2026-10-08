@@ -281,7 +281,7 @@ export async function olbiToca(): Promise<OlbiToca> {
 }
 
 
-export type DiaSemana = { dia: string; indice: number | null; sueno: number | null }
+export type DiaSemana = { dia: string; indice: number | null; sueno: number | null; horas: number | null }
 
 /** Los días de esta semana con su índice diario, para dibujarlos.
  *
@@ -294,7 +294,7 @@ export async function semanaEnCurso(trabajadorId: string): Promise<DiaSemana[]> 
   lunes.setDate(lunes.getDate() - ((lunes.getDay() || 7) - 1))
   const { data } = await supabase
     .from('serie_diaria_v2')
-    .select('dia, indice_diario, horas_sueno')
+    .select('dia, indice_diario, horas_sueno, horas_trabajadas')
     .eq('trabajador_id', trabajadorId)
     .gte('dia', lunes.toISOString().slice(0, 10))
     .order('dia')
@@ -302,5 +302,6 @@ export async function semanaEnCurso(trabajadorId: string): Promise<DiaSemana[]> 
     dia: String(r.dia),
     indice: r.indice_diario == null ? null : Number(r.indice_diario),
     sueno: r.horas_sueno == null ? null : Number(r.horas_sueno),
+    horas: r.horas_trabajadas == null ? null : Number(r.horas_trabajadas),
   }))
 }

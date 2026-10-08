@@ -176,6 +176,61 @@ function SemanaEnBarras({ dias }: { dias: DiaSemana[] }) {
   )
 }
 
+/** Las dos cifras sobre las que se puede hacer algo.
+ *
+ *  El ánimo es el resultado; dormir y las horas son la causa, y son lo único
+ *  de este check-in que la persona puede cambiar esta misma noche. Se comparan
+ *  con las referencias del estudio —7 h de sueño, 8.5 de jornada— porque un
+ *  «6.2 h» suelto no dice si está bien o mal. */
+const REFERENCIA = { sueno: 7, horas: 8.5 }
+
+function media(xs: (number | null)[]): number | null {
+  const v = xs.filter((x): x is number => x != null)
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null
+}
+
+function CifrasSemana({ dias }: { dias: DiaSemana[] }) {
+  const sueno = media(dias.map((d) => d.sueno))
+  const horas = media(dias.map((d) => d.horas))
+  if (sueno == null && horas == null) return null
+
+  return (
+    <View style={e.cifras}>
+      {sueno != null && (
+        <Cifra
+          emoji="😴"
+          valor={`${sueno.toFixed(1)} h`}
+          rotulo="de sueño"
+          nota={sueno < REFERENCIA.sueno ? `bajo las ${REFERENCIA.sueno} recomendadas` : 'en lo recomendable'}
+          alerta={sueno < REFERENCIA.sueno}
+        />
+      )}
+      {horas != null && (
+        <Cifra
+          emoji="⏱️"
+          valor={`${horas.toFixed(1)} h`}
+          rotulo="de jornada"
+          nota={horas > REFERENCIA.horas ? `sobre las ${REFERENCIA.horas} de referencia` : 'dentro de lo previsto'}
+          alerta={horas > REFERENCIA.horas}
+        />
+      )}
+    </View>
+  )
+}
+
+function Cifra({ emoji, valor, rotulo, nota, alerta }: {
+  emoji: string; valor: string; rotulo: string; nota: string; alerta: boolean
+}) {
+  return (
+    <View style={[e.cifra, alerta && e.cifraAlerta]}>
+      <Text style={{ fontSize: 18 }}>{emoji}</Text>
+      <Text style={[texto.seccion, { color: alerta ? color.tierra : color.texto, fontSize: 20 }]}>{valor}</Text>
+      <Text style={[texto.dato, { color: color.textoMedio }]}>{rotulo}</Text>
+      <Text style={[texto.dato, { color: alerta ? color.tierra : color.textoSuave, fontSize: 11 }]}>{nota}</Text>
+    </View>
+  )
+}
+
 function Cierre({ consejo, prediccion, motivoOlbi, onResponderOlbi, semana }: {
   consejo: string | null
   prediccion: Prediccion | null
@@ -204,6 +259,7 @@ function Cierre({ consejo, prediccion, motivoOlbi, onResponderOlbi, semana }: {
       )}
 
       {semana && <SemanaEnBarras dias={semana} />}
+      {semana && <CifrasSemana dias={semana} />}
 
       {consejo && (
         <View style={e.tarjeta}>
@@ -455,6 +511,9 @@ function Titular({ children }: { children: string }) {
 }
 
 const e = StyleSheet.create({
+  cifras: { flexDirection: 'row', gap: espacio.sm },
+  cifra: { flex: 1, gap: 2, alignItems: 'flex-start', backgroundColor: color.superficie, borderRadius: radio.lg, padding: espacio.base, borderWidth: 1, borderColor: color.borde },
+  cifraAlerta: { borderColor: '#E8CFC2', backgroundColor: '#FDF6F2' },
   barras: { flexDirection: 'row', alignItems: 'flex-end', gap: espacio.sm, paddingTop: espacio.xs },
   barraDia: { alignItems: 'center', gap: 6, flex: 1 },
   // La pista vacía da el hueco de los días que faltan, para que las barras
