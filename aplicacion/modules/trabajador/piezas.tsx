@@ -10,6 +10,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native'
 import { color, espacio, fuente, radio, texto } from '../nucleo/diseno'
+import { Saludo as SaludoBase } from '../nucleo/armazon'
 import { Logo } from '../nucleo/Logo'
 import {
   IconoAbrir, IconoApoyo, IconoCandado, IconoCerrar, IconoCheck, IconoDestello,
@@ -37,6 +38,8 @@ export function Cabecera({ titulo, onAjustes }: { titulo: string; onAjustes?: ()
 
 // -------------------------------------------------------------------- Saludo
 
+/** El saludo del trabajador es el compartido con una pastilla propia a la
+ *  derecha: su código anónimo, que abre los ajustes. */
 export function Saludo({
   fecha, codigo, titulo, subtitulo, onAjustes,
 }: {
@@ -47,20 +50,18 @@ export function Saludo({
   onAjustes: () => void
 }) {
   return (
-    <View style={e.saludo}>
-      <View style={e.saludoFila}>
-        <Text style={[texto.etiqueta, e.saludoFecha]} numberOfLines={1}>
-          {fecha.toUpperCase()}
-        </Text>
+    <SaludoBase
+      fecha={fecha}
+      titulo={titulo}
+      subtitulo={subtitulo}
+      derecha={(
         <Pressable onPress={onAjustes} accessibilityRole="button"
           accessibilityLabel={`Ajustes de trabajador ${codigo}`} style={e.pastillaCodigo}>
           <Text style={[texto.etiqueta, { color: color.textoMedio }]}>{codigo}</Text>
           <IconoAjustes tamano={13.5} color={color.textoMedio} />
         </Pressable>
-      </View>
-      <Text style={[texto.titulo, { color: color.texto }]}>{titulo}</Text>
-      <Text style={[texto.cuerpo, { color: color.textoMedio }]}>{subtitulo}</Text>
-    </View>
+      )}
+    />
   )
 }
 
@@ -465,14 +466,7 @@ const e = StyleSheet.create({
   tarjetaCaducada: { backgroundColor: color.superficieSuave, borderWidth: 1, borderColor: color.borde, shadowOpacity: 0, elevation: 0, paddingVertical: 14 },
   selloCaducado: { width: 30, height: 30, borderRadius: 15, backgroundColor: color.borde, alignItems: 'center', justifyContent: 'center' },
   insigniaDestacada: { backgroundColor: '#DCEAFB' },
-  barraSuperior: {
-    flexDirection: 'row', alignItems: 'center', gap: espacio.md,
-    paddingHorizontal: 20, paddingVertical: 10, backgroundColor: color.superficie,
-    borderBottomWidth: 1, borderBottomColor: color.borde,
-  },
-  barraLogo: { width: 40, height: 40, borderRadius: 20, backgroundColor: color.primarioSuave, alignItems: 'center', justifyContent: 'center' },
   racha: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, height: 36, borderRadius: 999 },
-  barraPersona: { width: 36, height: 36, borderRadius: 18, backgroundColor: color.superficieSuave, alignItems: 'center', justifyContent: 'center' },
   cabecera: {
     height: 64, flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 20, backgroundColor: color.fondo,
@@ -485,9 +479,6 @@ const e = StyleSheet.create({
     backgroundColor: color.primarioProfundo, alignItems: 'center', justifyContent: 'center',
   },
 
-  saludo: { gap: espacio.xs, paddingTop: espacio.base },
-  saludoFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: espacio.sm },
-  saludoFecha: { color: color.textoMedio, letterSpacing: 0.3, flex: 1 },
   pastillaCodigo: {
     height: 44, flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: espacio.md, borderRadius: radio.completo,
@@ -603,28 +594,6 @@ export function PastillaRacha({ actual, hoyCumplido, onPress }: { actual: number
     </Pressable>
   )
 }
-
-/** Barra de Apoyo y Perfil (Figma IcncrzVKVbewGGc6RkImCM): logo, nombre del
- *  producto en mayúsculas, el nombre de la pantalla debajo y, a la derecha,
- *  un acceso a Perfil (omitido en Perfil mismo). */
-export function BarraSuperior({ titulo, onPerfil, derecha }: { titulo: string; onPerfil?: () => void; derecha?: ReactNode }) {
-  return (
-    <View style={e.barraSuperior}>
-      <View style={e.barraLogo}><Logo tamano={22} /></View>
-      <View style={{ flex: 1 }}>
-        <Text style={[texto.etiqueta, { color: color.primarioProfundo, fontSize: 10, lineHeight: 14 }]}>BIENESTAR TECH</Text>
-        <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{titulo}</Text>
-      </View>
-      {derecha}
-      {!derecha && onPerfil && (
-        <Pressable onPress={onPerfil} accessibilityRole="button" accessibilityLabel="Perfil" style={e.barraPersona} hitSlop={8}>
-          <IconoPersona tamano={16} color={color.primarioProfundo} />
-        </Pressable>
-      )}
-    </View>
-  )
-}
-
 
 /** Flechas para moverse por los días.
  *

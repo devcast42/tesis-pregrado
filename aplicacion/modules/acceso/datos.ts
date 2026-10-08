@@ -27,6 +27,13 @@ export async function haySesion() {
   return Boolean(data.session)
 }
 
+/** El correo con el que se entró. Lo pide el perfil del psicólogo para no
+ *  tener que inventarse una tabla de contacto que ya existe en `auth`. */
+export async function correoActual(): Promise<string> {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.user.email ?? ''
+}
+
 export async function cerrarSesion() {
   olvidarDesbloqueo()
   await supabase.auth.signOut()

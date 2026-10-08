@@ -27,9 +27,10 @@ import { citaVigente, fechaHora, misCitas, type Cita } from '../../modules/consu
 import { sincronizarRecordatorios } from '../../modules/recoleccion/recordatorios'
 import { sesionDisponible, type SesionDisponible } from '../../modules/consulta/datos'
 import {
-  BarraSuperior, BloqueCierre, PastillaRacha, PieEtico, Pensamiento, RegistrosDelDia, RitmoSemanal,
+  BloqueCierre, PastillaRacha, PieEtico, Pensamiento, RegistrosDelDia, RitmoSemanal,
   NavegadorDias, Saludo, TarjetaApoyo, TarjetaHero, TarjetaSecundaria, type EstadoDia,
 } from '../../modules/trabajador/piezas'
+import { BarraSuperior } from '../../modules/nucleo/armazon'
 import { fechaLarga, fraseDelDia, saludoPorHora } from '../../modules/trabajador/textos'
 import { Cargando } from '../../modules/nucleo/ui'
 import { ahora, cargarDesfase } from '../../modules/nucleo/reloj'

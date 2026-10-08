@@ -66,11 +66,9 @@ export default function Layout() {
         <Stack.Screen name="consulta/resumen/[id]" options={{ headerShown: false, presentation: 'transparentModal', animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="registros" options={{ headerShown: false }} />
 
-        {/* Psicólogo */}
-        <Stack.Screen name="psicologo/index" options={{ headerShown: false }} />
-        <Stack.Screen name="psicologo/caso/[id]" options={{ title: 'Detalle de caso' }} />
-        <Stack.Screen name="psicologo/consulta/[id]" options={{ title: 'Videoconsulta' }} />
-        <Stack.Screen name="psicologo/informe/[id]" options={{ title: 'Nota clínica' }} />
+        {/* Psicólogo — pila propia: pestañas Hoy · Casos · Perfil, y encima
+            de ellas la ficha, la nota y la videollamada. */}
+        <Stack.Screen name="psicologo" options={{ headerShown: false }} />
 
         {/* Investigador — panel web con navegación propia, sin cabecera del Stack */}
         <Stack.Screen name="investigador/index" options={{ headerShown: false }} />

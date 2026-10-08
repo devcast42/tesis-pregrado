@@ -80,6 +80,100 @@ export function Tarjeta({ children, suave, borde }: { children: ReactNode; suave
 
 // ------------------------------------------------------------ Lista de casos
 
+/** Una persona, una fila. La tarjeta entera se toca.
+ *
+ *  La anterior metía dentro el estado, la fecha de derivación, una banda con
+ *  el OLBI, otra con la cita y un pie con texto y botón propio. Cinco casos
+ *  eran un muro, y con todo gritando a la vez no se veía cuál urgía. Aquí la
+ *  jerarquía la pone la sección en la que cae la fila; dentro solo va quién
+ *  es y qué pasa con esa persona.
+ *
+ *  El OLBI no aparece: es dato clínico y vive en la ficha, a un toque. */
+export function FilaCaso({ caso, onPress }: { caso: Caso; onPress: () => void }) {
+  const estado = ESTADO_CASO[caso.estado_caso]
+  const cerrado = caso.estado_caso === 'cerrado'
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${caso.codigo_anonimo}, ${estado.etiqueta}`}
+      style={({ pressed }) => [e.fila2, cerrado && e.fila2Apagada, pressed && { opacity: 0.7 }]}
+    >
+      <View style={{ flex: 1, gap: 3 }}>
+        <View style={e.fila}>
+          <Text style={[texto.cuerpoFuerte, { color: cerrado ? color.textoMedio : color.texto }]}>{caso.codigo_anonimo}</Text>
+          {!!caso.empresa && <Text style={[texto.apoyo, { color: color.textoSuave }]} numberOfLines={1}>{caso.empresa}</Text>}
+        </View>
+        <Text style={[texto.apoyo, { color: cerrado ? color.textoSuave : estado.tinta }]} numberOfLines={1}>
+          {detalleCaso(caso)}
+        </Text>
+      </View>
+      <IconoFlecha tamano={13} color={color.textoSuave} />
+    </Pressable>
+  )
+}
+
+/** La línea de debajo del código: qué pasa con esta persona, en concreto.
+ *  Un estado a secas («Cita por confirmar») obliga a entrar para saber de
+ *  cuándo hablamos. */
+function detalleCaso(caso: Caso): string {
+  switch (caso.estado_caso) {
+    case 'sesion_pendiente':
+      return `Sin contactar · derivado ${haceCuanto(caso.abierta_en)}`
+    case 'cita_por_confirmar':
+      return caso.cita_para ? `Pidió hora · ${fechaHoraCorta(caso.cita_para)}` : 'Pidió una hora'
+    case 'cita_confirmada':
+      return caso.cita_para ? `Confirmada · ${fechaHoraCorta(caso.cita_para)}` : 'Cita confirmada'
+    case 'sala_lista':
+      return caso.consentimiento_trabajador ? 'Sala lista · consentimiento firmado' : 'Sala lista · falta su consentimiento'
+    case 'informe_por_aprobar':
+      return 'Borrador listo para tu revisión'
+    default:
+      return caso.cerrada_en ? `Cerrado ${haceCuanto(caso.cerrada_en)}` : 'Cerrado'
+  }
+}
+
+/** Una cita de la agenda: la hora grande a la izquierda, porque mirando la
+ *  columna se ve el día entero sin leer. */
+export function FilaCita({ hora, codigo, empresa, detalle, urgente, onPress }: {
+  hora: string
+  codigo: string
+  empresa?: string | null
+  detalle: string
+  urgente?: boolean
+  onPress: () => void
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Cita de las ${hora} con ${codigo}`}
+      style={({ pressed }) => [e.fila2, urgente && e.filaUrgente, pressed && { opacity: 0.7 }]}
+    >
+      <Text style={[texto.cuerpoFuerte, e.hora, urgente && { color: color.primarioProfundo }]}>{hora}</Text>
+      <View style={{ flex: 1, gap: 3 }}>
+        <View style={e.fila}>
+          <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{codigo}</Text>
+          {!!empresa && <Text style={[texto.apoyo, { color: color.textoSuave }]} numberOfLines={1}>{empresa}</Text>}
+        </View>
+        <Text style={[texto.apoyo, { color: urgente ? color.primarioProfundo : color.textoMedio }]} numberOfLines={1}>{detalle}</Text>
+      </View>
+      <IconoFlecha tamano={13} color={color.textoSuave} />
+    </Pressable>
+  )
+}
+
+/** Cabecera de sección con su cuenta: «TE ESPERAN 2». */
+export function Seccion({ titulo, cuenta }: { titulo: string; cuenta: number }) {
+  return (
+    <View style={[e.fila, { paddingTop: espacio.xs }]}>
+      <Text style={[texto.etiqueta, { color: color.textoSuave, flex: 1 }]}>{titulo}</Text>
+      <Text style={[texto.datoFuerte, { color: color.textoMedio }]}>{cuenta}</Text>
+    </View>
+  )
+}
+
+
 export function TarjetaCaso({ caso, onPress }: { caso: Caso; onPress: () => void }) {
   const estado = ESTADO_CASO[caso.estado_caso]
   const agot = caso.puntajes?.agotamiento
@@ -268,6 +362,15 @@ export function numeroSemana(fecha: Date): number {
 // ------------------------------------------------------------------ Estilos
 
 const e = StyleSheet.create({
+  fila2: {
+    flexDirection: 'row', alignItems: 'center', gap: espacio.sm,
+    backgroundColor: color.superficie, borderRadius: radio.lg,
+    paddingVertical: 14, paddingHorizontal: espacio.base,
+    borderWidth: 1, borderColor: color.borde,
+  },
+  fila2Apagada: { backgroundColor: color.superficieSuave, borderColor: 'transparent' },
+  filaUrgente: { borderColor: color.primario, backgroundColor: color.primarioSuave },
+  hora: { color: color.texto, width: 48, fontVariant: ['tabular-nums'] },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm },
   pastilla: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   tarjeta: {

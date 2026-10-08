@@ -19,7 +19,7 @@ import {
   cancelarTodos, guardarHoraRecordatorio, horaRecordatorio, probarRecordatorio, recordatoriosDisponibles,
   type HoraRecordatorio,
 } from '../../modules/recoleccion/recordatorios'
-import { BarraSuperior } from '../../modules/trabajador/piezas'
+import { BarraSuperior } from '../../modules/nucleo/armazon'
 import { Cargando } from '../../modules/nucleo/ui'
 import {
   IconoAuto, IconoBalanza, IconoCheck, IconoCodigo, IconoEditar, IconoEquipo, IconoEscudo, IconoGrafica,

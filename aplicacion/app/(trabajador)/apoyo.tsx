@@ -20,7 +20,7 @@ import { abrirPdf, misResumenes, type Resumen } from '../../modules/consulta/res
 import {
   cancelarCita, citaVigente, diasOfrecidos, fechaHora, horasDisponibles, misCitas, solicitarCita, type Cita,
 } from '../../modules/consulta/citas'
-import { BarraSuperior } from '../../modules/trabajador/piezas'
+import { BarraSuperior } from '../../modules/nucleo/armazon'
 import { Boton, Cargando } from '../../modules/nucleo/ui'
 import {
   IconoApoyo, IconoArchivo, IconoCalendario, IconoCandado, IconoCheck, IconoChevronAbajo, IconoEntrar, IconoHistorial,
