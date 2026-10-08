@@ -56,8 +56,9 @@ TZ = timezone(timedelta(hours=-5))
 PSICOLOGO = 'test+psicologo@tesis.local'
 ADMIN = 'test+admin@tesis.local'
 # Trabajador con cuenta real: permite entrar a la app en vivo y encontrar a
-# esa misma persona en el panel del investigador.
-PARTICIPANTE_EN_VIVO = 'user.prueba2@gmail.com'
+# esa misma persona en el panel del investigador. Antes apuntaba a una cuenta
+# de Gmail que ya no existe, y sembrar dejaba al NEX-001 sin forma de entrar.
+TRABAJADOR_EN_VIVO = 'test+trabajador@tesis.local'
 
 # Nombres inventados para la tabla `identidades`. Sin ellos «Ver identidad»
 # no tiene nada que devolver y el botón falla: es la única tabla con datos
@@ -247,7 +248,7 @@ def main() -> None:
     psi = psi[0]
     admin_uid = cx.execute("select id from auth.users where email = %s", (ADMIN,)).fetchone()
     cuenta_viva = cx.execute("select id from auth.users where email = %s",
-                             (PARTICIPANTE_EN_VIVO,)).fetchone()
+                             (TRABAJADOR_EN_VIVO,)).fetchone()
 
     rng = np.random.default_rng(args.semilla)
     hoy = date.today()
@@ -303,7 +304,7 @@ def main() -> None:
         if c['etapa']:
             print(f"  {c['codigo']:7s} {c['empresa']:18s} detectado -> {c['etapa']}")
     if cuenta_viva:
-        print(f"\n  {EMPRESAS[0]['prefijo']}-001 usa la cuenta {PARTICIPANTE_EN_VIVO}: se puede entrar en vivo.")
+        print(f"\n  {EMPRESAS[0]['prefijo']}-001 usa la cuenta {TRABAJADOR_EN_VIVO}: se puede entrar en vivo.")
     print(f"  {n_pred} predicciones retrospectivas registradas.")
     print(f"  admin {ADMIN} -> {EMPRESAS[0]['nombre']}")
 
@@ -326,7 +327,7 @@ def escribir_trabajador(cx, org, codigo, auth_user_id, lunes0, persona, semanas,
     # no, el psicólogo abriría la identidad y vería un contacto que no es el de
     # la persona que está delante.
     if en_vivo:
-        correo = PARTICIPANTE_EN_VIVO
+        correo = TRABAJADOR_EN_VIVO
     cx.execute("""insert into identidades (trabajador_id, nombre, correo_contacto, registrado_en)
                   values (%s, %s, %s, %s)""", (pid, nombre, correo, inscrito))
 

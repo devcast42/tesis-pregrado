@@ -32,7 +32,7 @@ Deja **cuatro pestañas abiertas y con sesión iniciada**, en este orden:
 
 | # | Pestaña | Cuenta | Contraseña |
 |---|---|---|---|
-| 1 | `localhost:8081/hoy` | `user.prueba2@gmail.com` (es NEX-001) | la de `duna-…` |
+| 1 | `localhost:8081/hoy` | `test+trabajador@tesis.local` (es NEX-001) | la misma de abajo |
 | 2 | `localhost:8081/psicologo` | `test+psicologo@tesis.local` | `Test1234!` |
 | 3 | `localhost:8081/investigador` | `test+investigador@tesis.local` | `Test1234!` |
 | 4 | `localhost:8081/admin` | `test+admin@tesis.local` | `Test1234!` |
