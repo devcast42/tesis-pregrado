@@ -260,7 +260,10 @@ export default function Hoy() {
   // formularios, pero con su resultado y su sesión de apoyo.
   const enSeguimiento = trabajador.estado === 'activo'
   const pendientes = enSeguimiento ? agenda.filter((i) => !i.completado) : []
-  const completados = agenda.filter((i) => i.completado)
+  // «Sobre tu semana» no entra: sus tres preguntas son de contexto —sobretiempo,
+  // guardias, apoyo del líder— y no devuelven nada a quien las contesta, así
+  // que su tarjeta abría el cierre del check-in y enseñaba el día otra vez.
+  const completados = agenda.filter((i) => i.completado && i.clave !== 'semanal')
   // Elegir la hora de la sesión es una tarea del día como las demás: mientras
   // falte, el día no está cerrado. Antes la detección vaciaba la agenda y la
   // pantalla cantaba «todo listo» con la cita todavía sin pedir.
