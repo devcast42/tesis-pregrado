@@ -170,8 +170,8 @@ export default function Perfil() {
           <View style={e.notaSuave}>
             <IconoEscudo tamano={16} color={color.primarioProfundo} />
             <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1 }]}>
-              Tu nombre y tu correo no están en ninguna tabla de resultados; solo los ve el
-              profesional de psicología si hay una sesión de apoyo, y ese acceso queda registrado.
+              Tus respuestas se guardan bajo tu código, no con tu nombre. Tu empresa ve tu nivel
+              y si vas respondiendo; nunca lo que contestaste ni lo que hablas con el psicólogo.
             </Text>
           </View>
         </View>
