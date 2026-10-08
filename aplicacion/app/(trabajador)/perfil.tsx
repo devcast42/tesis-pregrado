@@ -310,8 +310,8 @@ export default function Perfil() {
             <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Tus derechos como trabajador</Text>
           </View>
           <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-            Puedes retirar tu consentimiento en cualquier momento, sin dar explicaciones y sin
-            consecuencia alguna. Tu empresa no será informada.
+            Puedes darte de baja cuando quieras, sin dar explicaciones. Tu empresa verá que
+            dejaste de responder, nunca por qué.
           </Text>
           <Pressable onPress={confirmarRetiro} disabled={ocupado} style={e.botonBorde} accessibilityRole="button">
             <IconoSalir tamano={18} color={color.texto} />

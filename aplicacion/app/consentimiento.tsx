@@ -30,7 +30,7 @@ const PUNTOS = [
   'Tu empresa verá tu nombre, si vas respondiendo y en qué nivel estás: bajo, a vigilar o alto.',
   'Tu empresa NO verá lo que respondiste a cada pregunta, ni tus puntajes, ni nada de lo que hables con el psicólogo. Eso queda entre tú y él.',
   'Si aparecen señales de riesgo se te ofrecerá una sesión con un profesional de psicología. Aceptarla es voluntario, y tu empresa solo sabrá que estás en acompañamiento, nunca por qué.',
-  'Puedes retirar tu consentimiento cuando quieras, sin dar explicaciones y sin consecuencia alguna.',
+  'Puedes darte de baja cuando quieras, sin dar explicaciones. Tu empresa verá que dejaste de responder, nunca por qué.',
   'Cada sesión se graba solo en audio y solo si tú y el psicólogo lo autorizan en ese momento. El audio se transcribe con Deepgram y un borrador de informe se redacta con Claude (Anthropic) para que el psicólogo lo revise; la videollamada usa LiveKit y los datos se guardan en Supabase. El audio y la transcripción se borran al vencer su plazo.',
 ]
 
