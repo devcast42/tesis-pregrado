@@ -1,22 +1,34 @@
-/** Informe de sesión — implementa ESP-004 (RF-004-09 … RF-004-12).
+/** Nota clínica de la sesión — ESP-004 (RF-004-09 … RF-004-12).
  *
- *  Diseño: Figma «Informe Clínico». El borrador que generó la transcripción
- *  se revisa sección por sección y se aprueba; el borrador original nunca se
- *  toca (RN-004-04). Si no hubo grabación, la misma estructura vacía para
- *  redacción manual (RF-004-12). El trabajador nunca lo ve (RN-004-03). */
+ *  El borrador que sale de la transcripción se revisa, se corrige, se valora
+ *  y se aprueba; el borrador original no se toca (RN-004-04). Sin grabación,
+ *  la misma estructura vacía para escribirla a mano (RF-004-12). La persona
+ *  atendida nunca la ve (RN-004-03).
+ *
+ *  Antes, para llegar al texto había que pasar por cinco bloques —un rótulo,
+ *  un título, un aviso de confidencialidad, una «ficha de encuentro» y el
+ *  tamizaje OLBI— y cada sección se editaba con un botón Editar/Listo. Y al
+ *  aprobar no pasaba nada visible: el informe quedaba aprobado y la pantalla
+ *  intentaba volver atrás sin decir nada, así que parecía que el botón no
+ *  funcionaba.
+ *
+ *  Ahora el texto va primero, cada sección se edita tocándola, y aprobar deja
+ *  la nota en pantalla con un sello que dice que quedó aprobada y cómo se
+ *  valoró, y un botón para volver al caso. */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { obtenerSesion, reintentarCircuito } from '../../../modules/consulta/datos'
 import {
-  abrirInformeManual, aprobarInforme, guardarRevision, obtenerCaso, obtenerInforme, obtenerTranscripcion, psicologoActual, VALORACIONES,
+  abrirInformeManual, aprobarInforme, guardarRevision, obtenerCaso, obtenerInforme, obtenerTranscripcion, VALORACIONES,
   type Caso, type Informe, type Transcripcion, type Valoracion,
 } from '../../../modules/psicologo/datos'
-import { BarraUmbral, Pastilla, Tarjeta, haceCuanto } from '../../../modules/psicologo/piezas'
-import { Boton, Cargando } from '../../../modules/nucleo/ui'
+import { Tarjeta, haceCuanto } from '../../../modules/psicologo/piezas'
+import { Boton, Cargando, OpcionHoja, confirmar } from '../../../modules/nucleo/ui'
 import { color, espacio, fuente, radio, texto } from '../../../modules/nucleo/diseno'
-import { IconoCalendario, IconoCheck, IconoEscudo, IconoGrafica, IconoNota, IconoReloj, IconoVideo } from '../../../modules/nucleo/iconos'
+import { IconoCheck, IconoNota } from '../../../modules/nucleo/iconos'
 
 /** Secciones que se muestran, en este orden. Las del generador (ESP-004
  *  `redactar-informe`) y las del informe manual conviven: cada informe trae
@@ -47,6 +59,8 @@ export default function RevisionInforme() {
   const [editando, setEditando] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const insets = useSafeAreaInsets()
   // Guardado de la copia de trabajo: cada edición se anota en la base ~1,5 s
   // después de la última tecla, y siempre al pulsar «Listo» o salir.
   const [guardado, setGuardado] = useState<{ estado: 'limpio' | 'pendiente' | 'guardando' | 'guardado' | 'error'; en?: string }>({ estado: 'limpio' })
@@ -120,7 +134,7 @@ export default function RevisionInforme() {
     setReintentando(true)
     try {
       const r = await reintentarCircuito(id)
-      if (!r.ok) Alert.alert('No se pudo reintentar', r.detalle)
+      if (!r.ok) setError(`No se pudo reintentar: ${r.detalle}`)
       await cargar()
     } finally { setReintentando(false) }
   }
@@ -131,35 +145,41 @@ export default function RevisionInforme() {
       await abrirInformeManual(id)
       await cargar()
     } catch {
-      Alert.alert('No se pudo abrir el informe', 'Inténtalo de nuevo.')
+      setError('No se pudo abrir la nota. Inténtalo de nuevo.')
     } finally {
       setOcupado(false)
     }
   }
 
-  function aprobar() {
-    Alert.alert('Aprobar informe', 'Quedará registrado a tu nombre. El borrador original se conserva sin cambios.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Aprobar', onPress: aprobarAhora },
-    ])
-  }
-
-  async function aprobarAhora() {
+  async function aprobar() {
     if (!informe || !valoracion) return
-    setOcupado(true)
+    const ok = await confirmar({
+      titulo: 'Aprobar la nota',
+      mensaje: 'Quedará registrada a tu nombre y ya no se podrá editar. El borrador original se conserva.',
+      aceptar: 'Aprobar',
+    })
+    if (!ok) return
+    setOcupado(true); setError(null)
     try {
-      const yo = await psicologoActual()
-      if (!yo) throw new Error('sin psicólogo')
-      // Lo que se aprueba es exactamente lo que está en pantalla; la copia de
-      // trabajo queda guardada tal cual para que coincidan.
+      // Lo que se aprueba es exactamente lo que está en pantalla.
       await guardarAhora()
-      await aprobarInforme(informe.id, aContenido(secciones), valoracion!)
-      router.back()
+      await aprobarInforme(informe.id, aContenido(secciones), valoracion)
+      setEditando(null)
+      // Se queda aquí y se recarga: la pantalla pasa a «aprobada» con su
+      // sello. Volver atrás sin decir nada era lo que hacía parecer muerto el
+      // botón.
+      await cargar()
     } catch {
-      Alert.alert('No se pudo aprobar', 'Inténtalo de nuevo.')
+      setError('No se pudo aprobar la nota. Inténtalo de nuevo.')
     } finally {
       setOcupado(false)
     }
+  }
+
+  function volverAlCaso() {
+    if (router.canGoBack()) router.back()
+    else if (sesion?.derivacion_id) router.replace(`/psicologo/caso/${sesion.derivacion_id}`)
+    else router.replace('/psicologo')
   }
 
   if (cargando) return <Cargando />
@@ -167,193 +187,140 @@ export default function RevisionInforme() {
   const codigo = caso?.codigo_anonimo ?? ''
   const aprobado = informe?.estado === 'aprobado'
   const manual = informe?.modelo === 'manual'
-  const agot = caso?.puntajes?.agotamiento
-  const desv = caso?.puntajes?.desvinculacion
   const duracion = sesion?.iniciada_en && sesion?.finalizada_en
     ? Math.max(1, Math.round((new Date(sesion.finalizada_en).getTime() - new Date(sesion.iniciada_en).getTime()) / 60000))
     : null
+  const meta = [
+    sesion?.iniciada_en ? fechaHora(sesion.iniciada_en) : null,
+    duracion ? `${duracion} min` : null,
+    manual ? 'escrita a mano' : informe ? 'borrador automático' : null,
+  ].filter(Boolean).join(' · ')
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-    <ScrollView contentContainerStyle={e.contenido} keyboardShouldPersistTaps="handled">
-      <View style={e.fila}>
-        <Text style={[texto.etiqueta, { color: color.primarioProfundo, flex: 1 }]}>BIENESTAR TECH · INFORME CLÍNICO</Text>
-        <Pastilla
-          texto={aprobado ? 'Aprobado' : manual ? 'Nota manual' : 'Borrador clínico'}
-          fondo={aprobado ? color.exitoSuave : color.arena}
-          tinta={aprobado ? color.exito : color.textoArena}
-        />
-      </View>
-      <Text style={texto.titulo}>Informe de sesión{codigo ? ` · ${codigo}` : ''}</Text>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: color.fondo }} behavior="padding">
+      <Stack.Screen options={{ title: codigo ? `Nota · ${codigo}` : 'Nota clínica' }} />
+      <ScrollView contentContainerStyle={[e.contenido, { paddingBottom: espacio.xxl + insets.bottom }]} keyboardShouldPersistTaps="handled">
 
-      <View style={e.confidencial}>
-        <IconoEscudo tamano={20} color={color.textoArena} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Confidencialidad garantizada</Text>
-          <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
-            {manual ? 'Nota redactada por ti.' : 'Borrador generado automáticamente.'} Nada se comparte hasta que lo apruebes; el trabajador nunca lo ve.
-          </Text>
-        </View>
-      </View>
-
-      <Tarjeta>
-        <View style={[e.fila, e.separador]}>
-          <Text style={[texto.etiqueta, { color: color.textoSuave, flex: 1 }]}>FICHA DE ENCUENTRO</Text>
-          <Text style={[texto.dato, { color: color.primarioProfundo }]}>
-            {manual ? 'Sin grabación' : informe ? 'Transcripción procesada' : 'Sin informe'}
-          </Text>
-        </View>
-        <View style={e.fila}>
-          <View style={[e.fila, { flex: 1 }]}>
-            <IconoCalendario tamano={16} color={color.textoMedio} />
-            <Text style={[texto.cuerpo, { color: color.texto }]}>{sesion?.iniciada_en ? fechaHora(sesion.iniciada_en) : '—'}</Text>
-          </View>
-          <View style={e.fila}>
-            <IconoReloj tamano={16} color={color.textoMedio} />
-            <Text style={[texto.cuerpo, { color: color.texto }]}>{duracion ? `Duración: ${duracion} min` : 'En curso'}</Text>
-          </View>
-        </View>
-        <View style={e.fila}>
-          <IconoVideo tamano={16} color={color.textoMedio} />
-          <Text style={[texto.cuerpo, { color: color.texto }]}>Modalidad: Videollamada de apoyo</Text>
-        </View>
-      </Tarjeta>
-
-      {!!nota && !aprobado && (
-        <Tarjeta suave>
-          <View style={[e.fila, { gap: 8 }]}>
-            <IconoNota tamano={16} color={color.textoArena} />
-            <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Nota del borrador</Text>
-          </View>
-          <Text style={[texto.cuerpo, { color: color.textoMedio }]}>{nota}</Text>
-        </Tarjeta>
-      )}
-
-      {transcripcion?.texto && (
-        <Tarjeta suave>
-          <Pressable onPress={() => setVerTranscripcion((v) => !v)} style={[e.fila, { gap: 8 }]}>
-            <IconoNota tamano={16} color={color.textoMedio} />
-            <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Transcripción de la sesión</Text>
-            <Text style={[texto.apoyo, { color: color.primarioProfundo }]}>{verTranscripcion ? 'Ocultar' : 'Ver'}</Text>
-          </Pressable>
-          {verTranscripcion && <Text style={[texto.cuerpo, { color: color.textoMedio }]} selectable>{transcripcion.texto.trim()}</Text>}
-          <Text style={[texto.apoyo, { color: color.textoSuave }]}>Solo tú la ves. Se borra junto con el audio al vencer el plazo de retención.</Text>
-        </Tarjeta>
-      )}
-
-      {(typeof agot === 'number' || typeof desv === 'number') && (
-        <Tarjeta suave>
-          <View style={[e.fila, { gap: 8 }]}>
-            <IconoGrafica tamano={16} color={color.textoMedio} />
-            <Text style={[texto.etiqueta, { color: color.textoMedio }]}>TAMIZAJE OLBI PREVIO</Text>
-          </View>
-          {typeof agot === 'number' && <BarraUmbral dimension="agotamiento" puntaje={agot} umbral={caso?.umbrales?.agotamiento} />}
-          {typeof desv === 'number' && <BarraUmbral dimension="desvinculacion" puntaje={desv} umbral={caso?.umbrales?.desvinculacion} />}
-        </Tarjeta>
-      )}
-
-      {!informe ? (
-        <EstadoCircuito
-          sesion={sesion}
-          transcripcion={transcripcion}
-          ahora={ahoraTick}
-          reintentando={reintentando}
-          onReintentar={reintentar}
-          onManual={empezarManual}
-          ocupado={ocupado}
-        />
-      ) : (
-        Object.entries(secciones).map(([clave, t], i) => (
-          <Tarjeta key={clave}>
-            <View style={e.fila}>
-              <View style={e.numero}><Text style={[texto.dato, { color: color.textoMedio }]}>{i + 1}</Text></View>
-              <Text style={[texto.seccion, { color: color.texto, flex: 1 }]}>{ETIQUETAS[clave] ?? clave}</Text>
-              {!aprobado && (
-                <Pressable
-                  onPress={() => { if (editando === clave) guardarAhora(); setEditando(editando === clave ? null : clave) }}
-                  style={e.editar}
-                  accessibilityRole="button"
-                >
-                  <IconoNota tamano={14} color={color.primarioProfundo} />
-                  <Text style={[texto.cuerpoFuerte, { color: color.primarioProfundo }]}>{editando === clave ? 'Listo' : 'Editar'}</Text>
-                </Pressable>
-              )}
+        {/* Aprobada: lo primero que se ve es que quedó hecha. */}
+        {aprobado && informe && (
+          <View style={e.sello}>
+            <View style={e.selloIcono}><IconoCheck tamano={14} color="#FFFFFF" /></View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={[texto.cuerpoFuerte, { color: color.exito }]}>Nota aprobada</Text>
+              <Text style={[texto.apoyo, { color: color.textoMedio }]}>
+                {informe.aprobado_en ? `${fechaHora(informe.aprobado_en)} · ` : ''}
+                {informe.valoracion && informe.valoracion in VALORACIONES ? VALORACIONES[informe.valoracion as Valoracion] : 'Sin valoración'}
+              </Text>
             </View>
-            {editando === clave ? (
-              <TextInput
-                style={e.entrada}
-                value={t}
-                onChangeText={(v) => editar(clave, v)}
-                onBlur={guardarAhora}
-                multiline
-                autoFocus
-                placeholder="Una línea por punto"
-                placeholderTextColor={color.textoSuave}
-              />
-            ) : (
-              <Puntos texto={t} citas={clave === 'citas_textuales_relevantes'} />
+          </View>
+        )}
+
+        {/* Una línea con lo que antes era una tarjeta entera. */}
+        {!!meta && <Text style={[texto.apoyo, { color: color.textoMedio }]}>{meta}</Text>}
+
+        {!!nota && !aprobado && (
+          <View style={e.aviso}>
+            <IconoNota tamano={14} color={color.textoArena} />
+            <Text style={[texto.apoyo, { color: color.textoArena, flex: 1 }]}>{nota}</Text>
+          </View>
+        )}
+
+        {!!error && <View style={e.error}><Text style={[texto.apoyo, { color: color.tierra }]}>{error}</Text></View>}
+
+        {!informe ? (
+          <EstadoCircuito
+            sesion={sesion}
+            transcripcion={transcripcion}
+            ahora={ahoraTick}
+            reintentando={reintentando}
+            onReintentar={reintentar}
+            onManual={empezarManual}
+            ocupado={ocupado}
+          />
+        ) : (
+          <>
+            {!aprobado && (
+              <Text style={[texto.apoyo, { color: color.textoSuave }]}>
+                Toca una sección para corregirla. Se guarda sola mientras escribes.
+              </Text>
             )}
+            {Object.entries(secciones).map(([clave, t]) => (
+              <View key={clave} style={[e.seccion, editando === clave && e.seccionEditando]}>
+                <Text style={[texto.etiqueta, { color: color.textoSuave }]}>{(ETIQUETAS[clave] ?? clave).toUpperCase()}</Text>
+                {editando === clave ? (
+                  <TextInput
+                    style={e.entrada}
+                    value={t}
+                    onChangeText={(v) => editar(clave, v)}
+                    onBlur={() => { guardarAhora(); setEditando(null) }}
+                    multiline
+                    autoFocus
+                    placeholder="Una línea por punto"
+                    placeholderTextColor={color.textoSuave}
+                  />
+                ) : (
+                  <Pressable
+                    disabled={aprobado}
+                    onPress={() => setEditando(clave)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Editar ${ETIQUETAS[clave] ?? clave}`}
+                  >
+                    <Puntos texto={t} citas={clave === 'citas_textuales_relevantes'} editable={!aprobado} />
+                  </Pressable>
+                )}
+              </View>
+            ))}
+
+            {!aprobado && guardado.estado !== 'limpio' && (
+              <View style={[e.fila, { gap: 6 }]}>
+                {guardado.estado === 'guardado' && <IconoCheck tamano={12} color={color.exito} />}
+                <Text style={[texto.apoyo, { color: guardado.estado === 'error' ? color.tierra : color.textoSuave }]}>
+                  {guardado.estado === 'guardando' || guardado.estado === 'pendiente' ? 'Guardando…'
+                    : guardado.estado === 'error' ? 'No se pudo guardar. Se reintentará al seguir escribiendo.'
+                    : `Guardado ${guardado.en ? cuandoGuardado(guardado.en) : ''}. Puedes salir y seguir después.`}
+                </Text>
+              </View>
+            )}
+          </>
+        )}
+
+        {transcripcion?.texto && (
+          <Tarjeta suave>
+            <Pressable onPress={() => setVerTranscripcion((v) => !v)} style={[e.fila, { gap: 8 }]} accessibilityRole="button">
+              <IconoNota tamano={16} color={color.textoMedio} />
+              <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Transcripción</Text>
+              <Text style={[texto.apoyo, { color: color.primarioProfundo }]}>{verTranscripcion ? 'Ocultar' : 'Ver'}</Text>
+            </Pressable>
+            {verTranscripcion && <Text style={[texto.cuerpo, { color: color.textoMedio }]} selectable>{transcripcion.texto.trim()}</Text>}
           </Tarjeta>
-        ))
-      )}
+        )}
 
-      {informe && !aprobado && guardado.estado !== 'limpio' && (
-        <View style={[e.fila, { paddingHorizontal: 4, gap: 6 }]}>
-          {guardado.estado === 'guardado' && <IconoCheck tamano={12} color={color.exito} />}
-          <Text style={[texto.apoyo, { color: guardado.estado === 'error' ? color.tierra : color.textoMedio }]}>
-            {guardado.estado === 'guardando' || guardado.estado === 'pendiente' ? 'Guardando tus notas…'
-              : guardado.estado === 'error' ? 'No se pudieron guardar las notas. Se reintentará al seguir escribiendo.'
-              : `Notas guardadas ${guardado.en ? cuandoGuardado(guardado.en) : ''}. Puedes salir y retomarlas después.`}
-          </Text>
-        </View>
-      )}
-
-      {informe && !aprobado && (
-        <Text style={[texto.apoyo, { color: color.textoSuave, paddingHorizontal: 4 }]}>
-          {manual
-            ? 'Esta nota no tiene borrador automático: lo que escribas es la versión final.'
-            : 'Si no hubo grabación de audio, esta misma estructura se presenta vacía para redacción manual directa.'}
-        </Text>
-      )}
-
-      {informe && (aprobado ? (
-        <Text style={[texto.apoyo, { color: color.textoMedio, textAlign: 'center' }]}>
-          Informe aprobado. El borrador original se conserva sin cambios.
-        </Text>
-      ) : (
-        <View style={{ gap: espacio.md }}>
-          {/* La única etiqueta de verdad que existe para el burnout. El OLBI
-              es un cuestionario autoaplicado; esto es el juicio de quien
-              habló con la persona. No la ve la empresa: vive con el informe.
-              Es obligatoria porque un campo opcional no lo rellena nadie, y
-              media etiqueta no sirve para nada. */}
-          <View style={{ gap: espacio.sm }}>
-            <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Tu valoración</Text>
+        {informe && !aprobado && (
+          <View style={{ gap: espacio.sm, marginTop: espacio.sm }}>
+            {/* La única etiqueta de verdad que hay para el burnout: el juicio
+                de quien habló con la persona. Obligatoria, porque un campo
+                opcional no lo rellena nadie. */}
+            <Text style={[texto.etiqueta, { color: color.textoSuave }]}>TU VALORACIÓN</Text>
             <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-              Queda en el informe. Tu empresa no la ve.
+              ¿Lo que viste es burnout? Solo lo ves tú; queda guardado con la nota.
             </Text>
             {(Object.keys(VALORACIONES) as Valoracion[]).map((k) => (
-              <Pressable
-                key={k}
-                onPress={() => setValoracion(k)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: valoracion === k }}
-                style={({ pressed }) => [
-                  e.valoracion,
-                  valoracion === k && e.valoracionActiva,
-                  pressed && { opacity: 0.85 },
-                ]}
-              >
-                <Text style={[texto.cuerpo, { color: valoracion === k ? color.primarioProfundo : color.texto }]}>
-                  {VALORACIONES[k]}
-                </Text>
-              </Pressable>
+              <OpcionHoja key={k} texto={VALORACIONES[k]} activa={valoracion === k} onPress={() => setValoracion(k)} />
             ))}
+            <View style={{ marginTop: espacio.sm }}>
+              <Boton onPress={aprobar} cargando={ocupado} inhabilitado={!valoracion}>
+                {valoracion ? 'Aprobar la nota' : 'Elige una valoración para aprobar'}
+              </Boton>
+            </View>
           </View>
-          <Boton onPress={aprobar} cargando={ocupado} inhabilitado={!valoracion}>Aprobar informe</Boton>
-        </View>
-      ))}
-    </ScrollView>
+        )}
+
+        {aprobado && <Boton variante="secundario" onPress={volverAlCaso}>Volver al caso</Boton>}
+
+        <Text style={[texto.apoyo, { color: color.textoSuave, textAlign: 'center' }]}>
+          La persona atendida nunca ve esta nota, ni tampoco su empresa.
+        </Text>
+      </ScrollView>
     </KeyboardAvoidingView>
   )
 }
@@ -453,9 +420,9 @@ function indiceFallo(t: Transcripcion | null): number {
 
 /** Cada línea del texto es un punto. Las citas van como bloque con la
  *  frase literal y, debajo, el contexto en gris («texto — contexto»). */
-function Puntos({ texto: t, citas }: { texto: string; citas: boolean }) {
+function Puntos({ texto: t, citas, editable = true }: { texto: string; citas: boolean; editable?: boolean }) {
   const lineas = t.split('\n').map((l) => l.trim()).filter(Boolean)
-  if (lineas.length === 0) return <Text style={[texto.cuerpo, { color: color.textoSuave }]}>Sin contenido. Toca «Editar» para escribir.</Text>
+  if (lineas.length === 0) return <Text style={[texto.cuerpo, { color: color.textoSuave }]}>{editable ? 'Toca para escribir.' : 'Sin contenido.'}</Text>
   return (
     <View style={{ gap: citas ? 10 : 6 }}>
       {lineas.map((linea, i) => {
@@ -506,20 +473,29 @@ function aTexto(valor: unknown): string {
 }
 
 const e = StyleSheet.create({
-  valoracion: { borderWidth: 1, borderColor: color.borde, borderRadius: radio.md, paddingHorizontal: espacio.base, paddingVertical: espacio.md, backgroundColor: color.superficie },
-  valoracionActiva: { borderColor: color.primario, backgroundColor: color.primarioSuave },
-  contenido: { padding: 20, paddingBottom: espacio.xxl, gap: espacio.md, width: '100%', maxWidth: 480, alignSelf: 'center', backgroundColor: color.fondo, flexGrow: 1 },
+  contenido: {
+    paddingHorizontal: 20, paddingTop: espacio.sm, gap: espacio.md,
+    width: '100%', maxWidth: 480, alignSelf: 'center', flexGrow: 1,
+  },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm },
-  separador: { paddingBottom: espacio.sm, borderBottomWidth: 1, borderBottomColor: color.borde },
-  confidencial: { flexDirection: 'row', gap: espacio.sm, alignItems: 'flex-start', backgroundColor: color.arena, borderRadius: radio.xl, padding: espacio.md },
-  numero: { width: 26, height: 26, borderRadius: 13, backgroundColor: color.superficieSuave, alignItems: 'center', justifyContent: 'center' },
+  sello: {
+    flexDirection: 'row', alignItems: 'center', gap: espacio.sm,
+    backgroundColor: color.exitoSuave, borderRadius: radio.lg, padding: espacio.base,
+  },
+  selloIcono: { width: 28, height: 28, borderRadius: 14, backgroundColor: color.exito, alignItems: 'center', justifyContent: 'center' },
+  aviso: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: color.arena, borderRadius: radio.md, padding: 12 },
+  error: { backgroundColor: color.tierraSuave, borderRadius: radio.md, padding: 12 },
+  seccion: {
+    backgroundColor: color.superficie, borderRadius: radio.lg, padding: espacio.base,
+    gap: espacio.sm, borderWidth: 1, borderColor: color.borde,
+  },
+  seccionEditando: { borderColor: color.primario },
   vineta: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.primario, marginTop: 9 },
   paso: { width: 22, height: 22, borderRadius: 11, backgroundColor: color.superficieSuave, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   pasoHecho: { backgroundColor: color.primario },
   pasoActivo: { backgroundColor: color.primarioSuave, borderWidth: 1.5, borderColor: color.primario },
   pasoRoto: { backgroundColor: color.tierra },
   cita: { borderLeftWidth: 3, borderLeftColor: color.primarioClaro, paddingLeft: 12, paddingVertical: 2 },
-  editar: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radio.md, backgroundColor: color.superficieSuave },
   entrada: {
     minHeight: 120, padding: espacio.sm, borderRadius: radio.md, borderWidth: 1, borderColor: color.borde,
     backgroundColor: color.superficieSuave, fontFamily: fuente.regular, fontSize: 15, lineHeight: 22, color: color.texto, textAlignVertical: 'top',

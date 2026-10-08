@@ -32,6 +32,9 @@ export type Informe = {
   estado: 'sin_revisar' | 'aprobado' | 'descartado'
   modelo: string
   generado_en: string
+  aprobado_en: string | null
+  /** El juicio clínico que se exige al aprobar (ESP-004, valoración clínica). */
+  valoracion: string | null
 }
 
 export type SesionConsulta = {

@@ -5,6 +5,9 @@
 import type { ReactNode } from 'react'
 import {
   ActivityIndicator,
+  Alert,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,7 +17,8 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native'
-import { ancho, color, espacio, radio, sombra, texto, TOQUE_MINIMO } from './diseno'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { ancho, color, espacio, radio, sombra, texto, TOQUE_MINIMO, veloModal } from './diseno'
 
 // ---------------------------------------------------------------- Estructura
 
@@ -222,6 +226,22 @@ export function Vacio({ children }: { children: ReactNode }) {
 export const estiloFila: ViewStyle = { flexDirection: 'row', alignItems: 'center' }
 
 const e = StyleSheet.create({
+  hojaVelo: { ...veloModal, backgroundColor: 'rgba(28, 25, 23, 0.55)', justifyContent: 'flex-end' },
+  hoja: {
+    backgroundColor: color.fondo, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 20, paddingTop: 10, gap: espacio.md,
+    width: '100%', maxWidth: 520, alignSelf: 'center',
+  },
+  hojaAsa: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: color.borde, marginBottom: 4 },
+  opcion: {
+    flexDirection: 'row', alignItems: 'center', gap: espacio.sm,
+    paddingVertical: 14, paddingHorizontal: espacio.base, borderRadius: radio.lg,
+    borderWidth: 1, borderColor: color.borde, backgroundColor: color.superficie,
+  },
+  opcionActiva: { borderColor: color.primario, backgroundColor: color.primarioSuave },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: color.borde, alignItems: 'center', justifyContent: 'center' },
+  radioActivo: { borderColor: color.primario },
+  radioPunto: { width: 10, height: 10, borderRadius: 5, backgroundColor: color.primario },
   pantalla: { flex: 1, backgroundColor: color.fondo },
   contenido: {
     padding: espacio.lg,
@@ -268,3 +288,77 @@ const e = StyleSheet.create({
   cifra: { gap: 2, minWidth: 96 },
   vacio: { paddingVertical: espacio.xl, paddingHorizontal: espacio.base },
 })
+
+// ------------------------------------------------------------- Confirmación
+
+/** Pide confirmación y devuelve si se aceptó.
+ *
+ *  En web `Alert.alert` con botones no hace nada: react-native-web no lo
+ *  implementa, así que cualquier acción que se confirmaba así era un botón
+ *  muerto en el navegador. Aquí cae a `window.confirm`. */
+export function confirmar({ titulo, mensaje, aceptar = 'Aceptar', destructivo = false }: {
+  titulo: string
+  mensaje: string
+  aceptar?: string
+  destructivo?: boolean
+}): Promise<boolean> {
+  if (Platform.OS === 'web') {
+    return Promise.resolve(typeof window !== 'undefined' && window.confirm(`${titulo}\n\n${mensaje}`))
+  }
+  return new Promise((resolver) => {
+    Alert.alert(titulo, mensaje, [
+      { text: 'Cancelar', style: 'cancel', onPress: () => resolver(false) },
+      { text: aceptar, style: destructivo ? 'destructive' : 'default', onPress: () => resolver(true) },
+    ], { cancelable: true, onDismiss: () => resolver(false) })
+  })
+}
+
+// ------------------------------------------------------------ Hoja inferior
+
+/** Una hoja que sube desde abajo, con su título y lo que se le ponga dentro.
+ *
+ *  Para elegir entre más de dos o tres cosas. `Alert` en Android corta a tres
+ *  botones sin avisar: cerrar un caso con cuatro desenlaces dejaba tres de
+ *  ellos fuera de la pantalla, y en web no salía ninguno. */
+export function Hoja({ visible, titulo, onCerrar, children }: {
+  visible: boolean
+  titulo: string
+  onCerrar: () => void
+  children: ReactNode
+}) {
+  const insets = useSafeAreaInsets()
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCerrar} statusBarTranslucent>
+      <Pressable style={e.hojaVelo} onPress={onCerrar} accessibilityLabel="Cerrar">
+        <Pressable style={[e.hoja, { paddingBottom: espacio.lg + insets.bottom }]} onPress={() => {}}>
+          <View style={e.hojaAsa} />
+          <Text style={[texto.seccion, { color: color.texto }]}>{titulo}</Text>
+          {children}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  )
+}
+
+/** Opción de una hoja: una fila con su marca de seleccionada. */
+export function OpcionHoja({ texto: t, ayuda, activa, onPress }: {
+  texto: string
+  ayuda?: string
+  activa: boolean
+  onPress: () => void
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected: activa }}
+      style={({ pressed }) => [e.opcion, activa && e.opcionActiva, pressed && { opacity: 0.8 }]}
+    >
+      <View style={[e.radio, activa && e.radioActivo]}>{activa && <View style={e.radioPunto} />}</View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={[texto.cuerpo, { color: activa ? color.primarioProfundo : color.texto }]}>{t}</Text>
+        {!!ayuda && <Text style={[texto.apoyo, { color: color.textoMedio }]}>{ayuda}</Text>}
+      </View>
+    </Pressable>
+  )
+}
