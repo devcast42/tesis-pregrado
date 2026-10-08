@@ -279,3 +279,28 @@ export async function olbiToca(): Promise<OlbiToca> {
   if (error || !data) return { toca: false }
   return data as OlbiToca
 }
+
+
+export type DiaSemana = { dia: string; indice: number | null; sueno: number | null }
+
+/** Los días de esta semana con su índice diario, para dibujarlos.
+ *
+ *  Es el promedio de las cuatro preguntas de ánimo, de 1 a 5. Se enseña al
+ *  cerrar el check-in porque es lo único que esa persona construye
+ *  contestando: sin esto, responder a diario es dar datos a cambio de nada. */
+export async function semanaEnCurso(trabajadorId: string): Promise<DiaSemana[]> {
+  const lunes = new Date()
+  lunes.setHours(0, 0, 0, 0)
+  lunes.setDate(lunes.getDate() - ((lunes.getDay() || 7) - 1))
+  const { data } = await supabase
+    .from('serie_diaria_v2')
+    .select('dia, indice_diario, horas_sueno')
+    .eq('trabajador_id', trabajadorId)
+    .gte('dia', lunes.toISOString().slice(0, 10))
+    .order('dia')
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    dia: String(r.dia),
+    indice: r.indice_diario == null ? null : Number(r.indice_diario),
+    sueno: r.horas_sueno == null ? null : Number(r.horas_sueno),
+  }))
+}

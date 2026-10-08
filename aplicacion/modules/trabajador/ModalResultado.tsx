@@ -18,6 +18,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import Svg, { Circle } from 'react-native-svg'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Boton } from '../nucleo/ui'
+import type { DiaSemana } from '../recoleccion/datos'
 import { color, espacio, radio, texto, veloModal } from '../nucleo/diseno'
 import {
   IconoCerrar, IconoCheck, IconoCorazon, IconoEscudo, IconoInfo,
@@ -38,6 +39,8 @@ type Props = {
   /** Por qué toca el cuestionario, si toca. */
   motivoOlbi?: string | null
   onResponderOlbi?: () => void
+  /** Los días de esta semana con su índice, para la gráfica. */
+  semana?: DiaSemana[]
   onCerrar: () => void
 }
 
@@ -55,7 +58,7 @@ const TONO_CONFIANZA: Record<NivelConfianza, { borde: string; tinta: string; fon
   alta: { borde: '#BBE5C8', tinta: color.exito, fondo: color.exitoSuave },
 }
 
-export function ModalResultado({ modo, resultado, consejo, prediccion, motivoOlbi, onResponderOlbi, onCerrar }: Props) {
+export function ModalResultado({ modo, resultado, consejo, prediccion, motivoOlbi, onResponderOlbi, semana, onCerrar }: Props) {
   const insets = useSafeAreaInsets()
   const visible = modo !== null
   const mostrarResultado = modo === 'resultado' && resultado !== null
@@ -80,7 +83,7 @@ export function ModalResultado({ modo, resultado, consejo, prediccion, motivoOlb
           <ScrollView contentContainerStyle={[e.contenido, { paddingBottom: espacio.xxl + insets.bottom }]} showsVerticalScrollIndicator={false}>
             {mostrarResultado
               ? <Resultado r={resultado} />
-              : <Cierre consejo={consejo} prediccion={prediccion} motivoOlbi={motivoOlbi} onResponderOlbi={onResponderOlbi} />}
+              : <Cierre consejo={consejo} prediccion={prediccion} motivoOlbi={motivoOlbi} onResponderOlbi={onResponderOlbi} semana={semana} />}
             {/* Un solo botón relleno por pantalla. Con dos iguales, el que
                 importa deja de distinguirse. */}
             {mostrarResultado || !motivoOlbi
@@ -120,11 +123,65 @@ const AVISO_OLBI: Record<string, { titulo: string; texto: string }> = {
   },
 }
 
-function Cierre({ consejo, prediccion, motivoOlbi, onResponderOlbi }: {
+const LETRA_DIA = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+
+/** Cómo viene la semana, en barras.
+ *
+ *  Es el promedio de las cuatro preguntas de ánimo de cada día, de 1 a 5.
+ *  Existe porque hasta ahora responder a diario era dar datos a cambio de
+ *  nada: esto es lo único que la persona construye contestando, y lo ve
+ *  crecer cada día.
+ *
+ *  Más alto es peor, así que la barra se tiñe al subir. Sin números: lo que
+ *  importa es la forma —si viene subiendo o bajando—, no el 3.4. */
+function SemanaEnBarras({ dias }: { dias: DiaSemana[] }) {
+  const porDia = new Map(dias.map((d) => [new Date(`${d.dia}T12:00:00`).getDay(), d.indice]))
+  // Lunes a viernes siempre, aunque falten. Con solo los días respondidos la
+  // gráfica se veía coja los lunes y los martes; así se entiende de un
+  // vistazo lo que llevas y lo que falta.
+  const semana = [1, 2, 3, 4, 5].map((d) => ({ letra: LETRA_DIA[d - 1], valor: porDia.get(d) ?? null }))
+  const conDato = semana.filter((d) => d.valor != null)
+  if (conDato.length < 2) return null
+
+  const ultimo = conDato[conDato.length - 1].valor as number
+  const previo = conDato[conDato.length - 2].valor as number
+  const lectura = ultimo - previo > 0.4 ? 'Hoy terminaste peor que ayer'
+    : previo - ultimo > 0.4 ? 'Hoy terminaste mejor que ayer'
+    : 'Vienes estable'
+
+  return (
+    <View style={e.tarjeta}>
+      <Rotulo punto>CÓMO VIENE TU SEMANA</Rotulo>
+      <View style={e.barras}>
+        {semana.map((d, i) => {
+          const v = d.valor
+          // De 1 a 5 sobre 60 px, con un mínimo visible para que un día bueno
+          // no se confunda con uno sin responder.
+          const alto = v == null ? 0 : Math.max(10, ((v - 1) / 4) * 60)
+          const tinta = v == null ? 'transparent' : v >= 3.5 ? color.tierra : v >= 2.5 ? '#C9A227' : color.primario
+          return (
+            <View key={i} style={e.barraDia}>
+              <View style={e.barraPista}>
+                {v != null && <View style={[e.barraVal, { height: alto, backgroundColor: tinta }]} />}
+              </View>
+              <Text style={[texto.dato, { color: v == null ? color.textoSuave : color.textoMedio, fontSize: 11 }]}>
+                {d.letra}
+              </Text>
+            </View>
+          )
+        })}
+      </View>
+      <Text style={[texto.cuerpo, { color: color.texto }]}>{lectura}</Text>
+    </View>
+  )
+}
+
+function Cierre({ consejo, prediccion, motivoOlbi, onResponderOlbi, semana }: {
   consejo: string | null
   prediccion: Prediccion | null
   motivoOlbi?: string | null
   onResponderOlbi?: () => void
+  semana?: DiaSemana[]
 }) {
   const aviso = motivoOlbi ? AVISO_OLBI[motivoOlbi] : null
   return (
@@ -145,6 +202,8 @@ function Cierre({ consejo, prediccion, motivoOlbi, onResponderOlbi }: {
           {onResponderOlbi && <Boton onPress={onResponderOlbi}>Responder ahora</Boton>}
         </View>
       )}
+
+      {semana && <SemanaEnBarras dias={semana} />}
 
       {consejo && (
         <View style={e.tarjeta}>
@@ -396,6 +455,12 @@ function Titular({ children }: { children: string }) {
 }
 
 const e = StyleSheet.create({
+  barras: { flexDirection: 'row', alignItems: 'flex-end', gap: espacio.sm, paddingTop: espacio.xs },
+  barraDia: { alignItems: 'center', gap: 6, flex: 1 },
+  // La pista vacía da el hueco de los días que faltan, para que las barras
+  // no bailen de sitio según cuántas haya.
+  barraPista: { height: 60, width: '100%', justifyContent: 'flex-end', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: color.borde },
+  barraVal: { width: '66%', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
   acuse: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, marginTop: espacio.xs },
   acuseSello: { width: 26, height: 26, borderRadius: 13, backgroundColor: color.primario, alignItems: 'center', justifyContent: 'center' },
   volver: { alignItems: 'center', paddingVertical: espacio.md },

@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { obtenerTrabajador } from '../../modules/acceso/datos'
 import {
   calendarios, diasConCheckinEstaSemana, indiceLunes, inicioDeSemana, olbiToca, prediccionActual,
-  racha as consultarRacha, ultimaPrediccionSemana, ultimosEnvios, type Racha,
+  racha as consultarRacha, semanaEnCurso, ultimaPrediccionSemana, ultimosEnvios, type DiaSemana, type Racha,
 } from '../../modules/recoleccion/datos'
 import { agendaDeHoy, type ItemAgenda } from '../../modules/recoleccion/agenda'
 import { sincronizarRecordatorios } from '../../modules/recoleccion/recordatorios'
@@ -92,6 +92,7 @@ export default function Hoy() {
   const [trabajador, setTrabajador] = useState<Trabajador | null>(null)
   const [agenda, setAgenda] = useState<ItemAgenda[] | null>(null)
   const [motivoOlbi, setMotivoOlbi] = useState<string | null>(null)
+  const [semana, setSemana] = useState<DiaSemana[]>([])
   const [diasRespondidos, setDiasRespondidos] = useState<Set<number>>(new Set())
   const [sesion, setSesion] = useState<SesionDisponible | null>(null)
   const [refrescando, setRefrescando] = useState(false)
@@ -167,8 +168,9 @@ export default function Hoy() {
       sincronizarRecordatorios({ diario: cal.diario?.duracion, olbi: cal.olbi?.duracion }).catch(() => {})
     }
     setTrabajador(p)
-    const olbi = await olbiToca()
+    const [olbi, serieSemana] = await Promise.all([olbiToca(), semanaEnCurso(p.id)])
     setMotivoOlbi(olbi.motivo ?? null)
+    setSemana(serieSemana)
     setAgenda(agendaDeHoy(envios, cal, undefined, olbi.toca))
     setDiasRespondidos(dias)
     setSesion(s)
@@ -316,7 +318,7 @@ export default function Hoy() {
         <PieEtico codigo={trabajador.codigo_anonimo} onAjustes={irAAjustes} />
       </ScrollView>
 
-      <ModalResultado modo={modal} resultado={resultado} consejo={consejo} prediccion={prediccion} motivoOlbi={motivoOlbi}
+      <ModalResultado modo={modal} resultado={resultado} consejo={consejo} prediccion={prediccion} motivoOlbi={motivoOlbi} semana={semana}
         onResponderOlbi={() => { setModal(null); router.push('/formulario/olbi') }} onCerrar={() => {
         setModal(null)
         if (celebrarPendiente) { setCelebrarPendiente(false); setCelebrar(true); setTimeout(() => setCelebrar(false), 2000) }
