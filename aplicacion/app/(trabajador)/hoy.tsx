@@ -34,7 +34,7 @@ import { fechaLarga, fraseDelDia, saludoPorHora } from '../../modules/trabajador
 import { Cargando } from '../../modules/nucleo/ui'
 import { ahora, cargarDesfase } from '../../modules/nucleo/reloj'
 import {
-  ultimoResultado, guardarResultado, nivelGeneral, ETIQUETA_NIVEL, tomarConsejo, type Prediccion, type ResultadoSemana,
+  ultimoResultado, guardarResultado, tomarConsejo, type Prediccion, type ResultadoSemana,
 } from '../../modules/trabajador/resultado'
 import { ModalResultado, TarjetaProbabilidad, type ModoModal } from '../../modules/trabajador/ModalResultado'
 import { color, espacio } from '../../modules/nucleo/diseno'
@@ -266,7 +266,6 @@ export default function Hoy() {
   // pantalla cantaba «todo listo» con la cita todavía sin pedir.
   const faltaCita = derivado && !cita
   const todoListo = pendientes.length === 0 && !faltaCita
-  const olbiHoy = completados.some((i) => i.clave === 'olbi')
   const [principal, ...secundarios] = pendientes
   const saludo = saludoPorHora(ahoraMismo)
 
@@ -414,19 +413,12 @@ export default function Hoy() {
 
         {hoyMismo && prediccion && !finDeSemana && hoy < 4 && <TarjetaProbabilidad p={prediccion} />}
 
-        {/* Solo cuando el cuestionario no es de hoy: si lo es, su propia
-            tarjeta ya abre el resultado, y dos puertas a lo mismo confunden.
-            Tampoco dice «del viernes»: dejó de caer en un día fijo cuando lo
-            empezó a pedir el modelo. */}
-        {hoyMismo && resultado && !olbiHoy && (
-          <TarjetaSecundaria
-            insignia={`Nivel ${ETIQUETA_NIVEL[nivelGeneral(resultado)].toLowerCase()}`}
-            titulo="Tu último resultado"
-            descripcion="Cómo cerró tu semana y qué puedes hacer con eso."
-            accion="Ver de nuevo"
-            onPress={abrirResultado}
-          />
-        )}
+        {/* Aquí había una tarjeta con el último resultado. Se fue: al resultado
+            se llega por la tarjeta del cuestionario respondido, que es donde
+            uno lo busca. Esta se alimentaba de AsyncStorage, así que seguía
+            anunciando «nivel alto» incluso después de limpiar la base, con el
+            cuestionario sin responder. `resultado` se sigue cargando porque es
+            lo que el modal necesita cuando se abre desde esa otra tarjeta. */}
 
         <Pensamiento frase={fraseDelDia(ahoraMismo)} />
 
