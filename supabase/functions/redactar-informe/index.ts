@@ -162,12 +162,12 @@ Deno.serve(async (req) => {
 
   const { data: sesion } = await db
     .from('sesiones_consulta')
-    .select('derivaciones(participante_id)')
+    .select('derivaciones(trabajador_id)')
     .eq('id', sesion_id)
     .single()
 
   await db.from('eventos').insert({
-    participante_id: (sesion as any).derivaciones.participante_id,
+    trabajador_id: (sesion as any).derivaciones.trabajador_id,
     tipo: 'informe_generado',
     metadata: { sesion_id, informe_id: informe.id, modelo: MODELO },
   })

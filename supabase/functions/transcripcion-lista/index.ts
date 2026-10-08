@@ -45,18 +45,18 @@ Deno.serve(async (req) => {
 
   const { data: sesion } = await db
     .from('sesiones_consulta')
-    .select('derivacion_id, derivaciones(participante_id)')
+    .select('derivacion_id, derivaciones(trabajador_id)')
     .eq('id', sesionId)
     .single()
 
   await db.from('eventos').insert({
-    participante_id: (sesion as any).derivaciones.participante_id,
+    trabajador_id: (sesion as any).derivaciones.trabajador_id,
     tipo: 'transcripcion_lista',
     metadata: { sesion_id: sesionId, transcripcion_id: transcripcion.id },
   })
 
   // Dos redacciones sobre la misma transcripción, en paralelo: el borrador
-  // del psicólogo y el resumen del participante (RF-004-17). Deepgram ya no
+  // del psicólogo y el resumen del trabajador (RF-004-17). Deepgram ya no
   // vuelve a correr.
   const llamar = (fn: string) => fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/${fn}`, {
     method: 'POST',
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
   })
   const [respuesta, resumen] = await Promise.all([
     llamar('redactar-informe'),
-    llamar('resumen-participante').catch((e) => { console.error('resumen-participante', e); return null }),
+    llamar('resumen-trabajador').catch((e) => { console.error('resumen-trabajador', e); return null }),
   ])
 
   if (!respuesta.ok) {

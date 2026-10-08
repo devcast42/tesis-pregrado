@@ -13,7 +13,7 @@ import { EgressClient, EncodedFileOutput, EncodedFileType, RoomServiceClient, S3
 import type { servicio } from './supabase.ts'
 
 type Db = ReturnType<typeof servicio>
-type Sesion = { id: string; sala_livekit: string; consentimiento_participante: boolean; consentimiento_psicologo: boolean; finalizada_en: string | null }
+type Sesion = { id: string; sala_livekit: string; consentimiento_trabajador: boolean; consentimiento_psicologo: boolean; finalizada_en: string | null }
 
 export type ResultadoGrabacion = { grabando: boolean; etapa: string; detalle?: string }
 
@@ -29,7 +29,7 @@ async function anotar(db: Db, sesionId: string, campos: Record<string, unknown>)
 }
 
 export async function asegurarGrabacion(db: Db, sesion: Sesion): Promise<ResultadoGrabacion> {
-  if (!(sesion.consentimiento_participante && sesion.consentimiento_psicologo)) {
+  if (!(sesion.consentimiento_trabajador && sesion.consentimiento_psicologo)) {
     return { grabando: false, etapa: 'sin_consentimiento' }
   }
   if (sesion.finalizada_en) return { grabando: false, etapa: 'sin_grabacion', detalle: 'la sesión ya terminó' }

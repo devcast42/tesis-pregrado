@@ -10,7 +10,7 @@ project_id = "tnllaabrtntlmobtnhfp"
 [functions.evaluar-olbi]
 verify_jwt = true
 
-[functions.inscribir-participante]
+[functions.inscribir-trabajador]
 verify_jwt = true
 
 [functions.crear-sesion]
@@ -25,7 +25,7 @@ verify_jwt = true
 [functions.iniciar-grabacion]
 verify_jwt = true
 
-[functions.resumen-participante]
+[functions.resumen-trabajador]
 # Lo llama el participante desde la app y transcripcion-lista con la service_role.
 verify_jwt = true
 

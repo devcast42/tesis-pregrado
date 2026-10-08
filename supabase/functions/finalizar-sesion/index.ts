@@ -22,18 +22,18 @@ Deno.serve(async (req) => {
   const db = servicio()
   const { data: sesion } = await db
     .from('sesiones_consulta')
-    .select('id, sala_livekit, finalizada_en, derivaciones(participante_id, psicologo_id)')
+    .select('id, sala_livekit, finalizada_en, derivaciones(trabajador_id, psicologo_id)')
     .eq('id', sesion_id)
     .maybeSingle()
   if (!sesion) return json({ error: 'sesion no encontrada' }, 404)
 
   // Solo las dos personas de la derivación pueden terminarla.
-  const deriv = (sesion as any).derivaciones as { participante_id: string; psicologo_id: string }
-  const [{ data: participante }, { data: psicologo }] = await Promise.all([
-    db.from('participantes').select('id').eq('auth_user_id', auth.user.id).maybeSingle(),
+  const deriv = (sesion as any).derivaciones as { trabajador_id: string; psicologo_id: string }
+  const [{ data: trabajador }, { data: psicologo }] = await Promise.all([
+    db.from('trabajadores').select('id').eq('auth_user_id', auth.user.id).maybeSingle(),
     db.from('psicologos').select('id').eq('auth_user_id', auth.user.id).maybeSingle(),
   ])
-  if (participante?.id !== deriv.participante_id && psicologo?.id !== deriv.psicologo_id) {
+  if (trabajador?.id !== deriv.trabajador_id && psicologo?.id !== deriv.psicologo_id) {
     return json({ error: 'sin acceso a esta sesion' }, 403)
   }
 

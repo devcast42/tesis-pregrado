@@ -1,9 +1,9 @@
-// Inscripción de participantes — implementa ESP-006 RF-006-07.
+// Inscripción de trabajadores — implementa ESP-006 RF-006-07.
 //
 // La separación entre identidad y datos de investigación se hace aquí, en una
-// sola operación: el correo y el nombre van a `identidades`; `participantes`
+// sola operación: el correo y el nombre van a `identidades`; `trabajadores`
 // solo recibe un código anónimo (RN-006-01). Si esto se hiciera en dos pasos
-// desde el cliente, un fallo a mitad dejaría participantes sin identidad o
+// desde el cliente, un fallo a mitad dejaría trabajadores sin identidad o
 // identidades huérfanas.
 
 import { json, preflight, rolDelSolicitante, servicio } from '../_compartido/supabase.ts'
@@ -43,9 +43,9 @@ Deno.serve(async (req) => {
   //
   //    No se usa inviteUserByEmail: la invitación manda un ENLACE, y la app
   //    entra con CÓDIGO (ESP-001 RF-001-01). Serían dos correos por dos
-  //    caminos distintos, y el participante recibiría un enlace que no encaja
+  //    caminos distintos, y el trabajador recibiría un enlace que no encaja
   //    con lo que la pantalla le pide. Se crea la cuenta sin avisar, y el
-  //    participante entra por el flujo normal cuando le toque.
+  //    trabajador entra por el flujo normal cuando le toque.
   const { data: creado, error: errorCuenta } = await db.auth.admin.createUser({
     email: correoNormalizado,
     password: contrasena,
@@ -66,15 +66,15 @@ Deno.serve(async (req) => {
   //    borrar a alguien el siguiente repetía un código ya usado y chocaba
   //    contra el índice único con un mensaje que no decía nada.
   const { data: codigo, error: errorCodigo } = await db
-    .rpc('siguiente_codigo_participante', { p_organizacion: organizacion_id })
+    .rpc('siguiente_codigo_trabajador', { p_organizacion: organizacion_id })
 
   if (errorCodigo || !codigo) {
     await db.auth.admin.deleteUser(idCuenta)
     return json({ error: errorCodigo?.message ?? 'no se pudo asignar el código' }, 500)
   }
 
-  const { data: participante, error: errorParticipante } = await db
-    .from('participantes')
+  const { data: trabajador, error: errorTrabajador } = await db
+    .from('trabajadores')
     .insert({
       organizacion_id,
       auth_user_id: idCuenta,
@@ -83,14 +83,14 @@ Deno.serve(async (req) => {
     .select('id')
     .single()
 
-  if (errorParticipante) {
+  if (errorTrabajador) {
     await db.auth.admin.deleteUser(idCuenta)
-    return json({ error: errorParticipante.message }, 500)
+    return json({ error: errorTrabajador.message }, 500)
   }
 
   // 3. Identidad, en su tabla aparte
   const { error: errorIdentidad } = await db.from('identidades').insert({
-    participante_id: participante.id,
+    trabajador_id: trabajador.id,
     nombre,
     correo_contacto: correoNormalizado,
   })
@@ -99,18 +99,18 @@ Deno.serve(async (req) => {
 
   await db.from('usuarios_rol').insert({
     auth_user_id: idCuenta,
-    rol: 'participante',
+    rol: 'trabajador',
   })
 
   // 4. Marca de inicio del seguimiento: es la mitad del indicador de tiempo
   //    de detección de la tesis.
   await db.from('eventos').insert({
-    participante_id: participante.id,
+    trabajador_id: trabajador.id,
     tipo: 'inicio_seguimiento',
     metadata: { inscrito_por: rol.rol },
   })
 
-  return json({ participante_id: participante.id, codigo_anonimo: codigo, contrasena })
+  return json({ trabajador_id: trabajador.id, codigo_anonimo: codigo, contrasena })
   } catch (e) {
     // Sin esto, cualquier excepción sale como un 500 vacío y no hay forma de
     // saber qué pasó desde el cliente.
@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
 })
 
 /** Tres palabras cortas y un número: fácil de dictar por teléfono sin errores,
- *  difícil de adivinar. El participante la escribe una vez y la app guarda la
+ *  difícil de adivinar. El trabajador la escribe una vez y la app guarda la
  *  sesión, así que no tiene que recordarla a diario. */
 function generarContrasena(): string {
   const palabras = [

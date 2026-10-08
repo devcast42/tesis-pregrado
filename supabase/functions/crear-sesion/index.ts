@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
   const usuario = comoUsuario(req)
   const { data: derivacion } = await usuario
     .from('derivaciones')
-    .select('id, participante_id, cerrada_en')
+    .select('id, trabajador_id, cerrada_en')
     .eq('id', derivacion_id)
     .maybeSingle()
 
@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
   if (error) return json({ error: error.message }, 500)
 
   await db.from('eventos').insert({
-    participante_id: derivacion.participante_id,
+    trabajador_id: derivacion.trabajador_id,
     tipo: 'sesion_iniciada',
     metadata: { sesion_id: sesion.id },
   })

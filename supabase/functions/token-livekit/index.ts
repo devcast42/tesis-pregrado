@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
 
   const { data: sesion } = await db
     .from('sesiones_consulta')
-    .select('id, sala_livekit, derivacion_id, consentimiento_participante, consentimiento_psicologo, finalizada_en')
+    .select('id, sala_livekit, derivacion_id, consentimiento_trabajador, consentimiento_psicologo, finalizada_en')
     .eq('id', sesion_id)
     .maybeSingle()
 
@@ -39,15 +39,15 @@ Deno.serve(async (req) => {
 
   const { data: derivacion } = await db
     .from('derivaciones')
-    .select('participante_id, psicologo_id, cerrada_en')
+    .select('trabajador_id, psicologo_id, cerrada_en')
     .eq('id', sesion.derivacion_id)
     .single()
 
   if (derivacion.cerrada_en) return json({ error: 'la derivacion esta cerrada' }, 409)
 
   // Solo las dos personas de esta derivación entran a esta sala.
-  const { data: participante } = await db
-    .from('participantes')
+  const { data: trabajador } = await db
+    .from('trabajadores')
     .select('id')
     .eq('auth_user_id', auth.user.id)
     .maybeSingle()
@@ -58,11 +58,11 @@ Deno.serve(async (req) => {
     .eq('auth_user_id', auth.user.id)
     .maybeSingle()
 
-  const esParticipante = participante?.id === derivacion.participante_id
+  const esTrabajador = trabajador?.id === derivacion.trabajador_id
   const esPsicologo = psicologo?.id === derivacion.psicologo_id
-  if (!esParticipante && !esPsicologo) return json({ error: 'sin acceso a esta sesion' }, 403)
+  if (!esTrabajador && !esPsicologo) return json({ error: 'sin acceso a esta sesion' }, 403)
 
-  const identidad = esPsicologo ? `psicologo-${psicologo!.id}` : `participante-${participante!.id}`
+  const identidad = esPsicologo ? `psicologo-${psicologo!.id}` : `trabajador-${trabajador!.id}`
 
   const token = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
     identity: identidad,

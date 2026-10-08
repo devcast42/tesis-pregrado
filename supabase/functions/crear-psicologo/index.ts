@@ -1,7 +1,7 @@
 // Crear psicólogo — implementa ESP-008.
 //
 // El psicólogo pertenece al ESTUDIO, no a una empresa. Si lo creara la empresa,
-// el participante asumiría que le reporta a su jefe — y en ese momento deja de
+// el trabajador asumiría que le reporta a su jefe — y en ese momento deja de
 // hablar con franqueza en la sesión, o directamente no acepta la derivación.
 // Por eso solo el investigador puede crearlos.
 

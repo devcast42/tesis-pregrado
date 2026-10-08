@@ -1,11 +1,11 @@
-// Resumen para el participante — implementa ESP-004 RF-004-17.
+// Resumen para el trabajador — implementa ESP-004 RF-004-17.
 //
-// Documento personal del participante, distinto del informe clínico
+// Documento personal del trabajador, distinto del informe clínico
 // (RN-004-03): en segunda persona, con los acuerdos de la sesión y
 // recomendaciones de autocuidado. Sin puntajes, sin observaciones clínicas,
 // sin diagnósticos: el esquema JSON no tiene dónde ponerlos.
 //
-// Lo llama la app del participante al salir de la videollamada (y cada pocos
+// Lo llama la app del trabajador al salir de la videollamada (y cada pocos
 // segundos mientras no esté listo) y `transcripcion-lista` cuando la
 // transcripción termina. Es idempotente: quien llegue primero redacta; el
 // resto solo lee el estado.
@@ -20,7 +20,7 @@ import { comoUsuario, json, preflight, servicio } from '../_compartido/supabase.
 import { generarPdfResumen } from '../_compartido/pdf.ts'
 
 const MODELO = 'claude-haiku-4-5-20251001'
-const BUCKET = 'resumenes-participante'
+const BUCKET = 'resumenes-trabajador'
 // Si la transcripción no llega en este tiempo, se entrega el resumen general
 // para que la persona no espere en vano. El psicólogo sí puede reintentar lo suyo.
 const ESPERA_MAX_MIN = 12
@@ -94,24 +94,24 @@ Deno.serve(async (req) => {
   const db = servicio()
   const { data: sesion } = await db
     .from('sesiones_consulta')
-    .select('id, iniciada_en, finalizada_en, consentimiento_participante, consentimiento_psicologo, derivaciones(participante_id, psicologos(nombre))')
+    .select('id, iniciada_en, finalizada_en, consentimiento_trabajador, consentimiento_psicologo, derivaciones(trabajador_id, psicologos(nombre))')
     .eq('id', sesion_id)
     .maybeSingle()
   if (!sesion) return json({ error: 'sesion no encontrada' }, 404)
-  const deriv = (sesion as any).derivaciones as { participante_id: string; psicologos: { nombre: string } | null }
+  const deriv = (sesion as any).derivaciones as { trabajador_id: string; psicologos: { nombre: string } | null }
 
-  // Quién llama: el propio participante, o el servidor (transcripcion-lista).
+  // Quién llama: el propio trabajador, o el servidor (transcripcion-lista).
   const cabecera = req.headers.get('Authorization') ?? ''
   const esServidor = cabecera === `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
   if (!esServidor) {
     const { data: auth } = await comoUsuario(req).auth.getUser()
     if (!auth?.user) return json({ error: 'no autenticado' }, 401)
-    const { data: p } = await db.from('participantes').select('id').eq('auth_user_id', auth.user.id).maybeSingle()
-    if (p?.id !== deriv.participante_id) return json({ error: 'sin acceso a esta sesion' }, 403)
+    const { data: p } = await db.from('trabajadores').select('id').eq('auth_user_id', auth.user.id).maybeSingle()
+    if (p?.id !== deriv.trabajador_id) return json({ error: 'sin acceso a esta sesion' }, 403)
   }
 
   const { data: tr } = await db.from('transcripciones').select('estado, etapa, detalle, texto').eq('sesion_id', sesion_id).maybeSingle()
-  const { data: previo } = await db.from('resumenes_participante').select('*').eq('sesion_id', sesion_id).maybeSingle()
+  const { data: previo } = await db.from('resumenes_trabajador').select('*').eq('sesion_id', sesion_id).maybeSingle()
 
   const responder = (fila: any, extra: Record<string, unknown> = {}) =>
     json({ etapa: fila.etapa, origen: fila.origen, detalle: fila.detalle, pdf_ruta: fila.pdf_ruta, transcripcion_etapa: tr?.etapa ?? null, sesion_finalizada: !!sesion.finalizada_en, ...extra })
@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
   }
 
   // ¿Qué fuente hay?
-  const ambosConsintieron = sesion.consentimiento_participante && sesion.consentimiento_psicologo
+  const ambosConsintieron = sesion.consentimiento_trabajador && sesion.consentimiento_psicologo
   const transcripcionLista = tr?.estado === 'lista' && !!tr.texto
   const sinGrabacion = !ambosConsintieron || !tr || tr.etapa === 'sin_grabacion' || tr.etapa === 'fallida'
   const minutosDesdeFin = sesion.finalizada_en ? (Date.now() - new Date(sesion.finalizada_en).getTime()) / 60_000 : 0
@@ -138,22 +138,22 @@ Deno.serve(async (req) => {
     const detalle = !sesion.finalizada_en ? 'esperando a que termine la sesión'
       : tr?.etapa === 'transcribiendo' ? 'transcribiendo la conversación'
       : 'esperando el audio de la sesión'
-    const fila = { sesion_id, participante_id: deriv.participante_id, etapa: 'esperando', detalle, actualizado_en: new Date().toISOString() }
-    const { data } = await db.from('resumenes_participante').upsert(fila, { onConflict: 'sesion_id' }).select('*').single()
+    const fila = { sesion_id, trabajador_id: deriv.trabajador_id, etapa: 'esperando', detalle, actualizado_en: new Date().toISOString() }
+    const { data } = await db.from('resumenes_trabajador').upsert(fila, { onConflict: 'sesion_id' }).select('*').single()
     return responder(data ?? fila)
   }
 
   // Reclamar la redacción (idempotencia entre app y webhook).
   const { data: reclamo } = await db
-    .from('resumenes_participante')
-    .upsert({ sesion_id, participante_id: deriv.participante_id, etapa: 'redactando', origen, detalle: null, actualizado_en: new Date().toISOString() }, { onConflict: 'sesion_id' })
+    .from('resumenes_trabajador')
+    .upsert({ sesion_id, trabajador_id: deriv.trabajador_id, etapa: 'redactando', origen, detalle: null, actualizado_en: new Date().toISOString() }, { onConflict: 'sesion_id' })
     .select('*')
     .single()
   if (!reclamo) return json({ error: 'no se pudo registrar el resumen' }, 500)
 
   try {
     const contenido = await redactar(origen === 'sesion' ? tr!.texto : null)
-    await db.from('resumenes_participante').update({ etapa: 'generando_pdf', contenido, modelo: MODELO, actualizado_en: new Date().toISOString() }).eq('sesion_id', sesion_id)
+    await db.from('resumenes_trabajador').update({ etapa: 'generando_pdf', contenido, modelo: MODELO, actualizado_en: new Date().toISOString() }).eq('sesion_id', sesion_id)
 
     const psicologo = deriv.psicologos?.nombre
     const pdf = await generarPdfResumen({
@@ -176,27 +176,27 @@ Deno.serve(async (req) => {
       ],
     })
 
-    const ruta = `${deriv.participante_id}/${sesion_id}.pdf`
+    const ruta = `${deriv.trabajador_id}/${sesion_id}.pdf`
     const { error: errorSubida } = await db.storage.from(BUCKET).upload(ruta, pdf, { contentType: 'application/pdf', upsert: true })
     if (errorSubida) throw new Error(`No se pudo guardar el PDF: ${errorSubida.message}`)
 
     const { data: listo } = await db
-      .from('resumenes_participante')
+      .from('resumenes_trabajador')
       .update({ etapa: 'listo', pdf_ruta: ruta, detalle: null, actualizado_en: new Date().toISOString() })
       .eq('sesion_id', sesion_id)
       .select('*')
       .single()
 
     await db.from('eventos').insert({
-      participante_id: deriv.participante_id,
+      trabajador_id: deriv.trabajador_id,
       tipo: 'resumen_entregado',
       metadata: { sesion_id, origen, modelo: MODELO },
     })
     return responder(listo)
   } catch (e) {
     const detalle = e instanceof Error ? e.message : String(e)
-    console.error('resumen-participante', sesion_id, detalle)
-    const { data } = await db.from('resumenes_participante').update({ etapa: 'fallido', detalle, actualizado_en: new Date().toISOString() }).eq('sesion_id', sesion_id).select('*').single()
+    console.error('resumen-trabajador', sesion_id, detalle)
+    const { data } = await db.from('resumenes_trabajador').update({ etapa: 'fallido', detalle, actualizado_en: new Date().toISOString() }).eq('sesion_id', sesion_id).select('*').single()
     return responder(data ?? { etapa: 'fallido', origen, detalle, pdf_ruta: null })
   }
 })

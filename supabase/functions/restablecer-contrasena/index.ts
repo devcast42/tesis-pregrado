@@ -5,7 +5,7 @@
 // elegido acceso por contraseña.
 //
 // Cada quien restablece dentro de su alcance: el investigador a cualquiera,
-// el admin solo a participantes de su propia empresa.
+// el admin solo a trabajadores de su propia empresa.
 
 import { json, preflight, rolDelSolicitante, servicio } from '../_compartido/supabase.ts'
 import { generarContrasena } from '../_compartido/cuentas.ts'
@@ -16,8 +16,8 @@ Deno.serve(async (req) => {
 
   try {
     const cuerpo = await req.json()
-    if (!cuerpo.auth_user_id && !cuerpo.participante_id) {
-      return json({ error: 'falta auth_user_id o participante_id' }, 400)
+    if (!cuerpo.auth_user_id && !cuerpo.trabajador_id) {
+      return json({ error: 'falta auth_user_id o trabajador_id' }, 400)
     }
 
     const quien = await rolDelSolicitante(req)
@@ -27,26 +27,26 @@ Deno.serve(async (req) => {
 
     const db = servicio()
 
-    // El cliente puede identificar al participante por su id de participante:
+    // El cliente puede identificar al trabajador por su id de trabajador:
     // así no necesita conocer ids de auth para nada. Los psicólogos y admins
     // sí se piden por auth_user_id, que ya viene en su ficha.
     let auth_user_id = cuerpo.auth_user_id as string | undefined
-    if (cuerpo.participante_id) {
+    if (cuerpo.trabajador_id) {
       const { data: p } = await db
-        .from('participantes')
+        .from('trabajadores')
         .select('auth_user_id')
-        .eq('id', cuerpo.participante_id)
+        .eq('id', cuerpo.trabajador_id)
         .maybeSingle()
-      if (!p?.auth_user_id) return json({ error: 'participante sin cuenta' }, 404)
+      if (!p?.auth_user_id) return json({ error: 'trabajador sin cuenta' }, 404)
       auth_user_id = p.auth_user_id
     }
     if (!auth_user_id) return json({ error: 'no se pudo resolver la cuenta' }, 400)
 
-    // El admin solo alcanza a participantes de su empresa. Se comprueba contra
+    // El admin solo alcanza a trabajadores de su empresa. Se comprueba contra
     // la base, no contra lo que diga la petición.
     if (quien.rol === 'admin') {
       const { data: objetivo } = await db
-        .from('participantes')
+        .from('trabajadores')
         .select('organizacion_id')
         .eq('auth_user_id', auth_user_id)
         .maybeSingle()

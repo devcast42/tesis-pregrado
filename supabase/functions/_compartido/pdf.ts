@@ -1,4 +1,4 @@
-// PDF del resumen para el participante — una sola página A4 (o las que hagan
+// PDF del resumen para el trabajador — una sola página A4 (o las que hagan
 // falta), fuentes estándar de PDF (Helvetica) para no descargar nada.
 //
 // Las fuentes estándar solo codifican WinAnsi: acentos y eñes van bien, pero

@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
   // 1. Respuesta
   const { data: respuesta } = await db
     .from('respuestas')
-    .select('id, participante_id, formulario_clave, formulario_version')
+    .select('id, trabajador_id, formulario_clave, formulario_version')
     .eq('id', respuesta_id)
     .single()
 
@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
   const { data: evento } = await db
     .from('eventos')
     .insert({
-      participante_id: respuesta.participante_id,
+      trabajador_id: respuesta.trabajador_id,
       tipo: 'deteccion',
       metadata: {
         metodo: METODO,
@@ -120,12 +120,12 @@ Deno.serve(async (req) => {
     .select('id')
     .single()
 
-  await db.from('participantes').update({ estado: 'detectado' }).eq('id', respuesta.participante_id)
+  await db.from('trabajadores').update({ estado: 'detectado' }).eq('id', respuesta.trabajador_id)
 
   // 6. Derivación automática al psicólogo con menos casos abiertos.
   // Se registra su propia marca de tiempo: el indicador de tiempo de
   // detección puede reportarse con o sin este tramo (ESP-006 §11.2).
-  const derivacion = await derivar(db, respuesta.participante_id, evento?.id ?? null)
+  const derivacion = await derivar(db, respuesta.trabajador_id, evento?.id ?? null)
 
   return json({
     detectado: true,
@@ -138,13 +138,13 @@ Deno.serve(async (req) => {
 
 async function derivar(
   db: ReturnType<typeof createClient>,
-  participanteId: string,
+  trabajadorId: string,
   eventoId: number | null,
 ): Promise<string | null> {
   const { data: abierta } = await db
     .from('derivaciones')
     .select('id')
-    .eq('participante_id', participanteId)
+    .eq('trabajador_id', trabajadorId)
     .is('cerrada_en', null)
     .maybeSingle()
 
@@ -169,7 +169,7 @@ async function derivar(
   const { data: nueva } = await db
     .from('derivaciones')
     .insert({
-      participante_id: participanteId,
+      trabajador_id: trabajadorId,
       psicologo_id: elegido,
       evento_deteccion_id: eventoId,
     })
@@ -177,7 +177,7 @@ async function derivar(
     .single()
 
   await db.from('eventos').insert({
-    participante_id: participanteId,
+    trabajador_id: trabajadorId,
     tipo: 'derivacion_psicologo',
     metadata: { psicologo_id: elegido, automatica: true },
   })
