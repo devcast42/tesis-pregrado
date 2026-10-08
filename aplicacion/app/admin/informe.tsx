@@ -164,7 +164,7 @@ export default function InformeMensual() {
                 <View style={e.sello}><IconoHoja tamano={20} color={color.primarioProfundo} /></View>
                 <View>
                   <Text style={[texto.seccion, { color: color.texto, fontSize: 18 }]}>{empresa.nombre}</Text>
-                  <Text style={[texto.dato, { color: color.textoMedio, maxWidth: 190 }]}>Estudio de la Universidad Nacional de Trujillo</Text>
+                  <Text style={[texto.dato, { color: color.textoMedio, maxWidth: 190 }]}>Informe de bienestar · Bienestar Tech</Text>
                 </View>
               </View>
               <View style={{ alignItems: 'flex-end', gap: 6 }}>

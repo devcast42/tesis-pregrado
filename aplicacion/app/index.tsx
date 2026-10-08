@@ -34,21 +34,21 @@ export default function Index() {
       const trabajador = await obtenerTrabajador()
       if (!vigente) return
 
-      // RF-001-03 — la inscripción la hace el equipo de investigación.
+      // RF-001-03 — el alta la hace la empresa.
       if (!trabajador) {
         return setMensaje(
-          'Tu cuenta aún no está vinculada al estudio. Contacta al equipo de investigación.',
+          'Tu cuenta aún no está activa. Pídele a tu empresa que te dé de alta.',
         )
       }
 
       // Un trabajador detectado sigue entrando: ve su resultado, recibe la
       // sesión de apoyo y la atiende desde aquí (ESP-002 RF-002-12, ESP-004).
-      // Solo quien se retiró o terminó el estudio ve el cierre.
+      // Solo quien se dio de baja o terminó su seguimiento ve el cierre.
       if (trabajador.estado === 'retirado' || trabajador.estado === 'finalizado') {
         return setMensaje(
           trabajador.estado === 'retirado'
-            ? 'Te retiraste del estudio. Si fue un error, escríbele al equipo de investigación.'
-            : 'El estudio terminó. Gracias por acompañarnos estas semanas.',
+            ? 'Diste de baja tu cuenta. Si fue un error, avísale a tu empresa.'
+            : 'Tu seguimiento terminó. Gracias por acompañarnos estas semanas.',
         )
       }
 

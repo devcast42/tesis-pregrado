@@ -177,7 +177,7 @@ export default function RevisionInforme() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
     <ScrollView contentContainerStyle={e.contenido} keyboardShouldPersistTaps="handled">
       <View style={e.fila}>
-        <Text style={[texto.etiqueta, { color: color.primarioProfundo, flex: 1 }]}>INVESTIGACIÓN DE BIENESTAR · UNT</Text>
+        <Text style={[texto.etiqueta, { color: color.primarioProfundo, flex: 1 }]}>BIENESTAR TECH · INFORME CLÍNICO</Text>
         <Pastilla
           texto={aprobado ? 'Aprobado' : manual ? 'Nota manual' : 'Borrador clínico'}
           fondo={aprobado ? color.exitoSuave : color.arena}

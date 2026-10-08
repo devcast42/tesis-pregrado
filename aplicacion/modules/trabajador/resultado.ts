@@ -1,6 +1,6 @@
 /** Retroalimentación al trabajador — implementa ESP-002 (RF-002-12, RN-002-08).
  *
- *  El asesor pidió que el estudio le sirva a quien responde: al cerrar la
+ *  Lo primero es que le sirva a quien responde: al cerrar la
  *  semana la persona ve en qué nivel quedó y qué puede hacer. Se muestra un
  *  NIVEL con recomendaciones, nunca un diagnóstico, y el caso alto termina
  *  siempre en la misma frase: la sesión con el psicólogo.
@@ -103,7 +103,7 @@ export const MENSAJE_GENERAL: Record<Nivel, { titulo: string; cuerpo: string }> 
   },
   alto: {
     titulo: 'Esta semana pesó más de la cuenta',
-    cuerpo: 'Tus respuestas muestran un nivel de desgaste alto. No estás solo con esto: el equipo del estudio te ofrecerá una sesión confidencial con un psicólogo, independiente de tu empresa, para conversarlo con calma.',
+    cuerpo: 'Tus respuestas muestran un nivel de desgaste alto. No estás solo con esto: te ofreceremos una sesión confidencial con un psicólogo, independiente de tu empresa, para conversarlo con calma.',
   },
 }
 
@@ -120,7 +120,7 @@ export const RECOMENDACIONES: Record<Dimension, Record<Nivel, string[]>> = {
       'Si estás durmiendo menos de siete horas, ese es el primer cambio, antes que cualquier otro.',
     ],
     alto: [
-      'Acepta la sesión con el psicólogo del estudio. Es confidencial y no llega a tu empresa.',
+      'Acepta la sesión con el psicólogo. Es confidencial y no llega a tu empresa.',
       'Esta semana, quita una cosa de la agenda en vez de agregar una. Descansar no es una tarea más.',
       'Habla con alguien de confianza fuera del trabajo sobre cómo te sientes. Decirlo en voz alta ayuda.',
     ],
@@ -135,7 +135,7 @@ export const RECOMENDACIONES: Record<Dimension, Record<Nivel, string[]>> = {
       'Un almuerzo con alguien del equipo, sin hablar del proyecto.',
     ],
     alto: [
-      'Acepta la sesión con el psicólogo del estudio. Sirve justamente para esto.',
+      'Acepta la sesión con el psicólogo. Sirve justamente para esto.',
       'No tomes decisiones grandes sobre tu trabajo esta semana; primero recupera distancia.',
       'Recuerda qué te trajo a este trabajo. No para obligarte a sentirlo, sino para saber si sigue ahí.',
     ],
@@ -244,7 +244,7 @@ export function explicacionConfianza(p: Prediccion): string {
   const m = metricasAplicables(p)
   const partes: string[] = []
   if (p.origen === 'preentrenamiento') {
-    partes.push('Estimación preliminar: el modelo fue entrenado con datos de otro estudio y todavía no con los de este. Irá mejorando con las semanas.')
+    partes.push('Estimación preliminar: el modelo todavía no se ha entrenado con datos de tu empresa. Irá mejorando con las semanas.')
   }
   if (m) {
     const aciertos = Math.round(m.precision * 10)

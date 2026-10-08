@@ -93,7 +93,7 @@ export default function Apoyo() {
           <Text style={[texto.titulo, { color: color.texto }]}>Habla con un psicólogo</Text>
           <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
             Un espacio confidencial, independiente de tu empresa. Puedes pedirlo cuando quieras;
-            no hace falta que el estudio te lo sugiera.
+            no hace falta que la app te lo sugiera.
           </Text>
         </View>
 
@@ -164,7 +164,7 @@ function TarjetaCita({ cita, onCancelar }: { cita: Cita; onCancelar: () => void 
           <View style={{ paddingTop: 5 }}><IconoCalendario tamano={16} color={color.primarioProfundo} /></View>
           <Text style={[texto.seccion, { color: color.texto, flex: 1 }]}>{fechaHora(cita.propuesta_para)}</Text>
         </View>
-        <Text style={[texto.apoyo, { color: color.textoMedio }]}>Con {cita.psicologo} · Psicólogo del estudio</Text>
+        <Text style={[texto.apoyo, { color: color.textoMedio }]}>Con {cita.psicologo} · Psicólogo del programa</Text>
       </View>
       {cita.motivo && (
         <View style={e.motivo}>

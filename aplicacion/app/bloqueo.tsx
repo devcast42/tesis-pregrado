@@ -55,7 +55,7 @@ export default function Bloqueo() {
         <Text style={[texto.cuerpo, { color: color.textoMedio, textAlign: 'center' }]}>
           {fallo
             ? 'No se pudo confirmar. Inténtalo de nuevo o entra con tu contraseña.'
-            : 'Usa tu huella o el bloqueo de tu teléfono para abrir el estudio.'}
+            : 'Usa tu huella o el bloqueo de tu teléfono para abrir la app.'}
         </Text>
       </View>
 

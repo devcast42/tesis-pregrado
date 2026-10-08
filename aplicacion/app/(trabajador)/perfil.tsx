@@ -4,7 +4,7 @@
  *  Trabajador».
  *
  *  Es la única pantalla desde la que el trabajador ejerce sus derechos
- *  sobre el estudio. Por eso el retiro pide confirmación pero no pone
+ *  sobre su participación. Por eso la baja pide confirmación pero no pone
  *  obstáculos: retirarse tiene que ser tan fácil como haber aceptado. */
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
@@ -28,7 +28,7 @@ import {
 import { color, espacio, radio, texto } from '../../modules/nucleo/diseno'
 import type { ItemDef, Trabajador, Valores } from '../../modules/nucleo/tipos'
 import { ahora, cargarDesfase, fijarDesfase } from '../../modules/nucleo/reloj'
-import { fechaLarga, semanaDelEstudio } from '../../modules/trabajador/textos'
+import { fechaLarga } from '../../modules/trabajador/textos'
 
 const dosDigitos = (n: number) => String(n).padStart(2, '0')
 
@@ -116,12 +116,12 @@ export default function Perfil() {
   function confirmarRetiro() {
     if (!trabajador) return
     Alert.alert(
-      'Retirar mi participación',
-      'Dejaremos de pedirte respuestas. Lo que ya respondiste se conserva bajo tu código anónimo, como acordamos en el consentimiento. Puedes volver a aceptar cuando quieras.',
+      'Darme de baja',
+      'Dejaremos de pedirte respuestas. Lo que ya respondiste se conserva bajo tu código anónimo, como acordamos al empezar. Puedes volver a activarte cuando quieras.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Retirarme', style: 'destructive',
+          text: 'Darme de baja', style: 'destructive',
           onPress: async () => {
             setOcupado(true)
             try {
@@ -156,21 +156,21 @@ export default function Perfil() {
       >
         <Text style={[texto.titulo, { color: color.texto }]}>Tu perfil</Text>
 
-        {/* Identidad en el estudio */}
+        {/* Identidad */}
         <View style={e.tarjeta}>
           <View style={e.fila}>
             <View style={e.cuadroIcono}><IconoHuella tamano={26} color={color.primarioProfundo} /></View>
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={[texto.seccion, { color: color.texto }]}>Trabajador {trabajador.codigo_anonimo}</Text>
               <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-                Semana {semanaDelEstudio(trabajador.inscrito_en, ahora())} del estudio · desde el {inscrito}
+                Contigo desde el {inscrito}
               </Text>
             </View>
           </View>
           <View style={e.notaSuave}>
             <IconoEscudo tamano={16} color={color.primarioProfundo} />
             <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1 }]}>
-              Tu nombre y tu correo no están en ninguna tabla de investigación; solo los ve el
+              Tu nombre y tu correo no están en ninguna tabla de resultados; solo los ve el
               profesional de psicología si hay una sesión de apoyo, y ese acceso queda registrado.
             </Text>
           </View>
@@ -180,7 +180,7 @@ export default function Perfil() {
         <View style={e.tarjeta}>
           <View style={{ gap: 2 }}>
             <Text style={[texto.seccion, { color: color.texto }]}>Datos iniciales</Text>
-            <Text style={[texto.apoyo, { color: color.textoMedio }]}>Respuestas del formulario de inscripción</Text>
+            <Text style={[texto.apoyo, { color: color.textoMedio }]}>Lo que respondiste al empezar</Text>
           </View>
           {datos ? (
             <>
@@ -315,7 +315,7 @@ export default function Perfil() {
           </Text>
           <Pressable onPress={confirmarRetiro} disabled={ocupado} style={e.botonBorde} accessibilityRole="button">
             <IconoSalir tamano={18} color={color.texto} />
-            <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Retirar mi participación</Text>
+            <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Darme de baja</Text>
           </Pressable>
           <Text style={[texto.dato, { color: color.textoSuave, textAlign: 'center' }]}>
             Este sistema es una herramienta de apoyo y no constituye un diagnóstico clínico.

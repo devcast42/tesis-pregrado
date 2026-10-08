@@ -1,6 +1,6 @@
 /** Mis registros — implementa ESP-002 RF-002-07 (racha) y RF-002-12.
  *
- *  Detalle de lo que «Ritmo semanal» resume: cada semana del estudio con
+ *  Detalle de lo que «Ritmo semanal» resume: cada semana con
  *  sus cinco días hábiles, qué días hubo check-in, qué viernes hubo OLBI,
  *  la racha actual y la mejor. Solo hechos y fechas: aquí no hay puntajes
  *  ni interpretación (RN-004-01). */
@@ -133,7 +133,7 @@ export default function Registros() {
           </View>
         ))}
         <Text style={[texto.apoyo, { color: color.textoSuave, textAlign: 'center', paddingTop: espacio.sm }]}>
-          Un día sin registro no tiene consecuencias: cuenta solo para tu racha. La semana 1 empieza el lunes de tu inscripción.
+          Un día sin registro no tiene consecuencias: cuenta solo para tu racha. La semana 1 empieza el lunes en que te diste de alta.
         </Text>
       </ScrollView>
     </View>

@@ -73,7 +73,7 @@ export default function PersonasAdmin() {
       setNombre(''); setCorreo('')
       await cargar()
     } catch (ex) {
-      setError(ex instanceof Error ? ex.message : 'No se pudo inscribir.')
+      setError(ex instanceof Error ? ex.message : 'No se pudo crear la cuenta.')
     } finally { setOcupado(false) }
   }
 
@@ -135,7 +135,7 @@ export default function PersonasAdmin() {
       <Pantalla ancho={ancho.panel}>
         <View style={e.encabezado}>
           <View style={{ flex: 1, gap: 4, minWidth: 280 }}>
-            <Text style={[texto.etiqueta, { color: color.textoMedio }]}>Tu equipo en el estudio</Text>
+            <Text style={[texto.etiqueta, { color: color.textoMedio }]}>Tu equipo</Text>
             <Text style={[texto.titulo, { color: color.texto }]}>Las personas de tu empresa</Text>
             <Text style={[texto.apoyo, { color: color.textoMedio, maxWidth: 520 }]}>
               Quién está, cómo va y en qué nivel. Altas, bajas y contraseñas.
@@ -151,21 +151,21 @@ export default function PersonasAdmin() {
         </View>
 
         {!empresa ? (
-          <Aviso>Tu cuenta no está asociada a ninguna empresa. Avisa al equipo del estudio.</Aviso>
+          <Aviso>Tu cuenta no está asociada a ninguna empresa. Avisa a soporte.</Aviso>
         ) : (
           <>
             {/* Indicadores (RF-008-19) */}
             <View style={e.indicadores}>
               <Indicador rotulo="Dadas de alta" icono={<IconoCredencial tamano={18} color={color.primarioProfundo} />}
                 cifra={String(inscritos)} unidad="personas" />
-              <Indicador rotulo="Han aceptado participar" icono={<IconoNota tamano={18} color={color.primarioProfundo} />}
+              <Indicador rotulo="Han aceptado las condiciones" icono={<IconoNota tamano={18} color={color.primarioProfundo} />}
                 cifra={String(resumen?.consintieron ?? 0)} unidad={`de ${inscritos}`}
                 nota={pctAdopcion === 100 ? undefined : `faltan ${inscritos - (resumen?.consintieron ?? 0)}`} notaIcono="check" />
               <Indicador rotulo="Siguen respondiendo" icono={<IconoEscudoCheck tamano={18} color={color.primarioProfundo} />}
                 cifra={String(resumen?.en_seguimiento ?? 0)} unidad={`de ${inscritos}`}
-                nota={pctSeguimiento === 100 ? undefined : `${inscritos - (resumen?.en_seguimiento ?? 0)} ya no participan`} />
+                nota={pctSeguimiento === 100 ? undefined : `${inscritos - (resumen?.en_seguimiento ?? 0)} ya no responden`} />
               <Indicador rotulo="Contestaron el último viernes" icono={<IconoBarras tamano={18} color={color.primarioProfundo} />}
-                cifra={tasa != null ? `${tasa}%` : '—'} unidad={tasa != null ? 'de las inscritas' : 'sin datos aún'}
+                cifra={tasa != null ? `${tasa}%` : '—'} unidad={tasa != null ? 'de las dadas de alta' : 'sin datos aún'}
                 nota={tasa != null && tasa < 60 ? 'bajo el 60 %: poco fiable' : undefined} notaIcono="tendencia"
                 tono={tasa != null && tasa < 60 ? color.alerta : undefined} />
             </View>
@@ -314,7 +314,7 @@ export default function PersonasAdmin() {
                       {x.consentimiento !== true ? (
                         <>
                           <View style={{ flexDirection: 'row' }}>
-                            <Pastilla fondo="#EDEBE7" tinta={color.textoMedio}>{x.consentimiento === false ? 'No quiso participar' : 'Falta que acepte'}</Pastilla>
+                            <Pastilla fondo="#EDEBE7" tinta={color.textoMedio}>{x.consentimiento === false ? 'No aceptó' : 'Falta que acepte'}</Pastilla>
                           </View>
                           <Text style={[texto.dato, { color: color.textoSuave, fontSize: 11 }]}>
                             {x.consentimiento === false ? 'Rechazó el consentimiento' : 'No ha abierto el enlace'}
@@ -336,9 +336,9 @@ export default function PersonasAdmin() {
                       ) : (
                         <>
                           <View style={{ flexDirection: 'row' }}>
-                            <Pastilla fondo="#EDEBE7" tinta={color.textoMedio}>Ya no participa</Pastilla>
+                            <Pastilla fondo="#EDEBE7" tinta={color.textoMedio}>Ya no está activa</Pastilla>
                           </View>
-                          <Text style={[texto.dato, { color: color.textoSuave, fontSize: 11 }]}>terminó o se dio de baja</Text>
+                          <Text style={[texto.dato, { color: color.textoSuave, fontSize: 11 }]}>se dio de baja</Text>
                         </>
                       )}
                     </View>

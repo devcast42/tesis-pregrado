@@ -125,7 +125,7 @@ export default function Casos() {
           <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1 }]}>
             {visibles.length === 0
               ? 'No tienes casos asignados. Cuando el sistema derive a alguien, aparecerá aquí automáticamente.'
-              : 'No tienes más casos asignados. Cuando el sistema derive a un nuevo trabajador del estudio, aparecerá aquí automáticamente.'}
+              : 'No tienes más casos asignados. Cuando el sistema derive a un nuevo trabajador, aparecerá aquí automáticamente.'}
           </Text>
         </View>
       </ScrollView>

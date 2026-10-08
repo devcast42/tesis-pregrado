@@ -286,7 +286,7 @@ function Resultado({ r, onPedirCita }: { r: ResultadoSemana; onPedirCita?: () =>
           <View style={e.corazon}><IconoCorazon tamano={18} color={color.primarioProfundo} /></View>
           <Text style={[texto.seccion, { color: color.texto }]}>Tienes una sesión de apoyo</Text>
           <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
-            Un psicólogo del estudio ya tiene tu caso. Elige cuándo quieres hablar con él.
+            Un psicólogo ya tiene tu caso. Elige cuándo quieres hablar con él.
           </Text>
           {onPedirCita && <Boton onPress={onPedirCita}>Elegir día y hora</Boton>}
           <Text style={[texto.dato, { color: color.textoSuave, textAlign: 'center' }]}>
@@ -345,7 +345,7 @@ function Resultado({ r, onPedirCita }: { r: ResultadoSemana; onPedirCita?: () =>
       <View style={[e.fila, { alignItems: 'flex-start', paddingHorizontal: 4 }]}>
         <IconoEscudo tamano={16} color={color.textoSuave} />
         <Text style={[texto.apoyo, { color: color.textoSuave, flex: 1 }]}>
-          No es un diagnóstico. Solo tú y el equipo del estudio lo ven; tu empresa no.
+          No es un diagnóstico. Solo tú y el psicólogo lo ven; tu empresa no.
         </Text>
       </View>
     </>
@@ -425,7 +425,7 @@ function Explicacion({ p }: { p: Prediccion }) {
       titulo: '¿Qué es este número?',
       cuerpo: pronostico
         ? 'La probabilidad de que el cuestionario completo te saliera alto si lo respondieras hoy. Se calcula con lo que llevas contestado esta semana, y es lo que decide cuándo se te pide.'
-        : 'La probabilidad, según el modelo del estudio, de que tu cuestionario de este viernes salga alto. Se actualiza con cada check-in.',
+        : 'La probabilidad, según el modelo, de que tu cuestionario de este viernes salga alto. Se actualiza con cada check-in.',
     },
   ]
   if (m) {
@@ -439,7 +439,7 @@ function Explicacion({ p }: { p: Prediccion }) {
   if (p.origen === 'preentrenamiento') {
     lineas.push({
       titulo: '¿Con qué aprendió?',
-      cuerpo: 'Por ahora, con datos de otro estudio. Cada semana que respondes lo entrena con los de este.',
+      cuerpo: 'Por ahora, con datos de una investigación publicada. Cada semana que respondes lo entrena también con los tuyos.',
     })
   }
   return (

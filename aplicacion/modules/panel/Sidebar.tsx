@@ -50,12 +50,12 @@ function BarraSuperior({ rol }: { rol: 'investigador' | 'admin' }) {
       <View style={e.barraSuperior}>
         <View style={e.identidad}>
           <View style={{ alignItems: 'flex-start', maxWidth: 210 }}>
-            <Text style={[texto.dato, { color: color.textoSuave, fontSize: 11, lineHeight: 13 }]}>Estudio</Text>
-            <Text style={[texto.dato, { color: color.textoMedio, lineHeight: 16 }]} numberOfLines={2}>Académico Multicéntrico · Bienestar Laboral Tech</Text>
+            <Text style={[texto.dato, { color: color.textoSuave, fontSize: 11, lineHeight: 13 }]}>Panel de empresa</Text>
+            <Text style={[texto.dato, { color: color.textoMedio, lineHeight: 16 }]} numberOfLines={1}>{correo || '—'}</Text>
           </View>
           <View style={e.cohorte}>
             <View style={e.puntoVerde} />
-            <Text style={[texto.datoFuerte, { color: color.texto }]}>Cohorte{'\n'}Activa</Text>
+            <Text style={[texto.datoFuerte, { color: color.texto }]}>Seguimiento{'\n'}activo</Text>
           </View>
           <View style={e.avatar}><IconoPersona tamano={14} color="#FFFFFF" /></View>
         </View>
@@ -119,7 +119,7 @@ export function Panel({
  *  El panel solo leía la sesión para poner el correo en la barra. Cuando el
  *  token caducaba —pasa a la hora— seguía pintándolo todo, pero RLS ya no
  *  devolvía ni una fila: «0 profesionales», «ninguna versión activa», cada
- *  pantalla en ceros como si el estudio estuviera vacío. Parece un fallo de
+ *  pantalla en ceros como si no hubiera nadie. Parece un fallo de
  *  datos y no lo es, y en una demostración es peor todavía.
  *
  *  También se escucha el cierre de sesión: si el token expira estando dentro,

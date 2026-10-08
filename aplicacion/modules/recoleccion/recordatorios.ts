@@ -1,6 +1,6 @@
 /** Recordatorios locales — implementa ESP-002 (RF-002-06).
  *
- *  La adherencia es el mayor riesgo de campo del estudio: sin recordatorio,
+ *  La adherencia es el mayor riesgo del producto: sin recordatorio,
  *  la serie temporal de cada trabajador se llena de huecos y el modelo de
  *  trayectoria pierde su insumo.
  *
@@ -12,7 +12,7 @@
  *  `consentimiento.tsx` lo importa, la pantalla del consentimiento se caía
  *  entera.
  *
- *  Eso es peor de lo que parece: el consentimiento es la puerta al estudio.
+ *  Eso es peor de lo que parece: el consentimiento es la puerta de entrada.
  *  Que un recordatorio no se pueda programar no puede impedir que alguien
  *  acepte participar. Aquí se degrada —se avisa y se sigue— en lugar de
  *  romperse. */
@@ -43,13 +43,13 @@ function recordatorios(duraciones: Partial<Record<'diario' | 'olbi', string>> = 
       id: `checkin-${weekday}`,
       weekday,
       titulo: 'Check-in de hoy',
-      cuerpo: `Son ${diario}. Gracias por participar en el estudio.`,
+      cuerpo: `Son ${diario}.`,
     })),
     {
       id: 'checkin-6',
       weekday: 6,
       titulo: 'Cuestionario del viernes',
-      cuerpo: `${olbi[0].toUpperCase()}${olbi.slice(1)} para cerrar tu semana. Gracias por participar en el estudio.`,
+      cuerpo: `${olbi[0].toUpperCase()}${olbi.slice(1)} para cerrar tu semana.`,
     },
   ]
 }

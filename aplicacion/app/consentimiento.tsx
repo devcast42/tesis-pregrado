@@ -51,7 +51,7 @@ export default function Consentimiento() {
       await registrarDecision(trabajadorId, aceptado)
       if (aceptado) {
         // El recordatorio es importante para la adherencia, pero no puede
-        // bloquear la entrada al estudio: la decisión ya quedó registrada.
+        // bloquear la entrada: la decisión ya quedó registrada.
         // En Expo Go y en web devuelve false sin lanzar.
         await programarDiario().catch(() => false)
         router.replace('/hoy')
@@ -71,10 +71,10 @@ export default function Consentimiento() {
         <Titulo>Gracias por tu tiempo</Titulo>
         <Parrafo suave>
           No registraremos ninguna información tuya. Si cambias de opinión, puedes volver a
-          abrir la app y aceptar el consentimiento en cualquier momento.
+          abrir la app y aceptar las condiciones en cualquier momento.
         </Parrafo>
         <Boton variante="texto" onPress={() => setRechazado(false)}>
-          Volver a leer el consentimiento
+          Volver a leer las condiciones
         </Boton>
       </View>
     )
@@ -86,8 +86,8 @@ export default function Consentimiento() {
         <Titulo>Antes de empezar</Titulo>
 
         <Parrafo>
-          Este estudio busca detectar de forma temprana señales de agotamiento laboral en
-          profesionales del sector tecnológico.
+          Esta app busca detectar a tiempo las señales de agotamiento laboral y ponerte en
+          contacto con un psicólogo si hace falta.
         </Parrafo>
 
         <View style={e.puntos}>
@@ -105,17 +105,14 @@ export default function Consentimiento() {
           </Text>
         </View>
 
-        <Text style={[texto.apoyo, { color: color.textoSuave }]}>
-          [Texto pendiente de aprobación por el comité de ética]
-        </Text>
       </ScrollView>
 
       <View style={e.pie}>
         <Boton onPress={() => decidir(true)} inhabilitado={!trabajadorId} cargando={ocupado}>
-          Acepto participar
+          Acepto y continúo
         </Boton>
         <Boton variante="texto" onPress={() => decidir(false)} inhabilitado={!trabajadorId}>
-          No deseo participar
+          Ahora no
         </Boton>
       </View>
     </View>

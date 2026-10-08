@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
       piePagina: [
         'Recomendaciones generadas con apoyo de inteligencia artificial a partir de tu sesión y revisables con tu psicólogo. Si algo no te representa, coméntaselo en la próxima cita.',
         'Si sientes que necesitas ayuda inmediata, comunícate con la Línea 113 (opción 5) del Ministerio de Salud, gratuita y disponible las 24 horas.',
-        'Este documento es tuyo: tu empresa no lo recibe y el estudio no lo usa como dato.',
+        'Este documento es tuyo: tu empresa no lo recibe.',
       ],
     })
 

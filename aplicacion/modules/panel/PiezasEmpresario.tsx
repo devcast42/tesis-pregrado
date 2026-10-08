@@ -143,7 +143,7 @@ export function TarjetaDimension({ dimension, pulso, estudio }: {
             <>
               <View style={e.separadorV} />
               <Text style={[texto.apoyo, { color: color.textoMedio, paddingBottom: 4 }]}>
-                El resto del estudio, en <Text style={[texto.apoyoFuerte, { color: color.texto }]}>{Number(estudio).toFixed(1)}</Text>
+                Las otras empresas, en <Text style={[texto.apoyoFuerte, { color: color.texto }]}>{Number(estudio).toFixed(1)}</Text>
               </Text>
             </>
           )}
@@ -153,7 +153,7 @@ export function TarjetaDimension({ dimension, pulso, estudio }: {
           <View style={e.mini}>
             <Text style={[texto.dato, { color: color.textoMedio }]}>
               {`Semanas ${desde} a ${pulso.length}: entre ${Math.min(...valores).toFixed(1)} y ${Math.max(...valores).toFixed(1)}.`}
-              {estudio != null ? ' Puntos: el resto del estudio.' : ''}
+              {estudio != null ? ' Puntos: las otras empresas.' : ''}
             </Text>
             <GraficaLinea
               series={[{ etiqueta: dimension, color: tinta, puntos: serie.map((p) => ({ x: p.semana, y: Number(p[clave]) })) }]}
@@ -173,7 +173,7 @@ export function TarjetaDimension({ dimension, pulso, estudio }: {
 // ------------------------------------------------------------ Lo que pesa
 
 /** Qué significa cada factor cuando se sale de la referencia, dicho para
- *  quien dirige un equipo, no para un comité. Las frases de antes —«Impacto
+ *  quien dirige un equipo. Las frases de antes —«Impacto
  *  crítico detectado en el indicador de agotamiento del viernes», «señales
  *  de desacople entre compromisos de entrega y renegociación de alcance en
  *  incidentes de mitad de sprint»— sonaban a consultora y no decían qué
@@ -181,7 +181,7 @@ export function TarjetaDimension({ dimension, pulso, estudio }: {
 const PESA: Record<ClaveFactor, { icono: (c: string) => ReactNode; frase: (v: number) => string; ref: string }> = {
   horas_dia_media: {
     icono: (c) => <IconoReloj tamano={16} color={c} />,
-    frase: (v) => `Se trabajó ${(v - 8.5).toFixed(1)} h al día más de lo que el estudio toma como referencia. Sostenido varias semanas, es lo que primero se nota en el cansancio del viernes.`,
+    frase: (v) => `Se trabajó ${(v - 8.5).toFixed(1)} h al día más de la referencia de 8.5 h. Sostenido varias semanas, es lo que primero se nota en el cansancio del viernes.`,
     ref: 'hasta 8.5 h al día',
   },
   guardia_pct: {
@@ -288,8 +288,8 @@ export function SinReporte({ inscritos, minimo }: { inscritos: number; minimo: n
           <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Todavía no hay cifras que enseñar</Text>
           <Text style={[texto.apoyo, { color: color.textoMedio }]}>
             El promedio de tu empresa aparece cuando al menos {minimo} personas contestan la misma semana.
-            Con menos, una cifra podría señalar a alguien concreto, y eso es justo lo que el estudio evita.
-            {faltan > 0 ? ` Con ${faltan} ${faltan === 1 ? 'persona más' : 'personas más'} inscritas y respondiendo habrá reporte.` : ' Con la participación de esta semana, la próxima ya podría haber reporte.'}
+            Con menos, una cifra podría señalar a alguien concreto, y eso es justo lo que se evita.
+            {faltan > 0 ? ` Con ${faltan} ${faltan === 1 ? 'persona más' : 'personas más'} dadas de alta y respondiendo habrá reporte.` : ' Con la participación de esta semana, la próxima ya podría haber reporte.'}
           </Text>
         </View>
       </View>
@@ -300,7 +300,7 @@ export function SinReporte({ inscritos, minimo }: { inscritos: number; minimo: n
 export function Pie() {
   return (
     <View style={e.pie}>
-      <Text style={[texto.dato, { color: color.textoMedio, flex: 1, minWidth: 260 }]}>Estudio de la Universidad Nacional de Trujillo sobre bienestar en el trabajo.</Text>
+      <Text style={[texto.dato, { color: color.textoMedio, flex: 1, minWidth: 260 }]}>Bienestar Tech · detección temprana de agotamiento laboral.</Text>
       <Text style={[texto.dato, { color: color.textoMedio }]}>Las respuestas no se pueden rastrear hasta quien las escribió.</Text>
     </View>
   )

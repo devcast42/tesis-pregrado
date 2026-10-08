@@ -58,7 +58,7 @@ export default function Layout() {
         <Stack.Screen name="bloqueo" options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }} />
 
         {/* Trabajador */}
-        <Stack.Screen name="consentimiento" options={{ title: 'Consentimiento', headerBackVisible: false }} />
+        <Stack.Screen name="consentimiento" options={{ title: 'Condiciones', headerBackVisible: false }} />
         {/* Pestañas Hoy · Apoyo · Perfil, con cabecera propia. */}
         <Stack.Screen name="(trabajador)" options={{ headerShown: false }} />
         <Stack.Screen name="formulario/[clave]" options={{ title: '' }} />

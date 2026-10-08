@@ -2,7 +2,7 @@
  *  RF-008-14, RF-008-15, RF-008-18, RF-008-19). Diseño: Figma
  *  3fRKKoY8Urkjlh1KQkPC9x «Inicio · Administrador de Empresa».
  *
- *  Quien abre esta pantalla dirige un equipo, no lee tesis: tres preguntas
+ *  Quien abre esta pantalla dirige un equipo: tres preguntas
  *  en orden —cómo está la gente, qué le está pesando y qué puede hacer esta
  *  semana— escritas como se las diría alguien de viva voz. Fuera «monitor
  *  ejecutivo semanal», «ventana de evaluación sincrónica» y «benchmark».
@@ -58,7 +58,7 @@ export default function InicioEmpresario() {
     return (
       <Panel rol="admin">
         <Pantalla ancho={ancho.panel}>
-          <Aviso>Tu cuenta no está asociada a ninguna empresa. Avisa al equipo del estudio.</Aviso>
+          <Aviso>Tu cuenta no está asociada a ninguna empresa. Avisa a soporte.</Aviso>
         </Pantalla>
       </Panel>
     )

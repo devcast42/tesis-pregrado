@@ -68,8 +68,7 @@ export default function Acceso() {
           <Logo tamano={64} />
           <Text style={[texto.titulo, e.titulo]}>Bienestar laboral</Text>
           <Text style={[texto.apoyo, e.subtitulo]}>
-            Ingresa con las credenciales que te proporcionó el equipo de investigación del
-            estudio.
+            Ingresa con las credenciales que te entregó tu empresa.
           </Text>
         </View>
 
@@ -125,12 +124,12 @@ export default function Acceso() {
           {error && <Aviso>{error}</Aviso>}
 
           <Boton onPress={entrar} inhabilitado={inhabilitado} cargando={ocupado}>
-            Entrar al estudio  →
+            Entrar  →
           </Boton>
 
           <Text style={[texto.apoyo, e.ayuda]}>
             ¿Olvidaste tu contraseña?{' '}
-            <Text style={{ color: color.primario }}>Escríbele al equipo</Text> y te la
+            <Text style={{ color: color.primario }}>Escríbele a tu empresa</Text> y te la
             restablecen.
           </Text>
         </View>
@@ -144,8 +143,8 @@ export default function Acceso() {
               Privacidad e independencia
             </Text>
             <Text style={[texto.dato, { color: color.textoMedio }]}>
-              Tus respuestas y datos están disociados de tu empresa conforme al protocolo
-              ético del estudio.
+              Tus respuestas están disociadas de tu empresa: nadie en ella puede ver lo que
+              contestas.
             </Text>
           </View>
         </View>

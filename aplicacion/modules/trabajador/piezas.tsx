@@ -2,7 +2,7 @@
  *
  *  Implementan el diseño de Figma (archivo H3QiUxtgPeSzpbeIyBfWpk, nodos 1:2
  *  y 1:138). Las medidas, radios y colores vienen de ahí; los textos que el
- *  diseño traía como ejemplo se sustituyen por los reales del estudio.
+ *  diseño traía como ejemplo se sustituyen por los reales.
  *
  *  Lo que estas piezas NO hacen, a propósito (ESP-004 RN-004-03): mostrar
  *  puntajes, estados, rachas ni ningún dato sobre cómo va la persona. */
@@ -38,10 +38,9 @@ export function Cabecera({ titulo, onAjustes }: { titulo: string; onAjustes?: ()
 // -------------------------------------------------------------------- Saludo
 
 export function Saludo({
-  fecha, semana, codigo, titulo, subtitulo, onAjustes,
+  fecha, codigo, titulo, subtitulo, onAjustes,
 }: {
   fecha: string
-  semana: number
   codigo: string
   titulo: string
   subtitulo: string
@@ -51,7 +50,7 @@ export function Saludo({
     <View style={e.saludo}>
       <View style={e.saludoFila}>
         <Text style={[texto.etiqueta, e.saludoFecha]} numberOfLines={1}>
-          {`${fecha} · SEMANA ${semana}`.toUpperCase()}
+          {fecha.toUpperCase()}
         </Text>
         <Pressable onPress={onAjustes} accessibilityRole="button"
           accessibilityLabel={`Ajustes de trabajador ${codigo}`} style={e.pastillaCodigo}>
@@ -606,14 +605,14 @@ export function PastillaRacha({ actual, hoyCumplido, onPress }: { actual: number
 }
 
 /** Barra de Apoyo y Perfil (Figma IcncrzVKVbewGGc6RkImCM): logo, nombre del
- *  estudio en mayúsculas, el nombre de la pantalla debajo y, a la derecha,
+ *  producto en mayúsculas, el nombre de la pantalla debajo y, a la derecha,
  *  un acceso a Perfil (omitido en Perfil mismo). */
 export function BarraSuperior({ titulo, onPerfil, derecha }: { titulo: string; onPerfil?: () => void; derecha?: ReactNode }) {
   return (
     <View style={e.barraSuperior}>
       <View style={e.barraLogo}><Logo tamano={22} /></View>
       <View style={{ flex: 1 }}>
-        <Text style={[texto.etiqueta, { color: color.primarioProfundo, fontSize: 10, lineHeight: 14 }]}>ESTUDIO BIENESTAR TECH</Text>
+        <Text style={[texto.etiqueta, { color: color.primarioProfundo, fontSize: 10, lineHeight: 14 }]}>BIENESTAR TECH</Text>
         <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{titulo}</Text>
       </View>
       {derecha}

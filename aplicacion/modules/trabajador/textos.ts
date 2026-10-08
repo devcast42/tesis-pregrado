@@ -23,12 +23,6 @@ export function fechaLarga(fecha = new Date()): string {
   return fecha.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
-/** Semana del estudio, contando desde la inscripción. Empieza en 1. */
-export function semanaDelEstudio(inscritoEn: string, referencia = new Date()): number {
-  const dias = (referencia.getTime() - new Date(inscritoEn).getTime()) / 86_400_000
-  return Math.max(1, Math.floor(dias / 7) + 1)
-}
-
 /** Frases del día. Neutras y breves: acompañan, no aconsejan ni diagnostican.
  *  Se elige por día del año para que cambie a diario sin depender del
  *  servidor. */

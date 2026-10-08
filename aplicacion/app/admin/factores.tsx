@@ -55,7 +55,7 @@ export default function FactoresEmpresario() {
         <View style={e.encabezado}>
           <View style={{ flex: 1, gap: 4, minWidth: 280 }}>
             <View style={e.fila}>
-              <Pastilla fondo="#E8EFEA" tinta={color.primarioProfundo}>ANÁLISIS EMPÍRICO DE COHORTE</Pastilla>
+              <Pastilla fondo="#E8EFEA" tinta={color.primarioProfundo}>ANÁLISIS DE FACTORES</Pastilla>
               <Text style={[texto.dato, { color: color.textoMedio }]}>• {empresa.nombre}</Text>
             </View>
             <Text style={[texto.titulo, { color: color.texto }]}>Factores de Trabajo</Text>
@@ -99,7 +99,7 @@ export default function FactoresEmpresario() {
                     <Text style={[texto.etiqueta, { color: color.primarioProfundo, fontSize: 11 }]}>◇ MATRIZ CAUSAL Y DINÁMICA</Text>
                     <Text style={[texto.seccion, { color: color.texto }]}>Qué se mueve con qué</Text>
                     <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-                      Identificación de correlaciones empíricas significativas entre prácticas operativas observadas y el agotamiento psicológico de la cohorte.
+                      Qué prácticas de trabajo se mueven junto con el agotamiento de tu equipo.
                     </Text>
                   </View>
                   <View style={e.rigor}>
@@ -127,7 +127,7 @@ export default function FactoresEmpresario() {
                 <View style={[e.fila, { gap: 6 }]}>
                   <IconoInfo tamano={13} color={color.textoSuave} />
                   <Text style={[texto.dato, { color: color.textoSuave, flex: 1 }]}>
-                    Basado en las {semanas} semanas de datos continuos de {empresa.nombre} (N={ultima.respondientes}). Mínimo requerido de 6 semanas completadas con representatividad estadística.
+                    Calculado con {semanas} semanas seguidas de {empresa.nombre} ({ultima.respondientes} personas). Hacen falta al menos 6 semanas para que la lectura sea fiable.
                   </Text>
                 </View>
               </View>
@@ -139,7 +139,7 @@ export default function FactoresEmpresario() {
                 rotulo="HALLAZGO CLAVE"
                 titulo={principal ? tituloHallazgo(principal.clave) : 'Sin hallazgo dominante'}
                 texto={principal
-                  ? `${fraseRelacion(principal)} (ρ = ${principal.r.toFixed(2)}). Es el factor con mayor peso en la lectura de agotamiento de esta cohorte.`
+                  ? `${fraseRelacion(principal)} (ρ = ${principal.r.toFixed(2)}). Es el factor con mayor peso en el agotamiento de tu equipo.`
                   : 'Cuando haya seis semanas reportables, aquí aparecerá el factor que más se mueve junto con el agotamiento.'}
                 pie={principal ? accionHallazgo(principal.clave) : undefined}
                 tonoPie={color.primarioProfundo}
@@ -156,10 +156,10 @@ export default function FactoresEmpresario() {
                 tonoPie={color.tierra}
               />
               <Lectura
-                rotulo="METODOLOGÍA"
-                titulo="Validación de Instrumento"
-                texto="Las mediciones combinan reportes de pulso diario voluntario y registros contextuales de cronograma bajo anonimato de doble capa."
-                pie="Protocolo ético del estudio · ESP-008"
+                rotulo="PRIVACIDAD"
+                titulo="De dónde salen las cifras"
+                texto="Las cifras salen del check-in diario, que es voluntario y anónimo: una respuesta nunca se puede atribuir a una persona."
+                pie="Cómo se protege el anonimato"
                 tonoPie={color.textoSuave}
               />
             </View>

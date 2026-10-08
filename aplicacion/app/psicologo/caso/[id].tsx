@@ -253,7 +253,7 @@ export default function DetalleCaso() {
             <Text style={[texto.apoyo, { color: color.textoMedio }]}>
               Regresión logística sobre los cuatro ítems diarios del OLBI de la semana (media, último valor, máximo,
               pendiente) — versión {pronostico.version}
-              {pronostico.origen === 'preentrenamiento' ? ', preentrenada con el diario OLBI de Gruszczynska et al. (2021) y aún sin recalibrar con datos de este estudio' : ''}.
+              {pronostico.origen === 'preentrenamiento' ? ', preentrenada con el diario OLBI de Gruszczynska et al. (2021) y aún sin recalibrar con datos propios' : ''}.
               {m ? ` Validación por persona: ROC-AUC ${m.roc_auc.toFixed(2)}, precisión ${m.precision.toFixed(2)}, recall ${m.recall.toFixed(2)}.` : ''}
               {' '}Es un apoyo a tu criterio, no lo sustituye.
             </Text>

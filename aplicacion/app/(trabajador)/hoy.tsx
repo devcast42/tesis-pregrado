@@ -30,7 +30,7 @@ import {
   BarraSuperior, BloqueCierre, PastillaRacha, PieEtico, Pensamiento, RegistrosDelDia, RitmoSemanal,
   NavegadorDias, Saludo, TarjetaApoyo, TarjetaHero, TarjetaSecundaria, type EstadoDia,
 } from '../../modules/trabajador/piezas'
-import { fechaLarga, fraseDelDia, saludoPorHora, semanaDelEstudio } from '../../modules/trabajador/textos'
+import { fechaLarga, fraseDelDia, saludoPorHora } from '../../modules/trabajador/textos'
 import { Cargando } from '../../modules/nucleo/ui'
 import { ahora, cargarDesfase } from '../../modules/nucleo/reloj'
 import {
@@ -299,7 +299,6 @@ export default function Hoy() {
       >
         <Saludo
           fecha={fechaLarga(ahoraMismo)}
-          semana={semanaDelEstudio(trabajador.inscrito_en, ahoraMismo)}
           codigo={trabajador.codigo_anonimo}
           titulo={saludo.titulo}
           subtitulo={todoListo ? 'Gracias por tu tiempo de hoy.' : saludo.subtitulo}
@@ -320,7 +319,7 @@ export default function Hoy() {
 
         {offsetDia === 0 && !enSeguimiento && (
           <BloqueCierre
-            mensaje="Tu seguimiento de check-ins terminó por ahora. El equipo del estudio te acompaña desde aquí: revisa tu resultado y, cuando esté disponible, tu sesión de apoyo."
+            mensaje="Tu seguimiento de check-ins terminó por ahora. Seguimos acompañándote desde aquí: revisa tu resultado y, cuando esté disponible, tu sesión de apoyo."
             nota="Tus respuestas anteriores siguen protegidas y disociadas de tu empresa."
           />
         )}
@@ -328,7 +327,7 @@ export default function Hoy() {
         {hoyMismo && todoListo && enSeguimiento && (
           <BloqueCierre
             mensaje={cierre}
-            nota="Responder cada día es lo que le da valor a este estudio. Si un día no puedes, no pasa nada: responde al siguiente."
+            nota="Responder cada día es lo que hace que esto funcione. Si un día no puedes, no pasa nada: responde al siguiente."
           />
         )}
 

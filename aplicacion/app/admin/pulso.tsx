@@ -159,7 +159,7 @@ export default function PulsoEmpresario() {
             <View style={e.notaUmbral}>
               <IconoCandado tamano={14} color={color.textoMedio} />
               <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1, minWidth: 240 }]}>
-                Las franjas «a vigilar» y «alto» las fija el equipo de la universidad, no la empresa.
+                Las franjas «a vigilar» y «alto» vienen del instrumento clínico, no las fija la empresa.
                 {huecos.length > 0 ? ` Faltan ${huecos.length} ${huecos.length === 1 ? 'semana' : 'semanas'}: no llegaron a ${MINIMO} respuestas.` : ''}
               </Text>
             </View>

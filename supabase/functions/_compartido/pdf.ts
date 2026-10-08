@@ -37,7 +37,7 @@ export async function generarPdfResumen(datos: {
   piePagina: string[]
 }): Promise<Uint8Array> {
   const doc = await PDFDocument.create()
-  doc.setTitle(datos.titulo); doc.setProducer('Estudio de bienestar · UNT'); doc.setCreator('Estudio de bienestar · UNT')
+  doc.setTitle(datos.titulo); doc.setProducer('Bienestar Tech'); doc.setCreator('Bienestar Tech')
   const normal = await doc.embedFont(StandardFonts.Helvetica)
   const negrita = await doc.embedFont(StandardFonts.HelveticaBold)
   const anchoUtil = ANCHO - MARGEN * 2

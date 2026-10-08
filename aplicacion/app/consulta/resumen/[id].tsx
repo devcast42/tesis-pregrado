@@ -150,7 +150,7 @@ export default function ResumenSesion() {
           <View style={e.privacidad}>
             <IconoCandado tamano={13} color={color.textoMedio} />
             <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1 }]}>
-              Este resumen es solo tuyo: no es el informe del psicólogo, tu empresa no lo recibe y el estudio no lo usa como dato. Las recomendaciones se generan con IA y no son un diagnóstico.
+              Este resumen es solo tuyo: no es el informe del psicólogo, y tu empresa no lo recibe. Las recomendaciones se generan con IA y no son un diagnóstico.
             </Text>
           </View>
         </View>

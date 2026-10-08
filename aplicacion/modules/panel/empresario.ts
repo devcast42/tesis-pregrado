@@ -237,7 +237,7 @@ export function recomendaciones(
 
   if (fuera('horas_dia_media')) r.push({
     id: 'REC-01', titulo: 'Mirar el reparto de la carga',
-    texto: `La jornada media va en ${f!.horas_dia_media} h al día, por encima de las 8.5 que toma el estudio como referencia. Vale la pena revisar qué entregas se pueden mover y poner un tope al sobretiempo.`,
+    texto: `La jornada media va en ${f!.horas_dia_media} h al día, por encima de las 8.5 de referencia. Vale la pena revisar qué entregas se pueden mover y poner un tope al sobretiempo.`,
     referencia: 'Demerouti et al. (2001), modelo de demandas y recursos',
   })
   if (fuera('sobretiempo_media') || fuera('fin_de_semana_media')) {
@@ -271,8 +271,8 @@ export function recomendaciones(
   const ultimas = pulso.slice(-2)
   if (ultimas.length === 2 && ultimas.every((p) => p.nivel_agotamiento === 'alto')) r.push({
     id: 'REC-06', titulo: 'Dos semanas seguidas en alto',
-    texto: 'El agotamiento del equipo lleva dos semanas en nivel alto. Conviene hablarlo con el equipo del estudio para ver una intervención más de fondo.',
-    referencia: 'Protocolo del estudio',
+    texto: 'El agotamiento del equipo lleva dos semanas en nivel alto. Conviene hablarlo con el equipo clínico para ver una intervención más de fondo.',
+    referencia: 'Protocolo clínico',
   })
   if (participacion?.tasa_respuesta_pct != null && participacion.tasa_respuesta_pct < 60) r.push({
     id: 'REC-07', titulo: 'Contesta poca gente',
