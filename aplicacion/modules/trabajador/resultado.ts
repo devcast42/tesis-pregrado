@@ -107,37 +107,40 @@ export const MENSAJE_GENERAL: Record<Nivel, { titulo: string; cuerpo: string }> 
   },
 }
 
-/** Recomendaciones por dimensión y nivel. Concretas, pequeñas, de una
- *  semana. Nada de «gestiona tu estrés». */
+/** Recomendaciones por dimensión y nivel. Una línea, una acción, de esta
+ *  semana. Nada de «gestiona tu estrés».
+ *
+ *  Ninguna menciona la sesión con el psicólogo: cuando toca, el resultado ya
+ *  la ofrece arriba con su botón, y estaba además la primera de las dos
+ *  dimensiones, así que en un alto doble aparecía dos veces en la misma
+ *  lista, debajo del bloque que ya la proponía. */
 export const RECOMENDACIONES: Record<Dimension, Record<Nivel, string[]>> = {
   agotamiento: {
     bajo: [
-      'Protege lo que ya te funciona: la hora en que cortas el día, el sueño, el ejercicio que haces.',
+      'Protege lo que ya te funciona: tu hora de cierre y tus horas de sueño.',
     ],
     moderado: [
-      'Elige una hora fija para cerrar el trabajo esta semana y cúmplela al menos tres días.',
-      'Antes de dormir, treinta minutos sin pantalla de trabajo. La recuperación empieza ahí.',
-      'Si estás durmiendo menos de siete horas, ese es el primer cambio, antes que cualquier otro.',
+      'Pon una hora fija de cierre y cúmplela al menos tres días.',
+      'Media hora sin pantallas de trabajo antes de dormir.',
+      'Si duermes menos de siete horas, empieza por ahí.',
     ],
     alto: [
-      'Acepta la sesión con el psicólogo. Es confidencial y no llega a tu empresa.',
-      'Esta semana, quita una cosa de la agenda en vez de agregar una. Descansar no es una tarea más.',
-      'Habla con alguien de confianza fuera del trabajo sobre cómo te sientes. Decirlo en voz alta ayuda.',
+      'Quita algo de la agenda esta semana en vez de agregar.',
+      'Dilo en voz alta a alguien de confianza fuera del trabajo.',
     ],
   },
   desvinculacion: {
     bajo: [
-      'Nota qué parte de tu trabajo te sigue interesando; es el ancla para las semanas difíciles.',
+      'Fíjate en qué parte del trabajo te sigue interesando.',
     ],
     moderado: [
-      'Identifica una tarea de la semana que sí te importe y empieza el día por ella.',
-      'Pide claridad sobre algo que no entiendes de tu rol. La desconexión suele empezar en la confusión.',
+      'Empieza el día por la tarea que sí te importa.',
+      'Pide claridad sobre algo que no tengas claro de tu rol.',
       'Un almuerzo con alguien del equipo, sin hablar del proyecto.',
     ],
     alto: [
-      'Acepta la sesión con el psicólogo. Sirve justamente para esto.',
-      'No tomes decisiones grandes sobre tu trabajo esta semana; primero recupera distancia.',
-      'Recuerda qué te trajo a este trabajo. No para obligarte a sentirlo, sino para saber si sigue ahí.',
+      'No tomes decisiones grandes sobre tu trabajo esta semana.',
+      'Recuerda qué te trajo aquí, aunque sea para saber si sigue ahí.',
     ],
   },
 }
@@ -270,15 +273,8 @@ export function explicacionConfianza(p: Prediccion): string {
 export function fraseRetrospectiva(r: ResultadoSemana): string | null {
   const retro = r.retrospectiva
   if (!retro) return null
-  const pct = Math.round(retro.probabilidad * 100)
-  const alto = nivelGeneral(r) === 'alto'
-  const esperaba = retro.probabilidad >= 0.5
-  if (esperaba === alto) {
-    return alto
-      ? `Antes de que respondieras, el modelo estimaba ${pct} % de que saliera alto. Va en línea con lo que acabas de contestar.`
-      : `Antes de que respondieras, el modelo estimaba ${pct} % de que saliera alto, y no salió. Va en línea con lo que acabas de contestar.`
-  }
-  return alto
-    ? `Antes de que respondieras, el modelo estimaba ${pct} % de que saliera alto. Tu cuestionario dice más que eso, y es el que cuenta.`
-    : `Antes de que respondieras, el modelo estimaba ${pct} % de que saliera alto, y no salió. El cuestionario es el que cuenta.`
+  // El resultado está dos dedos más arriba en la misma pantalla. Comparar por
+  // él —«va en línea», «salió más alto»— era decir en voz alta algo que se ve
+  // solo, y en la mitad de los casos sonaba a disculpa.
+  return `Antes de que respondieras, el modelo estimaba ${Math.round(retro.probabilidad * 100)} % de que saliera alto.`
 }
