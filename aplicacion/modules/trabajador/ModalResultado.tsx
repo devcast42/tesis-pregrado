@@ -39,6 +39,7 @@ type Props = {
   /** Por qué toca el cuestionario, si toca. */
   motivoOlbi?: string | null
   onResponderOlbi?: () => void
+  onPedirCita?: () => void
   /** Los días de esta semana con su índice, para la gráfica. */
   semana?: DiaSemana[]
   onCerrar: () => void
@@ -58,7 +59,7 @@ const TONO_CONFIANZA: Record<NivelConfianza, { borde: string; tinta: string; fon
   alta: { borde: '#BBE5C8', tinta: color.exito, fondo: color.exitoSuave },
 }
 
-export function ModalResultado({ modo, resultado, consejo, prediccion, motivoOlbi, onResponderOlbi, semana, onCerrar }: Props) {
+export function ModalResultado({ modo, resultado, consejo, prediccion, motivoOlbi, onResponderOlbi, onPedirCita, semana, onCerrar }: Props) {
   const insets = useSafeAreaInsets()
   const visible = modo !== null
   const mostrarResultado = modo === 'resultado' && resultado !== null
@@ -82,11 +83,11 @@ export function ModalResultado({ modo, resultado, consejo, prediccion, motivoOlb
 
           <ScrollView contentContainerStyle={[e.contenido, { paddingBottom: espacio.xxl + insets.bottom }]} showsVerticalScrollIndicator={false}>
             {mostrarResultado
-              ? <Resultado r={resultado} />
+              ? <Resultado r={resultado} onPedirCita={onPedirCita} />
               : <Cierre consejo={consejo} prediccion={prediccion} motivoOlbi={motivoOlbi} onResponderOlbi={onResponderOlbi} semana={semana} />}
             {/* Un solo botón relleno por pantalla. Con dos iguales, el que
                 importa deja de distinguirse. */}
-            {mostrarResultado || !motivoOlbi
+            {(mostrarResultado && !(resultado?.detectado && onPedirCita)) || (!mostrarResultado && !motivoOlbi)
               ? <Boton onPress={onCerrar}>Volver al inicio</Boton>
               : (
                 <Pressable onPress={onCerrar} style={e.volver} accessibilityRole="button">
@@ -263,7 +264,7 @@ function Cierre({ consejo, prediccion, motivoOlbi, onResponderOlbi, semana }: {
 
 // ---------------------------------------------------------- Resultado viernes
 
-function Resultado({ r }: { r: ResultadoSemana }) {
+function Resultado({ r, onPedirCita }: { r: ResultadoSemana; onPedirCita?: () => void }) {
   const general = nivelGeneral(r)
   const mensaje = MENSAJE_GENERAL[general]
   const retro = fraseRetrospectiva(r)
@@ -277,19 +278,20 @@ function Resultado({ r }: { r: ResultadoSemana }) {
       <Text style={texto.titulo}>{mensaje.titulo}</Text>
       <Text style={[texto.cuerpo, { color: color.textoMedio }]}>{mensaje.cuerpo}</Text>
 
+      {/* Antes decía «te ofreceremos una sesión» y ahí se quedaba: la
+          persona salía de la pantalla sin nada que hacer y la cita dependía
+          de que entrara sola a Apoyo. Ahora la pide desde aquí. */}
       {r.detectado && (
-        <View style={[e.tarjeta, e.tarjetaSuave, { flexDirection: 'row', gap: espacio.sm }]}>
-          <View style={e.corazon}><IconoCorazon tamano={18} color={color.textoMedio} /></View>
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={[texto.etiqueta, { color: color.textoMedio }]}>APOYO DEL ESTUDIO</Text>
-            <Text style={[texto.cuerpo, { color: color.texto }]}>
-              Un psicólogo del estudio te ofrecerá una sesión de apoyo. La verás en tu pantalla de
-              inicio en cuanto esté disponible.
-            </Text>
-            <Text style={[texto.apoyo, { color: color.textoSuave }]}>
-              Completamente confidencial, sin mediación ni aviso a tu empresa.
-            </Text>
-          </View>
+        <View style={e.apoyo}>
+          <View style={e.corazon}><IconoCorazon tamano={18} color={color.primarioProfundo} /></View>
+          <Text style={[texto.seccion, { color: color.texto }]}>Tienes una sesión de apoyo</Text>
+          <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
+            Un psicólogo del estudio ya tiene tu caso. Elige cuándo quieres hablar con él.
+          </Text>
+          {onPedirCita && <Boton onPress={onPedirCita}>Elegir día y hora</Boton>}
+          <Text style={[texto.dato, { color: color.textoSuave, textAlign: 'center' }]}>
+            Confidencial. Tu empresa no sabe de qué hablas ni por qué.
+          </Text>
         </View>
       )}
 
@@ -501,6 +503,7 @@ function Titular({ children }: { children: string }) {
 }
 
 const e = StyleSheet.create({
+  apoyo: { gap: espacio.sm, alignItems: 'stretch', backgroundColor: '#F2FAF6', borderRadius: radio.lg, padding: espacio.base, borderWidth: 1, borderColor: '#CBE9DA' },
   semana: { gap: espacio.md, backgroundColor: color.superficie, borderRadius: radio.lg, padding: espacio.base, borderWidth: 1, borderColor: color.borde },
   barras: { flexDirection: 'row', alignItems: 'flex-end', gap: espacio.sm },
   barraDia: { alignItems: 'center', gap: 8, flex: 1 },

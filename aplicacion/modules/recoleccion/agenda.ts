@@ -123,6 +123,13 @@ export function agendaDeHoy(
 
     // El OLBI y las tres preguntas que lo siguen ya no los dispara el día.
     if ((clave === 'olbi' || clave === 'semanal') && calendario && !calendario.dias) {
+      // Respondido hoy: se queda, marcado, como el check-in. Antes `olbi_toca`
+      // pasaba a «ya respondido» en cuanto se enviaba y la tarjeta se
+      // esfumaba, igual que pasaba con el diario.
+      if (mismoDia(ultimo, referencia)) {
+        completado[clave] = true
+        return [item(clave, true, calendario)]
+      }
       if (!olbiToca) return []
       // Primero los seis toques, después el cuestionario. Ofrecer cuatro
       // minutos antes que quince segundos es la forma más rápida de que no

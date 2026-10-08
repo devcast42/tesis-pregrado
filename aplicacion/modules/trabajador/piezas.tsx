@@ -236,8 +236,11 @@ export function TarjetaHero({
 // --------------------------------------------------------------- Secundaria
 
 export function TarjetaSecundaria({
-  insignia, titulo, descripcion, accion, onPress, completado, destacada,
+  insignia, titulo, descripcion, accion, onPress, completado, destacada, pie,
 }: {
+  /** La línea de debajo cuando está hecho. Por defecto «Respondido», que vale
+   *  para los formularios pero no para una cita. */
+  pie?: string
   /** El cuestionario completo no es un formulario más: cuesta cuatro minutos
    *  y aparece sin día fijo. Se distingue por color para que no se confunda
    *  con el check-in de todos los días. */
@@ -265,8 +268,8 @@ export function TarjetaSecundaria({
             <IconoCheck tamano={15} color="#FFFFFF" />
           </View>
           <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
-            <Text style={[texto.cuerpoFuerte, { color: color.texto }]} numberOfLines={1}>{titulo}</Text>
-            <Text style={[texto.dato, { color: color.primarioProfundo }]}>Respondido · toca para verlo</Text>
+            <Text style={[texto.cuerpoFuerte, { color: color.texto }]} numberOfLines={2}>{titulo}</Text>
+            <Text style={[texto.dato, { color: color.primarioProfundo }]}>{pie ?? 'Respondido · toca para verlo'}</Text>
           </View>
           <IconoAbrir tamano={14} color={color.textoSuave} />
         </View>

@@ -22,6 +22,7 @@ import {
   racha as consultarRacha, semanaEnCurso, ultimaPrediccionSemana, ultimosEnvios, type DiaSemana, type Racha,
 } from '../../modules/recoleccion/datos'
 import { agendaDeHoy, type ItemAgenda } from '../../modules/recoleccion/agenda'
+import { citaVigente, fechaHora, misCitas, type Cita } from '../../modules/consulta/citas'
 import { sincronizarRecordatorios } from '../../modules/recoleccion/recordatorios'
 import { sesionDisponible, type SesionDisponible } from '../../modules/consulta/datos'
 import {
@@ -93,6 +94,8 @@ export default function Hoy() {
   const [agenda, setAgenda] = useState<ItemAgenda[] | null>(null)
   const [motivoOlbi, setMotivoOlbi] = useState<string | null>(null)
   const [semana, setSemana] = useState<DiaSemana[]>([])
+  const [cita, setCita] = useState<Cita | null>(null)
+  const [derivado, setDerivado] = useState(false)
   const [diasRespondidos, setDiasRespondidos] = useState<Set<number>>(new Set())
   const [sesion, setSesion] = useState<SesionDisponible | null>(null)
   const [refrescando, setRefrescando] = useState(false)
@@ -168,7 +171,9 @@ export default function Hoy() {
       sincronizarRecordatorios({ diario: cal.diario?.duracion, olbi: cal.olbi?.duracion }).catch(() => {})
     }
     setTrabajador(p)
-    const [olbi, serieSemana] = await Promise.all([olbiToca(), semanaEnCurso(p.id)])
+    const [olbi, serieSemana, citas] = await Promise.all([olbiToca(), semanaEnCurso(p.id), misCitas()])
+    setCita(citaVigente(citas))
+    setDerivado(p.estado === 'detectado')
     setMotivoOlbi(olbi.motivo ?? null)
     setSemana(serieSemana)
     setAgenda(agendaDeHoy(envios, cal, undefined, olbi.toca))
@@ -299,6 +304,31 @@ export default function Hoy() {
           />
         ))}
 
+        {/* Pedir la cita es una acción más del día, no algo escondido en
+            otra pestaña: si al salir del resultado no la pide, aquí la tiene
+            esperando. Y una vez pedida se queda, hecha, como los demás. */}
+        {derivado && !cita && (
+          <TarjetaSecundaria
+            destacada
+            insignia="Tu sesión de apoyo"
+            titulo="Elige cuándo hablar con el psicólogo"
+            descripcion="Ya tiene tu caso. Solo falta que digas qué día y a qué hora te viene bien."
+            accion="Elegir día y hora"
+            onPress={() => router.push('/apoyo')}
+          />
+        )}
+        {cita && (
+          <TarjetaSecundaria
+            completado
+            insignia="Tu sesión de apoyo"
+            titulo={fechaHora(cita.propuesta_para)}
+            pie={cita.estado === 'confirmada' ? 'Confirmada · toca para verla' : 'Pedida, falta que la confirmen'}
+            descripcion=""
+            accion=""
+            onPress={() => router.push('/apoyo')}
+          />
+        )}
+
         {sesion && <TarjetaApoyo onPress={() => router.push(`/consulta/${sesion.id}`)} />}
 
         {prediccion && !finDeSemana && hoy < 4 && <TarjetaProbabilidad p={prediccion} />}
@@ -319,7 +349,8 @@ export default function Hoy() {
       </ScrollView>
 
       <ModalResultado modo={modal} resultado={resultado} consejo={consejo} prediccion={prediccion} motivoOlbi={motivoOlbi} semana={semana}
-        onResponderOlbi={() => { setModal(null); router.push('/formulario/olbi') }} onCerrar={() => {
+        onResponderOlbi={() => { setModal(null); router.push('/formulario/olbi') }}
+        onPedirCita={() => { setModal(null); router.push('/apoyo') }} onCerrar={() => {
         setModal(null)
         if (celebrarPendiente) { setCelebrarPendiente(false); setCelebrar(true); setTimeout(() => setCelebrar(false), 2000) }
       }} />
