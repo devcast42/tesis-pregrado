@@ -124,64 +124,6 @@ const AVISO_OLBI: Record<string, { titulo: string; texto: string }> = {
 }
 
 const LETRA_DIA = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
-
-/** Cómo viene la semana, en barras.
- *
- *  Es el promedio de las cuatro preguntas de ánimo de cada día, de 1 a 5.
- *  Existe porque hasta ahora responder a diario era dar datos a cambio de
- *  nada: esto es lo único que la persona construye contestando, y lo ve
- *  crecer cada día.
- *
- *  Más alto es peor, así que la barra se tiñe al subir. Sin números: lo que
- *  importa es la forma —si viene subiendo o bajando—, no el 3.4. */
-function SemanaEnBarras({ dias }: { dias: DiaSemana[] }) {
-  const porDia = new Map(dias.map((d) => [new Date(`${d.dia}T12:00:00`).getDay(), d.indice]))
-  // Lunes a viernes siempre, aunque falten. Con solo los días respondidos la
-  // gráfica se veía coja los lunes y los martes; así se entiende de un
-  // vistazo lo que llevas y lo que falta.
-  const semana = [1, 2, 3, 4, 5].map((d) => ({ letra: LETRA_DIA[d - 1], valor: porDia.get(d) ?? null }))
-  const conDato = semana.filter((d) => d.valor != null)
-  if (conDato.length < 2) return null
-
-  const ultimo = conDato[conDato.length - 1].valor as number
-  const previo = conDato[conDato.length - 2].valor as number
-  const lectura = ultimo - previo > 0.4 ? 'Hoy terminaste peor que ayer'
-    : previo - ultimo > 0.4 ? 'Hoy terminaste mejor que ayer'
-    : 'Vienes estable'
-
-  return (
-    <View style={e.tarjeta}>
-      <Rotulo punto>CÓMO VIENE TU SEMANA</Rotulo>
-      <View style={e.barras}>
-        {semana.map((d, i) => {
-          const v = d.valor
-          // De 1 a 5 sobre 60 px, con un mínimo visible para que un día bueno
-          // no se confunda con uno sin responder.
-          const alto = v == null ? 0 : Math.max(10, ((v - 1) / 4) * 60)
-          const tinta = v == null ? 'transparent' : v >= 3.5 ? color.tierra : v >= 2.5 ? '#C9A227' : color.primario
-          return (
-            <View key={i} style={e.barraDia}>
-              <View style={e.barraPista}>
-                {v != null && <View style={[e.barraVal, { height: alto, backgroundColor: tinta }]} />}
-              </View>
-              <Text style={[texto.dato, { color: v == null ? color.textoSuave : color.textoMedio, fontSize: 11 }]}>
-                {d.letra}
-              </Text>
-            </View>
-          )
-        })}
-      </View>
-      <Text style={[texto.cuerpo, { color: color.texto }]}>{lectura}</Text>
-    </View>
-  )
-}
-
-/** Las dos cifras sobre las que se puede hacer algo.
- *
- *  El ánimo es el resultado; dormir y las horas son la causa, y son lo único
- *  de este check-in que la persona puede cambiar esta misma noche. Se comparan
- *  con las referencias del estudio —7 h de sueño, 8.5 de jornada— porque un
- *  «6.2 h» suelto no dice si está bien o mal. */
 const REFERENCIA = { sueno: 7, horas: 8.5 }
 
 function media(xs: (number | null)[]): number | null {
@@ -189,44 +131,93 @@ function media(xs: (number | null)[]): number | null {
   return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null
 }
 
-function CifrasSemana({ dias }: { dias: DiaSemana[] }) {
+/** La semana en una sola tarjeta: la forma arriba, las dos cifras abajo.
+ *
+ *  Estaban en tres cajas con bordes distintos y emojis, y se leía como un
+ *  collage. Una tarjeta, una regla fina y las cifras alineadas en columna
+ *  dicen lo mismo sin pedir atención tres veces.
+ *
+ *  Las barras son el promedio de las cuatro preguntas de ánimo —el
+ *  resultado—; sueño y jornada son la causa, y lo único sobre lo que se
+ *  puede hacer algo esta misma noche. Por eso van juntas y en ese orden. */
+function TarjetaSemana({ dias }: { dias: DiaSemana[] }) {
+  const porDia = new Map(dias.map((d) => [new Date(`${d.dia}T12:00:00`).getDay(), d.indice]))
+  const semana = [1, 2, 3, 4, 5].map((d) => ({ letra: LETRA_DIA[d - 1], valor: porDia.get(d) ?? null }))
+  const conDato = semana.filter((d) => d.valor != null)
   const sueno = media(dias.map((d) => d.sueno))
   const horas = media(dias.map((d) => d.horas))
-  if (sueno == null && horas == null) return null
+  if (conDato.length < 2 && sueno == null) return null
+
+  const ultimo = conDato[conDato.length - 1]?.valor as number | undefined
+  const previo = conDato[conDato.length - 2]?.valor as number | undefined
+  const lectura = ultimo == null || previo == null ? null
+    : ultimo - previo > 0.4 ? 'Hoy terminaste peor que ayer'
+    : previo - ultimo > 0.4 ? 'Hoy terminaste mejor que ayer'
+    : 'Vienes estable'
 
   return (
-    <View style={e.cifras}>
-      {sueno != null && (
-        <Cifra
-          emoji="😴"
-          valor={`${sueno.toFixed(1)} h`}
-          rotulo="de sueño"
-          nota={sueno < REFERENCIA.sueno ? `bajo las ${REFERENCIA.sueno} recomendadas` : 'en lo recomendable'}
-          alerta={sueno < REFERENCIA.sueno}
-        />
+    <View style={e.semana}>
+      <Text style={[texto.etiqueta, { color: color.textoSuave }]}>TU SEMANA</Text>
+
+      {conDato.length >= 2 && (
+        <>
+          <View style={e.barras}>
+            {semana.map((d, i) => {
+              const v = d.valor
+              const alto = v == null ? 0 : Math.max(8, ((v - 1) / 4) * 56)
+              return (
+                <View key={i} style={e.barraDia}>
+                  <View style={e.barraPista}>
+                    {/* La pista gris da el marco: sin ella, dos días sueltos
+                        parecen palillos flotando y no una semana a medias. */}
+                    <View style={e.barraFondo} />
+                    {v != null && (
+                      <View style={[e.barraVal, {
+                        height: alto,
+                        backgroundColor: v >= 3.5 ? color.tierra : v >= 2.5 ? '#D4A72C' : color.primario,
+                      }]} />
+                    )}
+                  </View>
+                  <Text style={[texto.dato, { color: color.textoSuave, fontSize: 11 }]}>{d.letra}</Text>
+                </View>
+              )
+            })}
+          </View>
+          {lectura && <Text style={[texto.cuerpo, { color: color.texto }]}>{lectura}</Text>}
+        </>
       )}
-      {horas != null && (
-        <Cifra
-          emoji="⏱️"
-          valor={`${horas.toFixed(1)} h`}
-          rotulo="de jornada"
-          nota={horas > REFERENCIA.horas ? `sobre las ${REFERENCIA.horas} de referencia` : 'dentro de lo previsto'}
-          alerta={horas > REFERENCIA.horas}
-        />
+
+      {(sueno != null || horas != null) && (
+        <View style={e.cifras}>
+          {sueno != null && (
+            <Cifra rotulo="Sueño" valor={sueno} ref_={REFERENCIA.sueno}
+              alerta={sueno < REFERENCIA.sueno} />
+          )}
+          {horas != null && (
+            <Cifra rotulo="Jornada" valor={horas} ref_={REFERENCIA.horas}
+              alerta={horas > REFERENCIA.horas} />
+          )}
+        </View>
       )}
     </View>
   )
 }
 
-function Cifra({ emoji, valor, rotulo, nota, alerta }: {
-  emoji: string; valor: string; rotulo: string; nota: string; alerta: boolean
+/** Una fila: nombre, cifra y contra qué se compara. La referencia va al lado
+ *  porque un «6.3 h» suelto no dice si está bien o mal, y la alerta es el
+ *  color de la cifra, no un recuadro de otro color. */
+function Cifra({ rotulo, valor, ref_, alerta }: {
+  rotulo: string; valor: number; ref_: number; alerta: boolean
 }) {
   return (
-    <View style={[e.cifra, alerta && e.cifraAlerta]}>
-      <Text style={{ fontSize: 18 }}>{emoji}</Text>
-      <Text style={[texto.seccion, { color: alerta ? color.tierra : color.texto, fontSize: 20 }]}>{valor}</Text>
-      <Text style={[texto.dato, { color: color.textoMedio }]}>{rotulo}</Text>
-      <Text style={[texto.dato, { color: alerta ? color.tierra : color.textoSuave, fontSize: 11 }]}>{nota}</Text>
+    <View style={e.cifraFila}>
+      <Text style={[texto.cuerpo, { color: color.textoMedio, flex: 1 }]}>{rotulo}</Text>
+      <Text style={[texto.cuerpoFuerte, { color: alerta ? color.tierra : color.texto }]}>
+        {valor.toFixed(1)} h
+      </Text>
+      <Text style={[texto.dato, { color: color.textoSuave, width: 64, textAlign: 'right' }]}>
+        de {ref_} h
+      </Text>
     </View>
   )
 }
@@ -258,8 +249,7 @@ function Cierre({ consejo, prediccion, motivoOlbi, onResponderOlbi, semana }: {
         </View>
       )}
 
-      {semana && <SemanaEnBarras dias={semana} />}
-      {semana && <CifrasSemana dias={semana} />}
+      {semana && <TarjetaSemana dias={semana} />}
 
       {consejo && (
         <View style={e.tarjeta}>
@@ -511,15 +501,14 @@ function Titular({ children }: { children: string }) {
 }
 
 const e = StyleSheet.create({
-  cifras: { flexDirection: 'row', gap: espacio.sm },
-  cifra: { flex: 1, gap: 2, alignItems: 'flex-start', backgroundColor: color.superficie, borderRadius: radio.lg, padding: espacio.base, borderWidth: 1, borderColor: color.borde },
-  cifraAlerta: { borderColor: '#E8CFC2', backgroundColor: '#FDF6F2' },
-  barras: { flexDirection: 'row', alignItems: 'flex-end', gap: espacio.sm, paddingTop: espacio.xs },
-  barraDia: { alignItems: 'center', gap: 6, flex: 1 },
-  // La pista vacía da el hueco de los días que faltan, para que las barras
-  // no bailen de sitio según cuántas haya.
-  barraPista: { height: 60, width: '100%', justifyContent: 'flex-end', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: color.borde },
-  barraVal: { width: '66%', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  semana: { gap: espacio.md, backgroundColor: color.superficie, borderRadius: radio.lg, padding: espacio.base, borderWidth: 1, borderColor: color.borde },
+  barras: { flexDirection: 'row', alignItems: 'flex-end', gap: espacio.sm },
+  barraDia: { alignItems: 'center', gap: 8, flex: 1 },
+  barraPista: { height: 56, width: '100%', justifyContent: 'flex-end', alignItems: 'center' },
+  barraFondo: { position: 'absolute', top: 0, bottom: 0, width: 14, borderRadius: 7, backgroundColor: color.superficieSuave },
+  barraVal: { width: 14, borderRadius: 7 },
+  cifras: { gap: espacio.sm, borderTopWidth: 1, borderTopColor: color.borde, paddingTop: espacio.md },
+  cifraFila: { flexDirection: 'row', alignItems: 'baseline', gap: espacio.sm },
   acuse: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, marginTop: espacio.xs },
   acuseSello: { width: 26, height: 26, borderRadius: 13, backgroundColor: color.primario, alignItems: 'center', justifyContent: 'center' },
   volver: { alignItems: 'center', paddingVertical: espacio.md },
