@@ -81,7 +81,15 @@ export function ModalResultado({ modo, resultado, consejo, prediccion, motivoOlb
             {mostrarResultado
               ? <Resultado r={resultado} />
               : <Cierre consejo={consejo} prediccion={prediccion} motivoOlbi={motivoOlbi} onResponderOlbi={onResponderOlbi} />}
-            <Boton onPress={onCerrar}>Volver al inicio</Boton>
+            {/* Un solo botón relleno por pantalla. Con dos iguales, el que
+                importa deja de distinguirse. */}
+            {mostrarResultado || !motivoOlbi
+              ? <Boton onPress={onCerrar}>Volver al inicio</Boton>
+              : (
+                <Pressable onPress={onCerrar} style={e.volver} accessibilityRole="button">
+                  <Text style={[texto.cuerpoFuerte, { color: color.textoMedio }]}>Ahora no, volver al inicio</Text>
+                </Pressable>
+              )}
           </ScrollView>
         </View>
       </View>
@@ -99,16 +107,16 @@ export function ModalResultado({ modo, resultado, consejo, prediccion, motivoOlb
  *  consecuencia de lo que acabas de responder. */
 const AVISO_OLBI: Record<string, { titulo: string; texto: string }> = {
   modelo: {
-    titulo: 'Toca el cuestionario completo',
-    texto: 'Por cómo va tu semana conviene mirarlo con más detalle. Son 16 preguntas, unos 4 minutos.',
+    titulo: 'Cuestionario completo',
+    texto: 'Por cómo va tu semana conviene mirarlo con más detalle.',
   },
   sorteo: {
-    titulo: 'Esta semana te tocó a ti',
-    texto: 'Cada semana le toca a una parte del equipo, al azar. Son 16 preguntas, unos 4 minutos.',
+    titulo: 'Cuestionario completo',
+    texto: 'Cada semana le toca a una parte del equipo, y esta vez saliste tú.',
   },
   sin_medir: {
-    titulo: 'Hace un mes que no lo respondes',
-    texto: 'Conviene medir de vez en cuando aunque todo vaya bien. Son 16 preguntas, unos 4 minutos.',
+    titulo: 'Cuestionario completo',
+    texto: 'Hace un mes que no lo respondes. Conviene medir aunque todo vaya bien.',
   },
 }
 
@@ -121,31 +129,20 @@ function Cierre({ consejo, prediccion, motivoOlbi, onResponderOlbi }: {
   const aviso = motivoOlbi ? AVISO_OLBI[motivoOlbi] : null
   return (
     <>
-      <View style={e.gracias}>
-        <View style={e.check}><IconoCheck tamano={16} color={color.primario} /></View>
-        <View style={{ flex: 1, gap: 4 }}>
-          <Text style={texto.titulo}>Listo por hoy</Text>
-          <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
-            Quince segundos que valen una semana de datos.
-          </Text>
-        </View>
+      {/* El acuse va en una línea. Lo que importa de esta pantalla es lo que
+          viene después, no felicitar a nadie por quince segundos. */}
+      <View style={e.acuse}>
+        <View style={e.acuseSello}><IconoCheck tamano={13} color="#FFFFFF" /></View>
+        <Text style={[texto.seccion, { color: color.texto }]}>Listo por hoy</Text>
       </View>
 
-      {/* Lo que pasa a continuación, con su boton. No se encadena el
-          cuestionario de golpe: cuatro minutos sin avisar, justo despues de
-          prometer quince segundos, es como se pierde a la gente. Se ofrece, y
-          si no es el momento la tarjeta sigue en el inicio. */}
       {aviso && (
         <View style={e.siguiente}>
-          <Rotulo punto>LO SIGUIENTE</Rotulo>
-          <Text style={[texto.seccion, { color: color.texto }]}>{aviso.titulo}</Text>
+          <Text style={[texto.etiqueta, { color: '#1E4D8C' }]}>LO SIGUIENTE</Text>
+          <Text style={[texto.seccion, { color: color.texto, fontSize: 19 }]}>{aviso.titulo}</Text>
+          <Text style={[texto.dato, { color: color.textoMedio }]}>16 preguntas · 4 minutos</Text>
           <Text style={[texto.cuerpo, { color: color.textoMedio }]}>{aviso.texto}</Text>
-          {onResponderOlbi && (
-            <Boton onPress={onResponderOlbi}>Responder ahora</Boton>
-          )}
-          <Text style={[texto.dato, e.notaCentrada]}>
-            Si ahora no puedes, lo tendrás esperando en tu inicio.
-          </Text>
+          {onResponderOlbi && <Boton onPress={onResponderOlbi}>Responder ahora</Boton>}
         </View>
       )}
 
@@ -399,6 +396,9 @@ function Titular({ children }: { children: string }) {
 }
 
 const e = StyleSheet.create({
+  acuse: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, marginTop: espacio.xs },
+  acuseSello: { width: 26, height: 26, borderRadius: 13, backgroundColor: color.primario, alignItems: 'center', justifyContent: 'center' },
+  volver: { alignItems: 'center', paddingVertical: espacio.md },
   siguiente: { gap: espacio.sm, backgroundColor: '#EEF5FF', borderRadius: radio.lg, padding: espacio.base, borderWidth: 1, borderColor: '#B9D4F5' },
   fondo: { ...veloModal, backgroundColor: 'rgba(28, 25, 23, 0.55)', justifyContent: 'flex-end' },
   hoja: {
