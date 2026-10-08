@@ -112,11 +112,23 @@ export default function PantallaFormulario() {
   )
 }
 
+/** Qué formulario se abre solo al terminar este.
+ *
+ *  El `semanal` sí: son tres preguntas pegadas al cuestionario, y para la
+ *  persona es una sola sesión.
+ *
+ *  El `olbi` NO, aunque también declare `despues_de: diario`. Encadenar
+ *  cuatro minutos justo después de prometer quince segundos es como se pierde
+ *  a la gente: el cierre lo ofrece con un botón, y si no es el momento la
+ *  tarjeta se queda esperando en el inicio. `despues_de` sigue sirviendo para
+ *  lo otro que hace: que no aparezca antes de responder el check-in del día. */
+const NO_SE_ENCADENAN: ClaveFormulario[] = ['olbi']
+
 async function siguienteEncadenado(clave: ClaveFormulario): Promise<ClaveFormulario | null> {
   try {
     const todos = await calendarios()
     const encontrado = (Object.keys(todos) as ClaveFormulario[]).find(
-      (k) => todos[k]?.despues_de === clave,
+      (k) => todos[k]?.despues_de === clave && !NO_SE_ENCADENAN.includes(k),
     )
     return encontrado ?? null
   } catch {

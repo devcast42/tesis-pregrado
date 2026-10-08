@@ -37,6 +37,7 @@ type Props = {
   prediccion: Prediccion | null
   /** Por qué toca el cuestionario, si toca. */
   motivoOlbi?: string | null
+  onResponderOlbi?: () => void
   onCerrar: () => void
 }
 
@@ -54,14 +55,14 @@ const TONO_CONFIANZA: Record<NivelConfianza, { borde: string; tinta: string; fon
   alta: { borde: '#BBE5C8', tinta: color.exito, fondo: color.exitoSuave },
 }
 
-export function ModalResultado({ modo, resultado, consejo, prediccion, motivoOlbi, onCerrar }: Props) {
+export function ModalResultado({ modo, resultado, consejo, prediccion, motivoOlbi, onResponderOlbi, onCerrar }: Props) {
   const insets = useSafeAreaInsets()
   const visible = modo !== null
   const mostrarResultado = modo === 'resultado' && resultado !== null
   const fecha = resultado ? new Date(resultado.fecha) : new Date()
   const cabecera = mostrarResultado
     ? `TU SEMANA · ${fecha.toLocaleDateString('es-PE', { day: 'numeric', month: 'long' }).toUpperCase()}`
-    : 'REGISTRO COMPLETADO · HOY'
+    : 'CHECK-IN DE HOY'
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCerrar}>
@@ -77,7 +78,9 @@ export function ModalResultado({ modo, resultado, consejo, prediccion, motivoOlb
           </View>
 
           <ScrollView contentContainerStyle={[e.contenido, { paddingBottom: espacio.xxl + insets.bottom }]} showsVerticalScrollIndicator={false}>
-            {mostrarResultado ? <Resultado r={resultado} /> : <Cierre consejo={consejo} prediccion={prediccion} motivoOlbi={motivoOlbi} />}
+            {mostrarResultado
+              ? <Resultado r={resultado} />
+              : <Cierre consejo={consejo} prediccion={prediccion} motivoOlbi={motivoOlbi} onResponderOlbi={onResponderOlbi} />}
             <Boton onPress={onCerrar}>Volver al inicio</Boton>
           </ScrollView>
         </View>
@@ -109,10 +112,11 @@ const AVISO_OLBI: Record<string, { titulo: string; texto: string }> = {
   },
 }
 
-function Cierre({ consejo, prediccion, motivoOlbi }: {
+function Cierre({ consejo, prediccion, motivoOlbi, onResponderOlbi }: {
   consejo: string | null
   prediccion: Prediccion | null
   motivoOlbi?: string | null
+  onResponderOlbi?: () => void
 }) {
   const aviso = motivoOlbi ? AVISO_OLBI[motivoOlbi] : null
   return (
@@ -120,33 +124,37 @@ function Cierre({ consejo, prediccion, motivoOlbi }: {
       <View style={e.gracias}>
         <View style={e.check}><IconoCheck tamano={16} color={color.primario} /></View>
         <View style={{ flex: 1, gap: 4 }}>
-          <Text style={texto.titulo}>Gracias por hoy</Text>
+          <Text style={texto.titulo}>Listo por hoy</Text>
           <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
-            Veinticinco segundos que valen una semana de datos. Nos vemos mañana.
+            Quince segundos que valen una semana de datos.
           </Text>
         </View>
       </View>
 
+      {/* Lo que pasa a continuación, con su boton. No se encadena el
+          cuestionario de golpe: cuatro minutos sin avisar, justo despues de
+          prometer quince segundos, es como se pierde a la gente. Se ofrece, y
+          si no es el momento la tarjeta sigue en el inicio. */}
       {aviso && (
-        <View style={[e.tarjeta, { borderColor: color.primario, borderWidth: 1 }]}>
+        <View style={e.siguiente}>
           <Rotulo punto>LO SIGUIENTE</Rotulo>
-          <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{aviso.titulo}</Text>
+          <Text style={[texto.seccion, { color: color.texto }]}>{aviso.titulo}</Text>
           <Text style={[texto.cuerpo, { color: color.textoMedio }]}>{aviso.texto}</Text>
+          {onResponderOlbi && (
+            <Boton onPress={onResponderOlbi}>Responder ahora</Boton>
+          )}
+          <Text style={[texto.dato, e.notaCentrada]}>
+            Si ahora no puedes, lo tendrás esperando en tu inicio.
+          </Text>
         </View>
       )}
 
       {consejo && (
         <View style={e.tarjeta}>
-          <Rotulo punto>UNA OBSERVACIÓN DE DESCANSO</Rotulo>
+          <Rotulo punto>PARA HOY</Rotulo>
           <Text style={[texto.cuerpo, { color: color.texto }]}>{consejo}</Text>
         </View>
       )}
-
-      {prediccion && prediccion.probabilidad != null && <TarjetaProbabilidad p={prediccion} />}
-
-      <Text style={[texto.apoyo, e.notaCentrada]}>
-        Tus datos diarios son anónimos y se guardan bajo el protocolo de ética institucional.
-      </Text>
     </>
   )
 }
@@ -282,32 +290,22 @@ function BloqueProbabilidad({ p, titulo }: { p: Prediccion; titulo: string }) {
  *  frase; la letra pequeña vive en `Explicacion`. */
 export function Probabilidad({ p }: { p: Prediccion }) {
   const pct = Math.round((p.probabilidad ?? 0) * 100)
-  const m = metricasAplicables(p)
-  const detecta = m ? Math.round(m.recall * 10) : null
-  const pronostico = p.tarea === 'pronostico'
   const tinta = pct >= 50 ? color.tierra : color.primario
 
+  // Fuera el anillo de «6 de cada 10 detecta». Era la precisión del modelo
+  // puesta delante de quien responde: a esa persona no le sirve de nada saber
+  // cuántos casos se le escapan al sistema, y a quien compra el producto le
+  // suena a disculpa. Sigue existiendo donde tiene sentido: en el panel del
+  // investigador, y en el detalle que se abre con el botón de información.
   return (
     <View style={e.probabilidad}>
-      <View style={e.anillos}>
-        <Anillo tamano={78} grosor={7} fraccion={pct / 100} tinta={tinta}>
-          <Text style={[texto.titulo, { color: color.texto, fontSize: 22, lineHeight: 26 }]}>
-            {pct}<Text style={[texto.dato, { color: color.textoMedio }]}>%</Text>
-          </Text>
-        </Anillo>
-        {detecta != null && (
-          <View style={{ alignItems: 'center', gap: 2 }}>
-            <Anillo tamano={40} grosor={4} fraccion={detecta / 10} tinta={color.textoMedio}>
-              <Text style={[texto.apoyo, { color: color.textoMedio, fontSize: 10 }]}>{detecta}/10</Text>
-            </Anillo>
-            <Text style={[texto.apoyo, { color: color.textoSuave, fontSize: 10 }]}>detecta</Text>
-          </View>
-        )}
-      </View>
+      <Anillo tamano={78} grosor={7} fraccion={pct / 100} tinta={tinta}>
+        <Text style={[texto.titulo, { color: color.texto, fontSize: 22, lineHeight: 26 }]}>
+          {pct}<Text style={[texto.dato, { color: color.textoMedio }]}>%</Text>
+        </Text>
+      </Anillo>
       <Text style={[texto.cuerpo, { color: color.texto, flex: 1 }]}>
-        {pronostico
-          ? 'de probabilidad de que el cuestionario te saliera alto'
-          : 'de probabilidad de que el cuestionario te saliera alto'}
+        de probabilidad de que el cuestionario te saliera alto
       </Text>
     </View>
   )
@@ -401,6 +399,7 @@ function Titular({ children }: { children: string }) {
 }
 
 const e = StyleSheet.create({
+  siguiente: { gap: espacio.sm, backgroundColor: '#EEF5FF', borderRadius: radio.lg, padding: espacio.base, borderWidth: 1, borderColor: '#B9D4F5' },
   fondo: { ...veloModal, backgroundColor: 'rgba(28, 25, 23, 0.55)', justifyContent: 'flex-end' },
   hoja: {
     maxHeight: '92%', backgroundColor: color.fondo,

@@ -236,8 +236,12 @@ export function TarjetaHero({
 // --------------------------------------------------------------- Secundaria
 
 export function TarjetaSecundaria({
-  insignia, titulo, descripcion, accion, onPress, completado,
+  insignia, titulo, descripcion, accion, onPress, completado, destacada,
 }: {
+  /** El cuestionario completo no es un formulario más: cuesta cuatro minutos
+   *  y aparece sin día fijo. Se distingue por color para que no se confunda
+   *  con el check-in de todos los días. */
+  destacada?: boolean
   insignia: string
   titulo: string
   descripcion: string
@@ -250,23 +254,29 @@ export function TarjetaSecundaria({
 }) {
   if (completado) {
     return (
-      <View style={[e.tarjeta, e.tarjetaHecha]}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${titulo}, respondido. Ver lo que respondiste`}
+        style={({ pressed }) => [e.tarjeta, e.tarjetaHecha, pressed && { opacity: 0.85 }]}
+      >
         <View style={e.filaHecha}>
           <View style={e.selloHecho}>
-            <IconoCheck tamano={13} color={color.primarioProfundo} />
+            <IconoCheck tamano={15} color="#FFFFFF" />
           </View>
           <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
-            <Text style={[texto.cuerpoFuerte, { color: color.textoMedio }]} numberOfLines={1}>{titulo}</Text>
-            <Text style={[texto.dato, { color: color.textoSuave }]}>Respondido hoy</Text>
+            <Text style={[texto.cuerpoFuerte, { color: color.texto }]} numberOfLines={1}>{titulo}</Text>
+            <Text style={[texto.dato, { color: color.primarioProfundo }]}>Respondido · toca para verlo</Text>
           </View>
+          <IconoAbrir tamano={14} color={color.textoSuave} />
         </View>
-      </View>
+      </Pressable>
     )
   }
   return (
-    <View style={e.tarjeta}>
-      <View style={e.insigniaArena}>
-        <Text style={[texto.etiqueta, { color: color.textoArena }]}>{insignia.toUpperCase()}</Text>
+    <View style={[e.tarjeta, destacada && e.tarjetaDestacada]}>
+      <View style={[e.insigniaArena, destacada && e.insigniaDestacada]}>
+        <Text style={[texto.etiqueta, { color: destacada ? '#1E4D8C' : color.textoArena }]}>{insignia.toUpperCase()}</Text>
       </View>
       <Text style={[texto.seccion, { color: color.texto }]}>{titulo}</Text>
       <Text style={[texto.cuerpo, e.tarjetaDescripcion]}>{descripcion}</Text>
@@ -419,9 +429,11 @@ const SOMBRA_TENUE = {
 }
 
 const e = StyleSheet.create({
-  tarjetaHecha: { backgroundColor: color.superficieSuave, shadowOpacity: 0, elevation: 0 },
+  tarjetaHecha: { backgroundColor: '#F2FAF6', borderWidth: 1, borderColor: '#CBE9DA', shadowOpacity: 0, elevation: 0, paddingVertical: 14 },
   filaHecha: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  selloHecho: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#DDF3EA', alignItems: 'center', justifyContent: 'center' },
+  selloHecho: { width: 30, height: 30, borderRadius: 15, backgroundColor: color.primario, alignItems: 'center', justifyContent: 'center' },
+  tarjetaDestacada: { backgroundColor: '#F4F8FF', borderWidth: 1, borderColor: '#B9D4F5' },
+  insigniaDestacada: { backgroundColor: '#DCEAFB' },
   barraSuperior: {
     flexDirection: 'row', alignItems: 'center', gap: espacio.md,
     paddingHorizontal: 20, paddingVertical: 10, backgroundColor: color.superficie,

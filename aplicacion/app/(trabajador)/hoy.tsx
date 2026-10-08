@@ -271,6 +271,7 @@ export default function Hoy() {
         {secundarios.map((item) => (
           <TarjetaSecundaria
             key={item.clave}
+            destacada={item.clave === 'olbi'}
             insignia={insigniaDe(item.clave, motivoOlbi)}
             titulo={encabezado(item)}
             descripcion={item.descripcion ?? PRESENTACION[item.clave].descripcion}
@@ -290,7 +291,9 @@ export default function Hoy() {
             titulo={item.titulo}
             descripcion={item.descripcion ?? PRESENTACION[item.clave].descripcion}
             accion={PRESENTACION[item.clave].accion}
-            onPress={() => {}}
+            // Volver a abrir lo que respondiste: el cierre se veía una vez y
+            // desaparecía, y con él el consejo del día.
+            onPress={() => setModal(item.clave === 'olbi' ? 'resultado' : 'cierre')}
           />
         ))}
 
@@ -313,7 +316,8 @@ export default function Hoy() {
         <PieEtico codigo={trabajador.codigo_anonimo} onAjustes={irAAjustes} />
       </ScrollView>
 
-      <ModalResultado modo={modal} resultado={resultado} consejo={consejo} prediccion={prediccion} motivoOlbi={motivoOlbi} onCerrar={() => {
+      <ModalResultado modo={modal} resultado={resultado} consejo={consejo} prediccion={prediccion} motivoOlbi={motivoOlbi}
+        onResponderOlbi={() => { setModal(null); router.push('/formulario/olbi') }} onCerrar={() => {
         setModal(null)
         if (celebrarPendiente) { setCelebrarPendiente(false); setCelebrar(true); setTimeout(() => setCelebrar(false), 2000) }
       }} />
