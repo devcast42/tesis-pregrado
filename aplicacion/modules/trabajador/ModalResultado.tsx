@@ -321,7 +321,7 @@ function Resultado({ r, onPedirCita }: { r: ResultadoSemana; onPedirCita?: () =>
 
       {retro && (
         <View style={[e.tarjeta, e.tarjetaSuave]}>
-          <Rotulo punto>RETROSPECTIVA DEL MODELO</Rotulo>
+          <Rotulo punto>QUÉ ESPERABA EL MODELO</Rotulo>
           <Text style={[texto.cuerpo, { color: color.texto }]}>{retro}</Text>
         </View>
       )}

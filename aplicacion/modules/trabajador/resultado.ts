@@ -258,14 +258,27 @@ export function explicacionConfianza(p: Prediccion): string {
   return partes.join(' ')
 }
 
-/** RF-002-14 — la retrospectiva en una frase: qué dijo el modelo y qué salió. */
+/** RF-002-14 — qué esperaba el modelo, en una frase.
+ *
+ *  No dice «acertó» ni «se equivocó». Quien responde no está calificando a
+ *  un algoritmo: está leyendo su propio resultado, y que el producto se
+ *  ponga a puntuarse delante suyo no le aporta nada y resta confianza.
+ *
+ *  Cuando lo esperado y lo contestado no coinciden, la frase dice de quién
+ *  es la última palabra, que además es la verdad del sistema: el modelo
+ *  solo decide CUÁNDO preguntar; lo que mide es el cuestionario. */
 export function fraseRetrospectiva(r: ResultadoSemana): string | null {
   const retro = r.retrospectiva
   if (!retro) return null
   const pct = Math.round(retro.probabilidad * 100)
-  const dia = new Date(retro.dia + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'long' })
-  const salio = nivelGeneral(r) === 'alto' ? 'alto' : 'no alto'
-  const acerto = (retro.probabilidad >= 0.5) === (salio === 'alto')
-  // Dos frases. Lo que el modelo dijo y si acertó; nada más.
-  return `El ${dia} el modelo estimó ${pct} % de que hoy saliera alto. Salió ${salio}: ${acerto ? 'acertó' : 'esta vez se equivocó'}.`
+  const alto = nivelGeneral(r) === 'alto'
+  const esperaba = retro.probabilidad >= 0.5
+  if (esperaba === alto) {
+    return alto
+      ? `Antes de que respondieras, el modelo estimaba ${pct} % de que saliera alto. Va en línea con lo que acabas de contestar.`
+      : `Antes de que respondieras, el modelo estimaba ${pct} % de que saliera alto, y no salió. Va en línea con lo que acabas de contestar.`
+  }
+  return alto
+    ? `Antes de que respondieras, el modelo estimaba ${pct} % de que saliera alto. Tu cuestionario dice más que eso, y es el que cuenta.`
+    : `Antes de que respondieras, el modelo estimaba ${pct} % de que saliera alto, y no salió. El cuestionario es el que cuenta.`
 }
