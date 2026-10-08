@@ -95,12 +95,82 @@ export function TarjetaRespondieron({ respondieron, de, pct }: { respondieron: n
   )
 }
 
+// ---------------------------------------------------------------- Escala
+
+/** Cortes de respaldo por si `umbrales_empresa` no llegó. Son los mismos que
+ *  hay en la base (Peterson et al., 2008); el panel usa siempre los de la base
+ *  cuando los tiene. */
+const CORTES_RESPALDO = {
+  agotamiento: { a_vigilar: 2.25, alto: 2.85 },
+  desvinculacion: { a_vigilar: 2.1, alto: 2.6 },
+} as const
+
+/** Las tres zonas de la escala, de bueno a malo. Las pastillas usan gris para
+ *  «bajo» porque ahí no hay nada que avisar; aquí la barra tiene que leerse
+ *  de un vistazo como un semáforo, así que «bajo» va en verde. */
+const ZONA = {
+  bajo: { fondo: '#DCEFE6', tinta: '#2F6B52' },
+  a_vigilar: { fondo: '#FBE4DC', tinta: '#C4664A' },
+  alto: { fondo: '#F2C7B4', tinta: '#8C4A2B' },
+} as const
+
+/** La puntuación del equipo dibujada sobre su escala.
+ *
+ *  «2.0 / 4.0» no le dice nada a quien lo lee: parece una nota o un
+ *  porcentaje, y no se sabe si es mucho o poco. Es el promedio de lo que
+ *  contestó el equipo, de 1 (nada) a 4 (mucho), y lo que importa es en qué
+ *  zona cae y cuánto le falta para la siguiente. Eso es lo que se pinta. */
+export function EscalaNivel({ dimension, valor, umbral, compacta = false }: {
+  dimension: 'agotamiento' | 'desvinculacion'
+  valor: number
+  umbral?: { a_vigilar: number; alto: number } | null
+  compacta?: boolean
+}) {
+  // Supabase devuelve `numeric` como texto: «2.25» - «2.85» funcionaría por
+  // coerción, pero una suma lo concatenaría.
+  const base = umbral ?? CORTES_RESPALDO[dimension]
+  const u = { a_vigilar: Number(base.a_vigilar), alto: Number(base.alto) }
+  const pos = (x: number) => `${((Math.min(4, Math.max(1, x)) - 1) / 3) * 100}%` as const
+  const zona: Nivel = valor >= u.alto ? 'alto' : valor >= u.a_vigilar ? 'a_vigilar' : 'bajo'
+  const falta = (x: number) => (x - valor).toFixed(2).replace(/0$/, '')
+  const frase = zona === 'bajo'
+    ? `Zona baja. Le faltan ${falta(u.a_vigilar)} para entrar en «a vigilar».`
+    : zona === 'a_vigilar'
+      ? `Zona «a vigilar». Le faltan ${falta(u.alto)} para llegar a «alto».`
+      : 'Zona alta: el equipo, en promedio, está en riesgo de burnout.'
+
+  return (
+    <View style={{ gap: 6 }}>
+      <View style={e.escala}>
+        <View style={e.pista}>
+          <View style={[e.zona, { left: 0, width: pos(u.a_vigilar), backgroundColor: ZONA.bajo.fondo }]} />
+          <View style={[e.zona, { left: pos(u.a_vigilar), width: `${((u.alto - u.a_vigilar) / 3) * 100}%`, backgroundColor: ZONA.a_vigilar.fondo }]} />
+          <View style={[e.zona, { left: pos(u.alto), right: 0, backgroundColor: ZONA.alto.fondo }]} />
+        </View>
+        <View style={[e.marcador, { left: pos(valor) }]}>
+          <View style={[e.marcadorPunto, { backgroundColor: ZONA[zona].tinta }]} />
+        </View>
+      </View>
+      {/* Solo 1 y 4 en los extremos: «nada» y «mucho» los dice la cabecera,
+          y en las tarjetas estrechas del informe pisaban el corte alto. */}
+      <View style={e.escalaEtiquetas}>
+        <Text style={[texto.dato, e.extremo]}>1</Text>
+        <Text style={[texto.dato, e.corte, { left: pos(u.a_vigilar), color: ZONA.a_vigilar.tinta }]}>{u.a_vigilar}</Text>
+        <Text style={[texto.dato, e.corte, { left: pos(u.alto), color: ZONA.alto.tinta }]}>{u.alto}</Text>
+        <Text style={[texto.dato, e.extremo, { marginLeft: 'auto' }]}>4</Text>
+      </View>
+      {!compacta && <Text style={[texto.apoyo, { color: ZONA[zona].tinta }]}>{frase}</Text>}
+    </View>
+  )
+}
+
 // ------------------------------------------------------------- Dimensión
 
-export function TarjetaDimension({ dimension, pulso, estudio }: {
+export function TarjetaDimension({ dimension, pulso, estudio, umbral }: {
   dimension: 'agotamiento' | 'desvinculacion'
   pulso: PulsoSemana[]
   estudio?: number | null
+  umbral?: { a_vigilar: number; alto: number } | null
 }) {
   const clave = `${dimension}_media` as const
   const nivelClave = `nivel_${dimension}` as const
@@ -138,7 +208,7 @@ export function TarjetaDimension({ dimension, pulso, estudio }: {
 
         <View style={[e.fila, { alignItems: 'flex-end', gap: 6 }]}>
           <Text style={[texto.cifra, { color: color.texto, fontSize: 30, lineHeight: 34 }]}>{ultima ? Number(ultima[clave]).toFixed(1) : '—'}</Text>
-          <Text style={[texto.apoyo, { color: color.textoMedio, paddingBottom: 4 }]}>/ 4.0</Text>
+          <Text style={[texto.apoyo, { color: color.textoMedio, paddingBottom: 4 }]}>de 4</Text>
           {estudio != null && (
             <>
               <View style={e.separadorV} />
@@ -148,6 +218,8 @@ export function TarjetaDimension({ dimension, pulso, estudio }: {
             </>
           )}
         </View>
+
+        {ultima && <EscalaNivel dimension={dimension} valor={Number(ultima[clave])} umbral={umbral} />}
 
         {serie.length >= 2 && (
           <View style={e.mini}>
@@ -307,6 +379,14 @@ export function Pie() {
 }
 
 const e = StyleSheet.create({
+  escala: { height: 14, position: 'relative' },
+  pista: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: 7, overflow: 'hidden' },
+  zona: { position: 'absolute', top: 0, bottom: 0 },
+  marcador: { position: 'absolute', top: -5, bottom: -5, width: 0, alignItems: 'center', justifyContent: 'center' },
+  marcadorPunto: { width: 18, height: 18, borderRadius: 9, borderWidth: 3, borderColor: '#FFFFFF', marginLeft: -9, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
+  escalaEtiquetas: { flexDirection: 'row', position: 'relative', height: 18 },
+  extremo: { color: color.textoSuave },
+  corte: { position: 'absolute', transform: [{ translateX: -12 }], fontFamily: 'Inter_600SemiBold' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm },
   rotulo: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm },
   caja: { backgroundColor: color.superficie, borderRadius: radio.lg, padding: espacio.lg, borderWidth: 1, borderColor: '#EEECE8' },

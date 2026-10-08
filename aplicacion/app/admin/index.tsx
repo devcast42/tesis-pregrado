@@ -17,8 +17,8 @@ import { useFocusEffect } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
 import { miEmpresa, resumenDeEmpresa, type Empresa, type ResumenEmpresa } from '../../modules/panel/datos'
 import {
-  FACTORES, factoresEmpresa, fueraDeReferencia, participacionSemanal, pulsoEmpresa, pulsoEstudio, rangoSemana, recomendaciones,
-  type FactoresSemana, type ParticipacionSemana, type PulsoEstudio, type PulsoSemana,
+  FACTORES, factoresEmpresa, fueraDeReferencia, participacionSemanal, pulsoEmpresa, pulsoEstudio, rangoSemana, recomendaciones, umbrales,
+  type FactoresSemana, type ParticipacionSemana, type PulsoEstudio, type PulsoSemana, type Umbral,
 } from '../../modules/panel/empresario'
 import {
   NotaAgregacion, Pie, SinReporte, TarjetaDimension, TarjetaPesa, TarjetaRecomendacion, TarjetaRespondieron, TituloSeccion,
@@ -33,6 +33,7 @@ export default function InicioEmpresario() {
   const [resumen, setResumen] = useState<ResumenEmpresa | null>(null)
   const [pulso, setPulso] = useState<PulsoSemana[]>([])
   const [estudio, setEstudio] = useState<PulsoEstudio[]>([])
+  const [cortes, setCortes] = useState<Umbral[]>([])
   const [factores, setFactores] = useState<FactoresSemana[]>([])
   const [participacion, setParticipacion] = useState<ParticipacionSemana[]>([])
   const [listo, setListo] = useState(false)
@@ -43,10 +44,11 @@ export default function InicioEmpresario() {
     const em = await miEmpresa()
     setEmpresa(em)
     if (em) {
-      const [r, p, es, f, pa] = await Promise.all([
+      const [r, p, es, f, pa, u] = await Promise.all([
         resumenDeEmpresa(em.id), pulsoEmpresa(em.id), pulsoEstudio(), factoresEmpresa(em.id), participacionSemanal(em.id),
+        umbrales().catch(() => [] as Umbral[]),
       ])
-      setResumen(r); setPulso(p); setEstudio(es); setFactores(f); setParticipacion(pa)
+      setResumen(r); setPulso(p); setEstudio(es); setFactores(f); setParticipacion(pa); setCortes(u)
     }
     setListo(true)
   }, [])
@@ -114,13 +116,13 @@ export default function InicioEmpresario() {
           <>
             <View style={e.fila}>
               <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1, minWidth: 240 }]}>
-                Lo que sale del cuestionario de los viernes, de 1 a 4.
+                Promedio de lo que contesta tu equipo en el cuestionario de burnout, de 1 (nada) a 4 (mucho). No es un porcentaje.
               </Text>
               <Text style={[texto.dato, { color: color.textoSuave }]}>{actualizado}</Text>
             </View>
             <View style={[e.grid, ancha && e.gridFila]}>
-              <View style={e.col}><TarjetaDimension dimension="agotamiento" pulso={pulso} estudio={estudioUltima?.agotamiento_media} /></View>
-              <View style={e.col}><TarjetaDimension dimension="desvinculacion" pulso={pulso} estudio={estudioUltima?.desvinculacion_media} /></View>
+              <View style={e.col}><TarjetaDimension dimension="agotamiento" pulso={pulso} estudio={estudioUltima?.agotamiento_media} umbral={cortes.find((c) => c.dimension === 'agotamiento')} /></View>
+              <View style={e.col}><TarjetaDimension dimension="desvinculacion" pulso={pulso} estudio={estudioUltima?.desvinculacion_media} umbral={cortes.find((c) => c.dimension === 'desvinculacion')} /></View>
             </View>
 
             {pesan.length > 0 && (

@@ -20,7 +20,7 @@ import {
   etiquetaSemana, participacionSemanal, pulsoEmpresa, pulsoEstudio, rangoSemana, segmentosDisponibles, umbrales,
   type ParticipacionSemana, type PulsoEstudio, type PulsoSemana, type Segmento, type Umbral,
 } from '../../modules/panel/empresario'
-import { Caja, NotaAgregacion, Pastilla, PastillaNivel, Pie, SinReporte, TONO_NIVEL } from '../../modules/panel/PiezasEmpresario'
+import { EscalaNivel, Caja, NotaAgregacion, Pastilla, PastillaNivel, Pie, SinReporte, TONO_NIVEL } from '../../modules/panel/PiezasEmpresario'
 import { GraficaLinea } from '../../modules/panel/Grafica'
 import { Aviso, Cargando, Pantalla } from '../../modules/nucleo/ui'
 import { ancho, color, espacio, radio, texto } from '../../modules/nucleo/diseno'
@@ -100,7 +100,7 @@ export default function PulsoEmpresario() {
             <Text style={[texto.etiqueta, { color: color.textoMedio }]}>{empresa.nombre}</Text>
             <Text style={[texto.titulo, { color: color.texto }]}>Semana a semana</Text>
             <Text style={[texto.apoyo, { color: color.textoMedio, maxWidth: 480 }]}>
-              Lo que contestó la gente cada viernes, de 1 a 4. Cuanto más bajo, mejor.
+              Promedio semanal de lo que contesta tu equipo, de 1 (nada) a 4 (mucho). No es un porcentaje: cuanto más bajo, mejor.
             </Text>
           </View>
           {ultima && (
@@ -248,7 +248,7 @@ function Tendencia({ dimension, pulso, estudio, semanas, nombre, umbral }: {
           <Text style={[texto.cifra, { color: tinta, fontSize: 30, lineHeight: 34 }]}>
             {Number(ultima[clave]).toFixed(1)}
           </Text>
-          <Text style={[texto.apoyo, { color: color.textoMedio, paddingBottom: 4 }]}>/ 4.0</Text>
+          <Text style={[texto.apoyo, { color: color.textoMedio, paddingBottom: 4 }]}>de 4</Text>
           <View style={{ flex: 1 }} />
           <View style={[e.fila, { gap: 6 }]}>
             <PastillaNivel nivel={ultima[`nivel_${dimension}` as const]} />
@@ -260,6 +260,8 @@ function Tendencia({ dimension, pulso, estudio, semanas, nombre, umbral }: {
             )}
           </View>
         </View>
+
+        <EscalaNivel dimension={dimension} valor={Number(ultima[clave])} umbral={umbral} />
 
         <GraficaLinea
           series={[

@@ -20,8 +20,9 @@ import { miEmpresa, resumenDeEmpresa, type Empresa, type ResumenEmpresa } from '
 import {
   FACTORES, apoyoMensual, factoresEmpresa, fueraDeReferencia, participacionSemanal, pulsoEmpresa, recomendaciones,
   type FactoresSemana, type Nivel, type ParticipacionSemana, type PulsoSemana,
+  umbrales, type Umbral,
 } from '../../modules/panel/empresario'
-import { Pastilla, PastillaNivel, Pie, SinReporte, TONO_NIVEL } from '../../modules/panel/PiezasEmpresario'
+import { EscalaNivel, Pastilla, PastillaNivel, Pie, SinReporte, TONO_NIVEL } from '../../modules/panel/PiezasEmpresario'
 import { GraficaLinea } from '../../modules/panel/Grafica'
 import { Aviso, Cargando, Pantalla } from '../../modules/nucleo/ui'
 import { ancho, color, espacio, radio, texto } from '../../modules/nucleo/diseno'
@@ -60,6 +61,7 @@ export default function InformeMensual() {
   const [factores, setFactores] = useState<FactoresSemana[]>([])
   const [participacion, setParticipacion] = useState<ParticipacionSemana[]>([])
   const [apoyo, setApoyo] = useState<{ mes: string; sesiones_aprox: number }[]>([])
+  const [cortes, setCortes] = useState<Umbral[]>([])
   const [mes, setMes] = useState<string | null>(null)
   const [selectorAbierto, setSelectorAbierto] = useState(false)
   const [listo, setListo] = useState(false)
@@ -68,10 +70,11 @@ export default function InformeMensual() {
     const em = await miEmpresa()
     setEmpresa(em)
     if (em) {
-      const [r, p, f, pa, ap] = await Promise.all([
+      const [r, p, f, pa, ap, u] = await Promise.all([
         resumenDeEmpresa(em.id), pulsoEmpresa(em.id), factoresEmpresa(em.id), participacionSemanal(em.id), apoyoMensual(em.id),
+        umbrales().catch(() => [] as Umbral[]),
       ])
-      setResumen(r); setPulso(p); setFactores(f); setParticipacion(pa); setApoyo(ap)
+      setResumen(r); setPulso(p); setFactores(f); setParticipacion(pa); setApoyo(ap); setCortes(u)
       if (p.length) setMes((m) => m ?? mesDe(p[p.length - 1].semana))
     }
     setListo(true)
@@ -93,9 +96,17 @@ export default function InformeMensual() {
   const dvMes = media(pulsoMes.map((p) => Number(p.desvinculacion_media)))
   const agPrev = media(pulsoPrevio.map((p) => Number(p.agotamiento_media)))
   const dvPrev = media(pulsoPrevio.map((p) => Number(p.desvinculacion_media)))
+  /** El nivel del mes sale de la misma cifra que se enseña —la media del
+   *  mes— y con los mismos cortes que la escala. Antes salía de la última
+   *  semana: con desvinculación en 2.07 de media y 2.1 la última semana, la
+   *  tarjeta ponía «A vigilar» encima de un número que estaba en zona baja. */
+  const corteDe = (dim: 'agotamiento' | 'desvinculacion') => cortes.find((c) => c.dimension === dim)
   const nivelMes = (dim: 'agotamiento' | 'desvinculacion'): Nivel | null => {
-    const ult = pulsoMes[pulsoMes.length - 1]
-    return ult ? ult[`nivel_${dim}`] : null
+    const v = dim === 'agotamiento' ? agMes : dvMes
+    const u = corteDe(dim)
+    if (v == null) return null
+    if (!u) { const ult = pulsoMes[pulsoMes.length - 1]; return ult ? ult[`nivel_${dim}`] : null }
+    return v >= Number(u.alto) ? 'alto' : v >= Number(u.a_vigilar) ? 'a_vigilar' : 'bajo'
   }
   const respondientesMes = media(pulsoMes.map((p) => p.respondientes))
   const tasaMes = media(partMes.map((s) => s.tasa_respuesta_pct ?? 0))
@@ -195,11 +206,11 @@ export default function InformeMensual() {
             <View style={e.fila}>
               <View style={e.puntoVerde} />
               <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Cómo estuvo el equipo</Text>
-              <Text style={[texto.dato, { color: color.textoSuave }]}>de 1 a 4</Text>
+              <Text style={[texto.dato, { color: color.textoSuave }]}>promedio de 1 (nada) a 4 (mucho)</Text>
             </View>
             <View style={e.tres}>
-              <CeldaDimension rotulo="AGOTAMIENTO" valor={agMes} nivel={nivelMes('agotamiento')} previo={agPrev} mesPrevio={nombreMes(mesAnterior(mes), false)} />
-              <CeldaDimension rotulo="DESVINCULACIÓN" valor={dvMes} nivel={nivelMes('desvinculacion')} previo={dvPrev} mesPrevio={nombreMes(mesAnterior(mes), false)} />
+              <CeldaDimension dimension="agotamiento" umbral={corteDe('agotamiento')} rotulo="AGOTAMIENTO" valor={agMes} nivel={nivelMes('agotamiento')} previo={agPrev} mesPrevio={nombreMes(mesAnterior(mes), false)} />
+              <CeldaDimension dimension="desvinculacion" umbral={corteDe('desvinculacion')} rotulo="DESVINCULACIÓN" valor={dvMes} nivel={nivelMes('desvinculacion')} previo={dvPrev} mesPrevio={nombreMes(mesAnterior(mes), false)} />
               <View style={e.celda}>
                 <Text style={[texto.etiqueta, { color: color.textoMedio, fontSize: 11 }]}>SEMANA A SEMANA</Text>
                 <GraficaLinea
@@ -296,7 +307,7 @@ export default function InformeMensual() {
   )
 }
 
-function CeldaDimension({ rotulo, valor, nivel, previo, mesPrevio }: { rotulo: string; valor: number | null; nivel: Nivel | null; previo: number | null; mesPrevio: string }) {
+function CeldaDimension({ dimension, umbral, rotulo, valor, nivel, previo, mesPrevio }: { dimension: 'agotamiento' | 'desvinculacion'; umbral?: Umbral; rotulo: string; valor: number | null; nivel: Nivel | null; previo: number | null; mesPrevio: string }) {
   const cambio = valor != null && previo != null ? valor - previo : null
   return (
     <View style={e.celda}>
@@ -306,8 +317,9 @@ function CeldaDimension({ rotulo, valor, nivel, previo, mesPrevio }: { rotulo: s
       </View>
       <View style={[e.fila, { alignItems: 'flex-end', gap: 6 }]}>
         <Text style={[texto.cifra, { color: nivel ? TONO_NIVEL[nivel].tinta : color.texto }]}>{valor?.toFixed(1) ?? '—'}</Text>
-        <Text style={[texto.apoyo, { color: color.textoMedio, paddingBottom: 6 }]}>/ 4.0</Text>
+        <Text style={[texto.apoyo, { color: color.textoMedio, paddingBottom: 6 }]}>de 4</Text>
       </View>
+      {valor != null && <EscalaNivel dimension={dimension} valor={valor} umbral={umbral} />}
       <View style={[e.fila, { gap: 6 }]}>
         {cambio == null ? (
           <Text style={[texto.dato, { color: color.textoMedio }]}>Primer mes con datos</Text>
