@@ -261,7 +261,12 @@ export default function Hoy() {
   const enSeguimiento = trabajador.estado === 'activo'
   const pendientes = enSeguimiento ? agenda.filter((i) => !i.completado) : []
   const completados = agenda.filter((i) => i.completado)
-  const todoListo = pendientes.length === 0
+  // Elegir la hora de la sesión es una tarea del día como las demás: mientras
+  // falte, el día no está cerrado. Antes la detección vaciaba la agenda y la
+  // pantalla cantaba «todo listo» con la cita todavía sin pedir.
+  const faltaCita = derivado && !cita
+  const todoListo = pendientes.length === 0 && !faltaCita
+  const olbiHoy = completados.some((i) => i.clave === 'olbi')
   const [principal, ...secundarios] = pendientes
   const saludo = saludoPorHora(ahoraMismo)
 
@@ -317,9 +322,11 @@ export default function Hoy() {
           <DiaPasado d={diaMirado} hoy={historialDias[0]?.dia ?? ''} />
         )}
 
-        {offsetDia === 0 && !enSeguimiento && (
+        {offsetDia === 0 && !enSeguimiento && todoListo && (
           <BloqueCierre
-            mensaje="Tu seguimiento de check-ins terminó por ahora. Seguimos acompañándote desde aquí: revisa tu resultado y, cuando esté disponible, tu sesión de apoyo."
+            mensaje={cita
+              ? 'Hiciste todo lo de hoy. Lo que viene es tu sesión con el psicólogo; te avisaremos si cambia algo.'
+              : 'Tu seguimiento de check-ins terminó por ahora. Seguimos acompañándote desde aquí: revisa tu resultado y, cuando esté disponible, tu sesión de apoyo.'}
             nota="Tus respuestas anteriores siguen protegidas y disociadas de tu empresa."
           />
         )}
@@ -357,8 +364,14 @@ export default function Hoy() {
 
         {/* Lo ya respondido se queda donde estaba, apagado y con su marca.
             Mandarlo a una lista aparte justo después de enviarlo hacía dudar
-            de si se había guardado. */}
-        {hoyMismo && enSeguimiento && completados.map((item) => (
+            de si se había guardado.
+
+            Sin condicionar a `enSeguimiento`: el cuestionario que dispara la
+            detección se responde estando dentro, y un segundo después el
+            estado cambia. Atar estas tarjetas al estado hacía desaparecer el
+            check-in y el cuestionario recién enviados, justo cuando más falta
+            hacía ver que sí se habían guardado. */}
+        {hoyMismo && completados.map((item) => (
           <TarjetaSecundaria
             key={item.clave}
             completado
@@ -401,10 +414,14 @@ export default function Hoy() {
 
         {hoyMismo && prediccion && !finDeSemana && hoy < 4 && <TarjetaProbabilidad p={prediccion} />}
 
-        {resultado && (
+        {/* Solo cuando el cuestionario no es de hoy: si lo es, su propia
+            tarjeta ya abre el resultado, y dos puertas a lo mismo confunden.
+            Tampoco dice «del viernes»: dejó de caer en un día fijo cuando lo
+            empezó a pedir el modelo. */}
+        {hoyMismo && resultado && !olbiHoy && (
           <TarjetaSecundaria
             insignia={`Nivel ${ETIQUETA_NIVEL[nivelGeneral(resultado)].toLowerCase()}`}
-            titulo="Tu resultado del viernes"
+            titulo="Tu último resultado"
             descripcion="Cómo cerró tu semana y qué puedes hacer con eso."
             accion="Ver de nuevo"
             onPress={abrirResultado}
