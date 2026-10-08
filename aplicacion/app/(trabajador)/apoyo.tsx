@@ -92,8 +92,7 @@ export default function Apoyo() {
           <Text style={[texto.etiqueta, { color: color.primarioProfundo }]}>APOYO PROFESIONAL</Text>
           <Text style={[texto.titulo, { color: color.texto }]}>Habla con un psicólogo</Text>
           <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
-            Un espacio confidencial, independiente de tu empresa. Puedes pedirlo cuando quieras;
-            no hace falta que la app te lo sugiera.
+            Confidencial e independiente de tu empresa. Pídelo cuando quieras.
           </Text>
         </View>
 
@@ -132,8 +131,8 @@ export default function Apoyo() {
         <View style={e.privacidad}>
           <View style={e.candado}><IconoCandado tamano={13} color={color.textoMedio} /></View>
           <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1 }]}>
-            Al pedir una cita, el profesional asignado podrá ver tu nombre y correo de contacto para
-            coordinarla, y ese acceso queda registrado. Tu empresa no es informada.
+            El psicólogo verá tu nombre y correo para coordinar, y ese acceso queda registrado.
+            Tu empresa, no.
           </Text>
         </View>
       </ScrollView>
@@ -174,8 +173,8 @@ function TarjetaCita({ cita, onCancelar }: { cita: Cita; onCancelar: () => void 
       )}
       <Text style={[texto.apoyo, { color: color.textoMedio }]}>
         {cita.estado === 'solicitada'
-          ? 'Te avisaremos cuando confirme la hora. La videollamada aparecerá aquí a la hora de la cita.'
-          : 'A la hora de la cita, aquí aparecerá el botón para entrar a la videollamada.'}
+          ? 'Te avisaremos al confirmarla. La videollamada aparecerá aquí a su hora.'
+          : 'A su hora, aquí aparecerá el botón para entrar a la videollamada.'}
       </Text>
       <Pressable onPress={onCancelar} accessibilityRole="button" style={e.enlace}>
         <Text style={[texto.apoyoFuerte, e.enlaceTexto]}>Cancelar la cita</Text>
