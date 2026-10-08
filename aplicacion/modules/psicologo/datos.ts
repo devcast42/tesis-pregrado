@@ -248,10 +248,11 @@ export type CitaAgenda = {
   nombre: string | null
   codigo_anonimo: string
   propuesta_para: string
-  estado: 'solicitada' | 'confirmada'
+  estado: 'solicitada' | 'confirmada' | 'atendida'
   motivo: string | null
   dia: string
   sesion_en_curso: boolean
+  empresa: string | null
 }
 
 export async function agenda(): Promise<CitaAgenda[]> {

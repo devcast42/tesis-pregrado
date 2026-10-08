@@ -17,19 +17,20 @@
  *  La identidad se pide aparte (RN-006-02) y cada consulta queda registrada
  *  (RN-006-03). El contexto de horas y sueño no se muestra (RN-006-07). */
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
-  cancelarCitaComoPsicologo, cerrarDerivacion, confirmarCita, crearSesion, DESENLACES, obtenerCaso,
+  agenda, cancelarCitaComoPsicologo, cerrarDerivacion, confirmarCita, crearSesion, DESENLACES, obtenerCaso,
   obtenerIdentidad, perfilCaso, pronosticoCaso, proponerCita, trayectoriaOlbi,
-  type Caso, type Desenlace, type PerfilCaso, type PuntajeOlbi,
+  type Caso, type CitaAgenda, type Desenlace, type PerfilCaso, type PuntajeOlbi,
 } from '../../../modules/psicologo/datos'
+import { Avatar, SemanaCalendario, isoDia, lunesDe } from '../../../modules/psicologo/calendario'
 import { BarraUmbral, ESTADO_CASO, Evolucion, Pastilla, fechaHoraCorta, haceCuanto } from '../../../modules/psicologo/piezas'
-import { diasOfrecidos, horasDisponibles } from '../../../modules/consulta/citas'
+import { HORAS_OFRECIDAS } from '../../../modules/consulta/citas'
 import { Boton, Cargando, Hoja, OpcionHoja, confirmar } from '../../../modules/nucleo/ui'
-import { color, espacio, fuente, radio, texto } from '../../../modules/nucleo/diseno'
+import { color, espacio, fuente, radio, sombra, texto } from '../../../modules/nucleo/diseno'
 import { IconoCalendario, IconoCandado, IconoFlecha, IconoHistorial, IconoNota, IconoOjo, IconoVideo } from '../../../modules/nucleo/iconos'
 import type { Prediccion } from '../../../modules/trabajador/resultado'
 
@@ -132,13 +133,16 @@ export default function FichaCaso() {
       <ScrollView contentContainerStyle={[e.contenido, { paddingBottom: espacio.xxl + insets.bottom }]}>
 
         {/* 1 · Quién */}
-        <View style={{ gap: 6 }}>
-          <View style={e.fila}>
-            <Text style={[texto.titulo, { color: color.texto, flex: 1 }]}>{caso.codigo_anonimo}</Text>
-            <Pastilla texto={estado.etiqueta} fondo={estado.fondo} tinta={estado.tinta} />
+        <View style={e.cabecera}>
+          <Avatar empresa={caso.empresa} codigo={caso.codigo_anonimo} tamano={56} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={[texto.seccion, { color: color.texto }]}>{caso.codigo_anonimo}</Text>
+            {!!contexto && <Text style={[texto.apoyo, { color: color.textoMedio }]} numberOfLines={2}>{contexto}</Text>}
           </View>
-          {!!contexto && <Text style={[texto.cuerpo, { color: color.textoMedio }]}>{contexto}</Text>}
-          <Text style={[texto.apoyo, { color: color.textoSuave }]}>
+        </View>
+        <View style={[e.fila, { marginTop: -4 }]}>
+          <Pastilla texto={estado.etiqueta} fondo={estado.fondo} tinta={estado.tinta} />
+          <Text style={[texto.apoyo, { color: color.textoSuave, flex: 1 }]} numberOfLines={1}>
             {caso.origen === 'solicitud' ? 'Pidió la sesión por su cuenta' : 'Derivado por el sistema'} {haceCuanto(caso.abierta_en)}
           </Text>
         </View>
@@ -399,49 +403,87 @@ function HojaCerrar({ visible, onCerrar, onConfirmar }: {
   )
 }
 
+/** Proponer una hora con el mismo calendario de la agenda: así se ve qué
+ *  días ya tienen algo. Las horas en las que ya hay una cita salen tachadas:
+ *  proponer encima de otra era posible y nadie se habría enterado hasta la
+ *  hora de entrar. */
 function HojaProponer({ visible, onCerrar, onConfirmar }: {
   visible: boolean
   onCerrar: () => void
   onConfirmar: (paraIso: string) => void
 }) {
-  const dias = diasOfrecidos(5)
-  const [dia, setDia] = useState(0)
+  const [lunes, setLunes] = useState(() => lunesDe(new Date()))
+  const [dia, setDia] = useState<string | null>(null)
   const [hora, setHora] = useState<number | null>(null)
-  const horas = dias[dia] ? horasDisponibles(dias[dia]) : []
+  const [ocupadas, setOcupadas] = useState<CitaAgenda[]>([])
+
+  // Las citas se piden cada vez que se abre: entre una apertura y otra
+  // pueden haber cambiado.
+  useEffect(() => { if (visible) agenda().then(setOcupadas).catch(() => {}) }, [visible])
+
+  const ahora = new Date()
+  const noDisponible = (d: Date) => {
+    const dow = d.getDay()
+    if (dow === 0 || dow === 6) return true
+    const fin = new Date(d); fin.setHours(HORAS_OFRECIDAS[HORAS_OFRECIDAS.length - 1], 0, 0, 0)
+    return fin.getTime() - ahora.getTime() < 60 * 60 * 1000
+  }
+  const marcas: Record<string, 'pendiente' | 'cita'> = {}
+  for (const c of ocupadas) if (c.estado !== 'atendida') marcas[c.dia] = c.estado === 'solicitada' ? 'pendiente' : 'cita'
+
+  const horaOcupada = (h: number) => !!dia && ocupadas.some((c) =>
+    c.dia === dia && c.estado !== 'atendida' && new Date(c.propuesta_para).getHours() === h)
+  const horaPasada = (h: number) => {
+    if (!dia) return true
+    const t = new Date(`${dia}T00:00:00`); t.setHours(h, 0, 0, 0)
+    return t.getTime() - ahora.getTime() < 60 * 60 * 1000
+  }
 
   return (
     <Hoja visible={visible} titulo="Propón día y hora" onCerrar={onCerrar}>
       <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-        Le llega a la persona ya confirmada: la propones tú, que eres quien tendría que confirmarla.
+        Le llega ya confirmada: la propones tú, que eres quien tendría que confirmarla.
       </Text>
-      <View style={e.dias}>
-        {dias.map((d, i) => (
-          <Pressable key={d.toISOString()} onPress={() => { setDia(i); setHora(null) }}
-            style={[e.dia, dia === i && e.diaActivo]} accessibilityRole="radio" accessibilityState={{ selected: dia === i }}>
-            <Text style={[texto.dato, { color: dia === i ? '#FFFFFF' : color.textoMedio }]}>
-              {d.toLocaleDateString('es-PE', { weekday: 'short' }).replace('.', '').toUpperCase()}
-            </Text>
-            <Text style={[texto.seccion, { color: dia === i ? '#FFFFFF' : color.texto }]}>{d.getDate()}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <View style={e.horas}>
-        {horas.map((h) => (
-          <Pressable key={h} onPress={() => setHora(h)}
-            style={[e.hora, hora === h && e.horaActiva]} accessibilityRole="radio" accessibilityState={{ selected: hora === h }}>
-            <Text style={[texto.cuerpoFuerte, { color: hora === h ? '#FFFFFF' : color.texto }]}>{`${String(h).padStart(2, '0')}:00`}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <SemanaCalendario
+        lunes={lunes}
+        seleccionado={dia ?? ''}
+        marcas={marcas}
+        deshabilitar={noDisponible}
+        onSeleccionar={(iso) => { setDia(iso); setHora(null) }}
+        onSemana={(delta) => { const l = new Date(lunes); l.setDate(l.getDate() + 7 * delta); setLunes(l); setDia(null); setHora(null) }}
+      />
+      {dia ? (
+        <View style={e.horas}>
+          {HORAS_OFRECIDAS.map((h) => {
+            const ocupada = horaOcupada(h)
+            const pasada = horaPasada(h)
+            const activa = hora === h
+            return (
+              <Pressable key={h} disabled={ocupada || pasada} onPress={() => setHora(h)}
+                style={[e.hora, activa && e.horaActiva, (ocupada || pasada) && e.horaApagada]}
+                accessibilityRole="radio" accessibilityState={{ selected: activa, disabled: ocupada || pasada }}>
+                <Text style={[texto.cuerpoFuerte, {
+                  color: activa ? '#FFFFFF' : ocupada || pasada ? color.textoSuave : color.texto,
+                  textDecorationLine: ocupada ? 'line-through' : 'none',
+                }]}>{`${String(h).padStart(2, '0')}:00`}</Text>
+              </Pressable>
+            )
+          })}
+        </View>
+      ) : (
+        <Text style={[texto.apoyo, { color: color.textoSuave, textAlign: 'center' }]}>Elige un día de la semana.</Text>
+      )}
       <Boton
-        inhabilitado={hora == null}
+        inhabilitado={!dia || hora == null}
         onPress={() => {
-          if (hora == null) return
-          const t = new Date(dias[dia]); t.setHours(hora, 0, 0, 0)
+          if (!dia || hora == null) return
+          const t = new Date(`${dia}T00:00:00`); t.setHours(hora, 0, 0, 0)
           onConfirmar(t.toISOString())
         }}
       >
-        Proponer esta hora
+        {dia && hora != null
+          ? `Proponer ${new Date(`${dia}T12:00:00`).toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric' })} · ${String(hora).padStart(2, '0')}:00`
+          : 'Proponer esta hora'}
       </Boton>
     </Hoja>
   )
@@ -475,7 +517,7 @@ const e = StyleSheet.create({
   rotulo: { color: color.textoSuave, marginTop: espacio.sm, marginBottom: -4 },
   bloque: {
     backgroundColor: color.superficie, borderRadius: radio.lg, padding: espacio.base,
-    gap: espacio.sm, borderWidth: 1, borderColor: color.borde,
+    gap: espacio.sm, ...sombra.suave,
   },
   paso: {
     backgroundColor: color.primarioSuave, borderRadius: radio.xl, padding: espacio.base,
@@ -489,16 +531,12 @@ const e = StyleSheet.create({
     minHeight: 64, padding: 12, borderRadius: radio.md, borderWidth: 1, borderColor: color.borde,
     backgroundColor: color.superficie, fontFamily: fuente.regular, fontSize: 15, color: color.texto, textAlignVertical: 'top',
   },
-  dias: { flexDirection: 'row', gap: 8 },
-  dia: {
-    flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: radio.md,
-    backgroundColor: color.superficie, borderWidth: 1, borderColor: color.borde, gap: 2,
-  },
-  diaActivo: { backgroundColor: color.primarioProfundo, borderColor: color.primarioProfundo },
   horas: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   hora: {
     width: '23%', alignItems: 'center', paddingVertical: 12, borderRadius: radio.md,
     backgroundColor: color.superficie, borderWidth: 1, borderColor: color.borde,
   },
   horaActiva: { backgroundColor: color.primarioProfundo, borderColor: color.primarioProfundo },
+  horaApagada: { backgroundColor: color.superficieSuave, borderColor: 'transparent' },
+  cabecera: { flexDirection: 'row', alignItems: 'center', gap: espacio.md },
 })

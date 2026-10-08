@@ -12,7 +12,7 @@ import { cerrarSesion, correoActual } from '../../../modules/acceso/datos'
 import { listarCasos, psicologoActual } from '../../../modules/psicologo/datos'
 import { BarraSuperior } from '../../../modules/nucleo/armazon'
 import { Cargando } from '../../../modules/nucleo/ui'
-import { IconoCandado, IconoEscudo, IconoPersona, IconoSalir } from '../../../modules/nucleo/iconos'
+import { IconoCandado, IconoEscudo, IconoSalir } from '../../../modules/nucleo/iconos'
 import { color, espacio, radio, texto } from '../../../modules/nucleo/diseno'
 
 export default function PerfilPsicologo() {
@@ -52,7 +52,9 @@ export default function PerfilPsicologo() {
 
         <View style={e.tarjeta}>
           <View style={e.fila}>
-            <View style={e.cuadroIcono}><IconoPersona tamano={24} color={color.primarioProfundo} /></View>
+            <View style={e.iniciales}>
+              <Text style={[texto.seccion, { color: '#FFFFFF' }]}>{iniciales(nombre)}</Text>
+            </View>
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={[texto.seccion, { color: color.texto }]}>{nombre}</Text>
               <Text style={[texto.apoyo, { color: color.textoMedio }]}>Psicólogo · {correo || 'sin correo'}</Text>
@@ -97,7 +99,14 @@ export default function PerfilPsicologo() {
   )
 }
 
+/** «Psicologo Test» → «PT». El psicólogo sí tiene nombre a la vista: es su
+ *  propia cuenta. */
+function iniciales(nombre: string): string {
+  return nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join('') || '·'
+}
+
 const e = StyleSheet.create({
+  iniciales: { width: 52, height: 52, borderRadius: 26, backgroundColor: color.primarioProfundo, alignItems: 'center', justifyContent: 'center' },
   pantalla: { flex: 1, backgroundColor: color.fondo },
   contenido: {
     paddingHorizontal: 20, paddingTop: espacio.base, paddingBottom: espacio.xxl, gap: espacio.md,

@@ -8,9 +8,10 @@
 import type { ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Svg, { Circle, Line, Polyline } from 'react-native-svg'
-import { color, espacio, radio, texto } from '../nucleo/diseno'
+import { color, espacio, radio, sombra, texto } from '../nucleo/diseno'
 import { IconoFlecha } from '../nucleo/iconos'
 import type { Caso, EstadoCaso, PuntajeOlbi } from './datos'
+import { Avatar } from './calendario'
 
 export const NOMBRE_DIMENSION = { agotamiento: 'Agotamiento', desvinculacion: 'Desvinculación' } as const
 type Dimension = keyof typeof NOMBRE_DIMENSION
@@ -99,10 +100,11 @@ export function FilaCaso({ caso, onPress }: { caso: Caso; onPress: () => void })
       accessibilityLabel={`${caso.codigo_anonimo}, ${estado.etiqueta}`}
       style={({ pressed }) => [e.fila2, cerrado && e.fila2Apagada, pressed && { opacity: 0.7 }]}
     >
-      <View style={{ flex: 1, gap: 3 }}>
+      <Avatar empresa={caso.empresa} codigo={caso.codigo_anonimo} tamano={40} />
+      <View style={{ flex: 1, gap: 2 }}>
         <View style={e.fila}>
           <Text style={[texto.cuerpoFuerte, { color: cerrado ? color.textoMedio : color.texto }]}>{caso.codigo_anonimo}</Text>
-          {!!caso.empresa && <Text style={[texto.apoyo, { color: color.textoSuave }]} numberOfLines={1}>{caso.empresa}</Text>}
+          {!!caso.empresa && <Text style={[texto.apoyo, { color: color.textoSuave, flexShrink: 1 }]} numberOfLines={1}>{caso.empresa}</Text>}
         </View>
         <Text style={[texto.apoyo, { color: cerrado ? color.textoSuave : estado.tinta }]} numberOfLines={1}>
           {detalleCaso(caso)}
@@ -131,36 +133,6 @@ function detalleCaso(caso: Caso): string {
     default:
       return caso.cerrada_en ? `Cerrado ${haceCuanto(caso.cerrada_en)}` : 'Cerrado'
   }
-}
-
-/** Una cita de la agenda: la hora grande a la izquierda, porque mirando la
- *  columna se ve el día entero sin leer. */
-export function FilaCita({ hora, codigo, empresa, detalle, urgente, onPress }: {
-  hora: string
-  codigo: string
-  empresa?: string | null
-  detalle: string
-  urgente?: boolean
-  onPress: () => void
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`Cita de las ${hora} con ${codigo}`}
-      style={({ pressed }) => [e.fila2, urgente && e.filaUrgente, pressed && { opacity: 0.7 }]}
-    >
-      <Text style={[texto.cuerpoFuerte, e.hora, urgente && { color: color.primarioProfundo }]}>{hora}</Text>
-      <View style={{ flex: 1, gap: 3 }}>
-        <View style={e.fila}>
-          <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{codigo}</Text>
-          {!!empresa && <Text style={[texto.apoyo, { color: color.textoSuave }]} numberOfLines={1}>{empresa}</Text>}
-        </View>
-        <Text style={[texto.apoyo, { color: urgente ? color.primarioProfundo : color.textoMedio }]} numberOfLines={1}>{detalle}</Text>
-      </View>
-      <IconoFlecha tamano={13} color={color.textoSuave} />
-    </Pressable>
-  )
 }
 
 /** Cabecera de sección con su cuenta: «TE ESPERAN 2». */
@@ -363,14 +335,12 @@ export function numeroSemana(fecha: Date): number {
 
 const e = StyleSheet.create({
   fila2: {
-    flexDirection: 'row', alignItems: 'center', gap: espacio.sm,
+    flexDirection: 'row', alignItems: 'center', gap: espacio.md,
     backgroundColor: color.superficie, borderRadius: radio.lg,
-    paddingVertical: 14, paddingHorizontal: espacio.base,
-    borderWidth: 1, borderColor: color.borde,
+    paddingVertical: 12, paddingHorizontal: espacio.md,
+    ...sombra.suave,
   },
   fila2Apagada: { backgroundColor: color.superficieSuave, borderColor: 'transparent' },
-  filaUrgente: { borderColor: color.primario, backgroundColor: color.primarioSuave },
-  hora: { color: color.texto, width: 48, fontVariant: ['tabular-nums'] },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm },
   pastilla: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   tarjeta: {

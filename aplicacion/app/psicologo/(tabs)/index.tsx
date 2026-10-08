@@ -1,58 +1,33 @@
 /** Hoy, del psicólogo — ESP-006 RF-006-02, RF-006-13.
  *
- *  La pregunta de esta pantalla es «qué me toca», igual que la del
- *  trabajador. Antes no existía: la entrada era la lista de casos, con la
- *  agenda metida dentro como una tarjeta, así que para saber si había algo a
- *  las cuatro había que abrir otra pantalla y volver.
+ *  Una agenda, porque es lo que un profesional abre por la mañana. Arriba
+ *  tres cifras que resumen el día; debajo la semana y, al tocar un día, sus
+ *  horas con cada cita en su sitio; y al final lo que espera algo del
+ *  psicólogo y no tiene hora: a quién nadie ha contactado y qué notas faltan
+ *  por aprobar.
  *
- *  Tres bloques y en este orden: lo de hoy, quién está esperando y lo que
- *  viene. Lo clínico —puntajes, trayectoria, nota— vive en la ficha: aquí
- *  solo se decide a quién abrir. */
+ *  Lo que tiene hora va en el calendario y lo que no, en la lista. Antes
+ *  todo iba en listas y una cita por confirmar salía dos veces. */
 
-import { useCallback, useEffect, useState } from 'react'
-import { AppState, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AppState, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { agenda, listarCasos, psicologoActual, type Caso, type CitaAgenda } from '../../../modules/psicologo/datos'
-import { FilaCaso, FilaCita, Seccion } from '../../../modules/psicologo/piezas'
-import { BarraSuperior, Saludo } from '../../../modules/nucleo/armazon'
+import { FilaCaso, Seccion } from '../../../modules/psicologo/piezas'
+import { LineaDelDia, SemanaCalendario, isoDia, lunesDe } from '../../../modules/psicologo/calendario'
+import { BarraSuperior } from '../../../modules/nucleo/armazon'
 import { Cargando } from '../../../modules/nucleo/ui'
-import { IconoHoja } from '../../../modules/nucleo/iconos'
-import { color, espacio, radio, texto } from '../../../modules/nucleo/diseno'
+import { IconoCheckCirculo } from '../../../modules/nucleo/iconos'
+import { color, espacio, radio, sombra, texto } from '../../../modules/nucleo/diseno'
 
-/** Los estados que piden algo del psicólogo hoy mismo. El resto está en
- *  marcha y no necesita que nadie mueva un dedo. */
-const ESPERAN = ['sesion_pendiente', 'cita_por_confirmar', 'informe_por_aprobar', 'sala_lista'] as const
-
-function hora(iso: string): string {
-  return new Date(iso).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })
-}
-
-/** «Hoy», «Mañana» o «lunes 6 de octubre». La cuenta de qué día es la hace
- *  la pantalla, no quien la lee. */
-function tituloDia(iso: string): string {
-  const d = new Date(`${iso}T12:00:00`)
-  const hoy = new Date(); hoy.setHours(12, 0, 0, 0)
-  const dias = Math.round((d.getTime() - hoy.getTime()) / 86_400_000)
-  if (dias === 0) return 'Hoy'
-  if (dias === 1) return 'Mañana'
-  const t = d.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })
-  return t.charAt(0).toUpperCase() + t.slice(1)
-}
+/** Lo que pide algo del psicólogo y no tiene una hora en el calendario. */
+const SIN_HORA = ['sesion_pendiente', 'informe_por_aprobar', 'sala_lista'] as const
 
 function saludoPorHora(h: number): string {
-  if (h < 12) return 'Buenos días.'
-  if (h < 19) return 'Buenas tardes.'
-  return 'Buenas noches.'
-}
-
-/** Una línea que resuma el día antes de bajar a las listas. */
-function resumen(citasHoy: number, esperan: number): string {
-  if (citasHoy === 0 && esperan === 0) return 'No tienes nada pendiente. Te avisaremos si deriva alguien.'
-  const partes: string[] = []
-  if (citasHoy > 0) partes.push(citasHoy === 1 ? 'Una cita hoy' : `${citasHoy} citas hoy`)
-  if (esperan > 0) partes.push(esperan === 1 ? 'una persona esperando' : `${esperan} personas esperando`)
-  return `${partes.join(' y ')}.`
+  if (h < 12) return 'Buenos días'
+  if (h < 19) return 'Buenas tardes'
+  return 'Buenas noches'
 }
 
 export default function HoyPsicologo() {
@@ -60,6 +35,8 @@ export default function HoyPsicologo() {
   const [citas, setCitas] = useState<CitaAgenda[]>([])
   const [nombre, setNombre] = useState('')
   const [refrescando, setRefrescando] = useState(false)
+  const [lunes, setLunes] = useState(() => lunesDe(new Date()))
+  const [dia, setDia] = useState(() => isoDia(new Date()))
   const insets = useSafeAreaInsets()
 
   const cargar = useCallback(async () => {
@@ -71,8 +48,7 @@ export default function HoyPsicologo() {
 
   useFocusEffect(useCallback(() => { cargar() }, [cargar]))
 
-  // La lista cambia desde fuera: una derivación nueva, una hora que pide un
-  // trabajador. Se vuelve a pedir al volver la app al frente y cada minuto.
+  // Cambia desde fuera: una derivación nueva, una hora que pide alguien.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (estado) => { if (estado === 'active') cargar().catch(() => {}) })
     const t = setInterval(() => { cargar().catch(() => {}) }, 60_000)
@@ -85,17 +61,26 @@ export default function HoyPsicologo() {
     setRefrescando(false)
   }
 
+  const marcas = useMemo(() => {
+    const m: Record<string, 'pendiente' | 'cita'> = {}
+    for (const c of citas) {
+      if (c.estado === 'solicitada') m[c.dia] = 'pendiente'
+      else if (!m[c.dia]) m[c.dia] = 'cita'
+    }
+    return m
+  }, [citas])
+
   if (!casos) return <Cargando />
 
   const ahora = new Date()
-  const hoyIso = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`
-  const deHoy = citas.filter((c) => c.dia === hoyIso)
-  const proximas = citas.filter((c) => c.dia > hoyIso)
-  const esperan = casos.filter((c) => (ESPERAN as readonly string[]).includes(c.estado_caso))
-  const diasProximos = [...new Set(proximas.map((c) => c.dia))]
+  const hoy = isoDia(ahora)
+  const citasHoy = citas.filter((c) => c.dia === hoy && c.estado !== 'atendida')
+  const porConfirmar = citas.filter((c) => c.estado === 'solicitada')
+  const sinHora = casos.filter((c) => (SIN_HORA as readonly string[]).includes(c.estado_caso))
+  const delDia = citas.filter((c) => c.dia === dia)
+  const fechaDia = new Date(`${dia}T12:00:00`).toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })
 
   const abrirCaso = (id: string) => router.push(`/psicologo/caso/${id}`)
-  const fecha = ahora.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
     <View style={e.pantalla}>
@@ -105,63 +90,65 @@ export default function HoyPsicologo() {
         contentContainerStyle={[e.contenido, { paddingBottom: espacio.xxl + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} />}
       >
-        <Saludo
-          fecha={fecha}
-          titulo={saludoPorHora(ahora.getHours())}
-          subtitulo={resumen(deHoy.length, esperan.length)}
-          derecha={!!nombre && (
-            <Text style={[texto.apoyo, { color: color.textoMedio }]} numberOfLines={1}>{nombre}</Text>
-          )}
-        />
+        <View style={{ gap: 2 }}>
+          <Text style={[texto.etiqueta, { color: color.textoSuave }]}>
+            {ahora.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()}
+          </Text>
+          <Text style={[texto.titulo, { color: color.texto }]}>
+            {saludoPorHora(ahora.getHours())}{nombre ? `, ${nombre.split(' ')[0]}` : ''}.
+          </Text>
+        </View>
 
-        {deHoy.length > 0 && (
-          <>
-            <Seccion titulo="TUS CITAS DE HOY" cuenta={deHoy.length} />
-            {deHoy.map((c) => (
-              <FilaCita
-                key={c.cita_id}
-                hora={hora(c.propuesta_para)}
-                codigo={c.codigo_anonimo}
-                detalle={c.sesion_en_curso ? 'Sala abierta · entra ahora'
-                  : c.estado === 'solicitada' ? 'La pidió y falta que la confirmes'
-                  : 'Confirmada'}
-                urgente={c.sesion_en_curso}
-                onPress={() => abrirCaso(c.derivacion_id)}
-              />
-            ))}
-          </>
-        )}
+        {/* Tres cifras que resumen el día. Las que piden algo se tocan. */}
+        <View style={e.cifras}>
+          <Cifra valor={citasHoy.length} etiqueta={citasHoy.length === 1 ? 'cita hoy' : 'citas hoy'}
+            onPress={() => { setLunes(lunesDe(new Date())); setDia(hoy) }} />
+          <Cifra valor={porConfirmar.length} etiqueta="por confirmar" tono={porConfirmar.length ? 'alerta' : undefined}
+            onPress={porConfirmar[0] ? () => abrirCaso(porConfirmar[0].derivacion_id) : undefined} />
+          <Cifra valor={sinHora.length} etiqueta={sinHora.length === 1 ? 'te espera' : 'te esperan'} tono={sinHora.length ? 'tierra' : undefined}
+            onPress={() => router.push('/psicologo/casos')} />
+        </View>
 
-        {esperan.length > 0 && (
-          <>
-            <Seccion titulo="TE ESPERAN" cuenta={esperan.length} />
-            {esperan.map((c) => (
-              <FilaCaso key={c.derivacion_id} caso={c} onPress={() => abrirCaso(c.derivacion_id)} />
-            ))}
-          </>
-        )}
-
-        {diasProximos.map((dia) => (
-          <View key={dia} style={e.grupo}>
-            <Seccion titulo={tituloDia(dia).toUpperCase()} cuenta={proximas.filter((c) => c.dia === dia).length} />
-            {proximas.filter((c) => c.dia === dia).map((c) => (
-              <FilaCita
-                key={c.cita_id}
-                hora={hora(c.propuesta_para)}
-                codigo={c.codigo_anonimo}
-                detalle={c.estado === 'solicitada' ? 'La pidió y falta que la confirmes' : 'Confirmada'}
-                onPress={() => abrirCaso(c.derivacion_id)}
-              />
-            ))}
+        {/* La agenda */}
+        <View style={e.tarjeta}>
+          <SemanaCalendario
+            lunes={lunes}
+            seleccionado={dia}
+            marcas={marcas}
+            onSeleccionar={setDia}
+            onSemana={(delta) => {
+              const l = new Date(lunes); l.setDate(l.getDate() + 7 * delta)
+              setLunes(l)
+              // En la semana actual se vuelve a hoy; en otra, al mismo día de
+              // la semana que estaba elegido.
+              if (isoDia(l) === isoDia(lunesDe(new Date()))) { setDia(hoy); return }
+              const n = new Date(`${dia}T12:00:00`); n.setDate(n.getDate() + 7 * delta)
+              setDia(isoDia(n))
+            }}
+          />
+          <View style={e.divisor} />
+          <View style={e.diaCabecera}>
+            <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>
+              {dia === hoy ? 'Hoy' : fechaDia.charAt(0).toUpperCase() + fechaDia.slice(1)}
+            </Text>
+            <Text style={[texto.dato, { color: color.textoSuave }]}>
+              {delDia.length === 0 ? 'libre' : delDia.length === 1 ? '1 cita' : `${delDia.length} citas`}
+            </Text>
           </View>
-        ))}
+          <LineaDelDia dia={dia} citas={delDia} onCita={(c) => abrirCaso(c.derivacion_id)} />
+        </View>
 
-        {deHoy.length === 0 && esperan.length === 0 && proximas.length === 0 && (
-          <View style={e.vacio}>
-            <View style={e.vacioIcono}><IconoHoja tamano={18} color={color.textoMedio} /></View>
+        {/* Lo que espera algo y no tiene hora */}
+        {sinHora.length > 0 ? (
+          <>
+            <Seccion titulo="SIN HORA TODAVÍA" cuenta={sinHora.length} />
+            {sinHora.map((c) => <FilaCaso key={c.derivacion_id} caso={c} onPress={() => abrirCaso(c.derivacion_id)} />)}
+          </>
+        ) : (
+          <View style={e.alDia}>
+            <IconoCheckCirculo tamano={20} color={color.exito} />
             <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1 }]}>
-              Nada por hacer ahora mismo. Cuando el sistema derive a alguien o pidan una hora,
-              aparecerá aquí.
+              Estás al día: no hay nadie esperando contacto ni notas por aprobar.
             </Text>
           </View>
         )}
@@ -170,16 +157,45 @@ export default function HoyPsicologo() {
   )
 }
 
+function Cifra({ valor, etiqueta, tono, onPress }: {
+  valor: number
+  etiqueta: string
+  tono?: 'alerta' | 'tierra'
+  onPress?: () => void
+}) {
+  const tinta = tono === 'alerta' ? color.alerta : tono === 'tierra' ? color.tierra : color.texto
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      style={({ pressed }) => [e.cifra, pressed && { opacity: 0.75 }]}
+    >
+      <Text style={[texto.cifra, { color: tinta, fontSize: 28, lineHeight: 32 }]}>{valor}</Text>
+      <Text style={[texto.dato, { color: color.textoMedio }]} numberOfLines={1}>{etiqueta}</Text>
+    </Pressable>
+  )
+}
+
 const e = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: color.fondo },
   contenido: {
-    paddingHorizontal: 20, paddingTop: espacio.base, paddingBottom: espacio.xxl, gap: espacio.sm,
-    width: '100%', maxWidth: 480, alignSelf: 'center',
+    paddingHorizontal: 16, paddingTop: espacio.base, gap: espacio.md,
+    width: '100%', maxWidth: 520, alignSelf: 'center',
   },
-  grupo: { gap: espacio.sm },
-  vacio: {
-    flexDirection: 'row', gap: espacio.sm, alignItems: 'flex-start',
-    backgroundColor: color.superficieSuave, borderRadius: radio.xl, padding: espacio.md, marginTop: espacio.base,
+  cifras: { flexDirection: 'row', gap: espacio.sm },
+  cifra: {
+    flex: 1, backgroundColor: color.superficie, borderRadius: radio.lg, paddingVertical: 12, paddingHorizontal: 12,
+    gap: 2, ...sombra.suave,
   },
-  vacioIcono: { width: 36, height: 36, borderRadius: 18, backgroundColor: color.superficie, alignItems: 'center', justifyContent: 'center' },
+  tarjeta: {
+    backgroundColor: color.superficie, borderRadius: radio.xl, padding: espacio.base,
+    gap: espacio.md, ...sombra.suave,
+  },
+  divisor: { height: 1, backgroundColor: color.borde, marginHorizontal: -espacio.base },
+  diaCabecera: { flexDirection: 'row', alignItems: 'baseline', gap: espacio.sm },
+  alDia: {
+    flexDirection: 'row', alignItems: 'center', gap: espacio.sm,
+    backgroundColor: color.exitoSuave, borderRadius: radio.lg, padding: espacio.base,
+  },
 })
