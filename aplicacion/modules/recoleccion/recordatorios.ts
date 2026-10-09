@@ -39,10 +39,10 @@ function recordatorios(duraciones: Partial<Record<'diario' | 'olbi', string>> = 
   const diario = duraciones.diario ?? DURACION_RESPALDO.diario
   const olbi = duraciones.olbi ?? DURACION_RESPALDO.olbi
   void olbi
-  // Solo de lunes a jueves. El aviso del viernes («Cuestionario del
-  // viernes») llegaba a todos, y el cuestionario ya no es para todos ni cae
-  // en viernes: se ofrece tras el check-in el día que toca.
-  return [2, 3, 4, 5].map((weekday) => ({
+  // Un check-in cada día de lunes a viernes. El viernes ya no es «Cuestionario
+  // del viernes», que llegaba a todos: el cuestionario se ofrece tras el
+  // check-in el día que toca.
+  return [2, 3, 4, 5, 6].map((weekday) => ({
     id: `checkin-${weekday}`,
     weekday,
     titulo: 'Check-in de hoy',
@@ -51,9 +51,9 @@ function recordatorios(duraciones: Partial<Record<'diario' | 'olbi', string>> = 
 }
 
 /** Solo para cancelar: los identificadores no dependen de la duración.
- *  `checkin-6` era el aviso del viernes; se sigue cancelando para que
- *  desaparezca de los teléfonos que ya lo tenían programado. */
-const RECORDATORIOS = [...recordatorios(), { id: 'checkin-6' }]
+ *  `checkin-6` (viernes) reemplaza al antiguo «Cuestionario del viernes»,
+ *  que tenía el mismo identificador. */
+const RECORDATORIOS = recordatorios()
 
 export const HORA_POR_DEFECTO = 19
 export const MINUTO_POR_DEFECTO = 0
@@ -203,10 +203,10 @@ export async function programarDiario(
 
   try {
     await asegurarCanal(n)
-    // Un recordatorio semanal por día de check-in, de lunes a jueves. De
-    // viernes a domingo no hay nada que responder, y avisar sin motivo es la
-    // forma más rápida de que silencien la app. `weekday` de
-    // expo-notifications: 1 = domingo … 7 = sábado.
+    // Un recordatorio semanal por día de check-in, de lunes a viernes. El fin
+    // de semana no hay nada que responder, y avisar sin motivo es la forma
+    // más rápida de que silencien la app. `weekday` de expo-notifications:
+    // 1 = domingo … 7 = sábado.
     await Promise.all(
       RECORDATORIOS.map((r) => n.cancelScheduledNotificationAsync(r.id).catch(() => {})),
     )

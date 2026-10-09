@@ -457,7 +457,7 @@ function PanelLateral({ p, onCerrar }: { p: FilaTrabajadorV2; onCerrar: () => vo
   useEffect(() => { calendario(p.id).then(setEnvios).catch(() => setEnvios([])) }, [p.id])
   const semanas = calendarioSemanal(p.inscrito_en, envios)
   // Solo los días de check-in: la columna del OLBI no es una obligación.
-  const celdas = semanas.flatMap((sem) => sem.slice(0, 4))
+  const celdas = semanas.flatMap((sem) => sem.slice(0, 5))
   const respondidos = celdas.filter((c) => c === 'ok').length
   const esperados = celdas.filter((c) => c !== 'futuro').length
   const riesgo = p.nowcast != null && p.nowcast >= RIESGO_ALTO
@@ -525,10 +525,10 @@ function PanelLateral({ p, onCerrar }: { p: FilaTrabajadorV2; onCerrar: () => vo
         <Text style={[texto.dato, { color: color.textoMedio }]}>{`respondió ${respondidos} de ${esperados}`}</Text>
       </View>
       <View style={e.matriz}>
-        <View style={e.matrizFila}>{['L', 'M', 'M', 'J', 'OLBI'].map((d, i) => <Text key={i} style={[texto.dato, { color: color.textoMedio, width: i === 4 ? 34 : 22, textAlign: 'center', fontSize: i === 4 ? 10 : undefined }]}>{d}</Text>)}</View>
+        <View style={e.matrizFila}>{['L', 'M', 'M', 'J', 'V', 'OLBI'].map((d, i) => <Text key={i} style={[texto.dato, { color: color.textoMedio, width: i === 5 ? 34 : 22, textAlign: 'center', fontSize: i === 5 ? 10 : undefined }]}>{d}</Text>)}</View>
         {semanas.map((sem, i) => (
           <View key={i} style={e.matrizFila}>
-            {sem.map((c, j) => <View key={j} style={[e.celda, j === 4 && { width: 26 }, c === 'ok' ? e.celdaOk : c === 'olbi' ? e.celdaOlbi : c === 'futuro' || c === 'sin' ? e.celdaFuturo : e.celdaOmitido]} />)}
+            {sem.map((c, j) => <View key={j} style={[e.celda, j === 5 && { width: 26 }, c === 'ok' ? e.celdaOk : c === 'olbi' ? e.celdaOlbi : c === 'futuro' || c === 'sin' ? e.celdaFuturo : e.celdaOmitido]} />)}
           </View>
         ))}
         <View style={e.leyenda}>
@@ -556,7 +556,7 @@ function Leyenda({ children, tinta }: { children: string; tinta: string }) {
   )
 }
 
-/** 5 semanas × (L–J del check-in + si contestó el OLBI esa semana).
+/** 5 semanas × (L–V del check-in + si contestó el OLBI esa semana).
  *
  *  Antes eran L–V y el viernes esperaba el OLBI: sin él, «alerta». Ahora el
  *  check-in es de lunes a jueves y el OLBI se pide cualquier día y no a
@@ -571,7 +571,7 @@ function calendarioSemanal(inscritoEn: string, envios: Envio[]): CeldaCal[][] {
   const out: CeldaCal[][] = []
   for (let s = 0; s < 5; s++) {
     const fila: CeldaCal[] = []
-    for (let d = 0; d < 4; d++) {
+    for (let d = 0; d < 5; d++) {
       const f = new Date(lunes); f.setDate(lunes.getDate() + s * 7 + d)
       if (f > hoy) { fila.push('futuro'); continue }
       fila.push(dias.get(iso(f))?.has('diario') ? 'ok' : 'omitido')

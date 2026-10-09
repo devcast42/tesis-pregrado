@@ -41,6 +41,10 @@ VERSION_PRONOSTICO = 'preentrenamiento-pronostico-v1'
 # v2: la etiqueta pide las dos dimensiones altas, como la detección del
 # producto (`evaluar-olbi`). La v1 usaba la media de los 8 ítems juntos.
 VERSION_V2 = 'preentrenamiento-v2'
+# v3: semanas de cinco días. El check-in pasa a ser de lunes a viernes (el
+# viernes ya no es el día del OLBI), así que el modelo aprende con 1 a 5 días
+# y lo que estima es el estado de la SEMANA, no el de un viernes concreto.
+VERSION_V3 = 'preentrenamiento-v3'
 # Los cuatro ítems del check-in propio y su equivalente en el diario polaco.
 ITEMS = {'od_04': '2E', 'od_12': '7E', 'od_03': '1D', 'od_06': '3D'}
 AGOT = ['od_04', 'od_12']
@@ -80,6 +84,34 @@ def alto_ambas(fila: pd.Series) -> bool:
     (2.875 y 2.75 de 4 → 3.50 y 3.33 de 5) deja un 4 % de positivos en el
     diario de referencia y el modelo acierta 1 de cada 12 avisos."""
     return fila[E8].mean() >= UMBRAL_DIARIO and fila[D8].mean() >= UMBRAL_DIARIO
+
+
+# Las cuatro preguntas del diario de referencia que el check-in NO hace. La
+# etiqueta de v3 sale de ellas: con las mismas cuatro del check-in, el modelo
+# veía la mitad de la respuesta y daba un AUC de 0.96 que no se sostiene.
+OTRAS_E = ['4E', '8E']
+OTRAS_D = ['5D', '6D']
+
+
+def alto_semana(g: pd.DataFrame, lunes: int) -> bool:
+    """v3: agotamiento Y desvinculación de la semana (5 días), cada una con
+    su media de las preguntas que el check-in no hace, sobre 3 de 5."""
+    semana = g.loc[lunes:lunes + 4]
+    return semana[OTRAS_E].values.mean() >= UMBRAL_DIARIO and semana[OTRAS_D].values.mean() >= UMBRAL_DIARIO
+
+
+def ejemplos_semana(L: pd.DataFrame) -> pd.DataFrame:
+    """Cada semana de 5 días, con los prefijos de 1 a 5 días respondidos."""
+    filas = []
+    for pid, g in L.groupby('id'):
+        g = g.sort_values('dia').set_index('dia')
+        for lunes in (1, 6):
+            dias = [{k: g.loc[d, v] for k, v in ITEMS.items()} for d in range(lunes, lunes + 5)]
+            y = int(alto_semana(g, lunes))
+            for k in range(1, 6):
+                fila = rasgos(dias[:k]); fila.update(id=pid, y=y)
+                filas.append(fila)
+    return pd.DataFrame(filas)
 
 
 def ejemplos_nowcast(L: pd.DataFrame, alto=alto_media) -> pd.DataFrame:
@@ -203,6 +235,19 @@ def main():
     (migraciones / '20261008180000_modelo_version_v2.sql').write_text(
         cabecera.format(tarea='nowcast, v2: las dos dimensiones, como la detección') + sql_v2)
     print('escrita la migración 20261008180000')
+
+    # v3 se crea sin activar; la migración la pone en uso con un UPDATE para
+    # que quede fechada (`activada_en`).
+    _, sql_v3 = entrenar(ejemplos_semana(L), VERSION_V3, 'nowcast',
+                         f'semana de 5 días: agotamiento (4E, 8E) y desvinculación (5D, 6D) >= {UMBRAL_DIARIO} en escala 1-5, preguntas que el check-in no hace',
+                         activa=False)
+    (migraciones / '20261009150000_modelo_version_v3.sql').write_text(
+        cabecera.format(tarea='nowcast, v3: semanas de 5 días') + sql_v3
+        + "\n-- En uso desde ya: el check-in pasa a ser de lunes a viernes y v2 solo\n"
+          "-- sabe opinar con 1 a 4 días.\n"
+          "update modelo_versiones set activa = false where tarea = 'nowcast' and version <> 'preentrenamiento-v3';\n"
+          "update modelo_versiones set activa = true where version = 'preentrenamiento-v3';\n")
+    print('escrita la migración 20261009150000')
 
 
 if __name__ == '__main__':

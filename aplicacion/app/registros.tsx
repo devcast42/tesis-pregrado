@@ -1,7 +1,7 @@
 /** Mis registros — implementa ESP-002 RF-002-07 (racha) y RF-002-12.
  *
- *  Detalle de lo que «Ritmo semanal» resume: cada semana con sus cuatro
- *  días de check-in (lunes a jueves), si esa semana contestó el
+ *  Detalle de lo que «Ritmo semanal» resume: cada semana con sus cinco
+ *  días de check-in (lunes a viernes), si esa semana contestó el
  *  cuestionario, la racha actual y la mejor. Solo hechos y fechas: aquí no
  *  hay puntajes ni interpretación (RN-004-01).
  *
@@ -19,7 +19,7 @@ import { Cargando } from '../modules/nucleo/ui'
 import { color, espacio, fuente, radio, texto } from '../modules/nucleo/diseno'
 import { IconoCheck, IconoLlama, IconoVolver } from '../modules/nucleo/iconos'
 
-const DIAS = ['L', 'M', 'M', 'J']
+const DIAS = ['L', 'M', 'M', 'J', 'V']
 type Celda = { estado: 'checkin' | 'omitido' | 'hoy' | 'futuro' | 'previo'; hora?: string }
 type Semana = { n: number; lunes: Date; celdas: Celda[]; cumplidos: number; esperados: number; olbi: Date | null; actual: boolean }
 
@@ -63,7 +63,7 @@ export default function Registros() {
         const dia = new Date(lunes); dia.setDate(lunes.getDate() + d)
         const e = porDia.get(claveDia(dia))
         if (e?.olbi) { olbi = e.olbi; olbis++ }
-        if (d >= 4) continue
+        if (d >= 5) continue
         if (dia < inscripcion) { celdas.push({ estado: 'previo' }); continue }
         if (dia > hoy) { celdas.push({ estado: 'futuro' }); continue }
         esperados++
@@ -71,7 +71,7 @@ export default function Registros() {
         if (e?.diario) { cumplidos++; dias++; celdas.push({ estado: 'checkin', hora: e.diario }) }
         else celdas.push({ estado: esHoy ? 'hoy' : 'omitido' })
       }
-      if (esperados === 4 && cumplidos === 4) completas++
+      if (esperados === 5 && cumplidos === 5) completas++
       lista.push({ n: s + 1, lunes, celdas, cumplidos, esperados, olbi, actual: s === nSemanas - 1 })
     }
     setTotales({ dias, olbis, semanasCompletas: completas })
@@ -94,7 +94,7 @@ export default function Registros() {
           <View style={{ flex: 1 }}>
             <Text style={[texto.cifra, { color: color.texto }]}>{racha?.actual ?? 0} <Text style={[texto.apoyo, { color: color.textoMedio }]}>{(racha?.actual ?? 0) === 1 ? 'día seguido' : 'días seguidos'}</Text></Text>
             <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-              {racha?.hoy_cumplido ? 'Hoy ya cuenta.' : indiceLunes(ahora()) <= 3 ? 'Responde hoy para mantenerla.' : 'Sigue el lunes.'} Tu mejor racha: {racha?.mejor ?? 0} {(racha?.mejor ?? 0) === 1 ? 'día' : 'días'}. El viernes y el fin de semana no la rompen.
+              {racha?.hoy_cumplido ? 'Hoy ya cuenta.' : indiceLunes(ahora()) <= 4 ? 'Responde hoy para mantenerla.' : 'Sigue el lunes.'} Tu mejor racha: {racha?.mejor ?? 0} {(racha?.mejor ?? 0) === 1 ? 'día' : 'días'}. El viernes y el fin de semana no la rompen.
             </Text>
           </View>
         </View>

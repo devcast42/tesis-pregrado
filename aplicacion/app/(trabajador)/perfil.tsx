@@ -227,7 +227,7 @@ export default function Perfil() {
             <Text style={[texto.seccion, { color: color.texto }]}>Recordatorio diario</Text>
             <Text style={[texto.apoyo, { color: color.textoMedio }]}>
               {recordatoriosDisponibles()
-                ? 'De lunes a jueves, a la hora que elijas. De viernes a domingo no hay nada que responder.'
+                ? 'De lunes a viernes, a la hora que elijas. Sábado y domingo no hay nada que responder.'
                 : 'Este dispositivo no permite programar recordatorios. Abre la app cada día al terminar tu jornada.'}
             </Text>
           </View>
@@ -331,7 +331,7 @@ export default function Perfil() {
             <Text style={[texto.etiqueta, { color: color.textoSuave }]}>SOLO DESARROLLO · FECHA SIMULADA</Text>
             <Text style={[texto.apoyo, { color: color.textoMedio }]}>
               Mueve el día de la app (no el de la base de datos) para probar el calendario:
-              lunes a jueves el check-in; el cuestionario, cuando toque.
+              lunes a viernes el check-in; el cuestionario, cuando toque.
             </Text>
             <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>
               {fechaLarga(ahora())}{desfase !== 0 ? ` (${desfase > 0 ? '+' : ''}${desfase} d)` : ''}

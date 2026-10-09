@@ -441,13 +441,13 @@ function construirCalendario(f: Ficha, envios: Envio[]): DatosCalendario {
       const iso = isoLocal(dia)
       // El check-in es de lunes a jueves. El OLBI ya no tiene día: se marca
       // el día en que lo contestó, sea cual sea, y no se espera ninguno.
-      if (dia > hoy) { fila.push({ estado: d >= 4 ? 'finde' : 'futuro' }); continue }
+      if (dia > hoy) { fila.push({ estado: d >= 5 ? 'finde' : 'futuro' }); continue }
       if (iso < inscripcion) { fila.push({ estado: 'previo' }); continue }
       const es = porDia.get(iso) ?? []
       const olbi = es.find((x) => x.formulario_clave === 'olbi')
       const diario = es.find((x) => x.formulario_clave === 'diario')
       const hora = (x?: Envio) => x ? new Date(x.enviado_en).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false }) : undefined
-      if (d >= 4) { fila.push(olbi ? { estado: 'olbi', hora: hora(olbi) } : { estado: 'finde' }); continue }
+      if (d >= 5) { fila.push(olbi ? { estado: 'olbi', hora: hora(olbi) } : { estado: 'finde' }); continue }
       // Hoy se ve pero no se cuenta: queda el día entero por delante, y así
       // esta cuenta da lo mismo que la vista `adherencia` de ESP-007, que
       // solo mira los días ya cerrados.
@@ -479,7 +479,7 @@ function Calendario({ cal, detectada, semanaActual }: { cal: DatosCalendario; de
   const tardePct = cal.diarios ? Math.round((cal.tardes / cal.diarios) * 100) : 0
   return (
     <Seccion numero={1} titulo={SECCIONES[0].titulo}
-      subtitulo={`De lunes a jueves toca un check-in corto. El OLBI no tiene día: llega cuando lo pide el modelo, por sorteo, al mes sin medirse o tras un alta. Cada cuadro es un día, y la hora es cuando lo envió.`}>
+      subtitulo={`De lunes a viernes toca un check-in corto. El OLBI no tiene día: llega cuando lo pide el modelo, por sorteo, al mes sin medirse o tras un alta. Cada cuadro es un día, y la hora es cuando lo envió.`}>
       <View style={[e.fila, { gap: espacio.base }]}>
         <Leyenda tinta="#A8DFCF" texto="Hizo el check-in" />
         <Leyenda tinta="#005C55" texto="Contestó el OLBI" />
@@ -553,7 +553,7 @@ function SerieDiaria({ f, serie }: { f: Ficha; serie: DiaSerie[] }) {
 
   return (
     <Seccion numero={2} titulo={SECCIONES[1].titulo}
-      subtitulo="De lunes a jueves contesta cuatro frases cortas, de 1 («totalmente en desacuerdo») a 5 («totalmente de acuerdo»), y cuántas horas trabajó y durmió. Las dos primeras son de agotamiento y las otras dos de desvinculación. Con esto el modelo decide si pedirle el OLBI.">
+      subtitulo="De lunes a viernes contesta cuatro frases cortas, de 1 («totalmente en desacuerdo») a 5 («totalmente de acuerdo»), y cuántas horas trabajó y durmió. Las dos primeras son de agotamiento y las otras dos de desvinculación. Con esto el modelo decide si pedirle el OLBI.">
       <View style={[e.fila, { gap: espacio.base }]}>{items.map((i) => <Leyenda key={i.clave} tinta={i.c} texto={i.etiqueta} />)}</View>
       <View style={e.panelGris}>
         <View style={[e.fila, { justifyContent: 'space-between' }]}>
@@ -710,11 +710,11 @@ function Modelo({ f, preds }: { f: Ficha; preds: Prediccion[] }) {
           <View style={[e.fila, { justifyContent: 'space-between' }]}>
             <View style={{ flex: 1, minWidth: 160 }}>
               <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Semana a semana</Text>
-              <Text style={[texto.dato, { color: color.textoMedio }]}>De lunes a jueves, con los check-ins que lleva.</Text>
+              <Text style={[texto.dato, { color: color.textoMedio }]}>De lunes a viernes, con los check-ins que lleva.</Text>
             </View>
             <Pastilla tono={aN.n === 0 ? TONO.gris : aN.ok === aN.n ? TONO.verde : TONO.ambar}>{aN.n === 0 ? 'sin comprobar' : `acertó ${aN.ok} de ${aN.n}`}</Pastilla>
           </View>
-          {nw.length === 0 ? <Text style={[texto.dato, { color: color.textoMedio }]}>Sin intentos todavía: se generan cuando abre la app de lunes a jueves.</Text> : nw.map((p) => <FilaPred key={p.evento_id} p={p} />)}
+          {nw.length === 0 ? <Text style={[texto.dato, { color: color.textoMedio }]}>Sin intentos todavía: se generan cuando hace el check-in.</Text> : nw.map((p) => <FilaPred key={p.evento_id} p={p} />)}
         </View>
       </View>
     </Seccion>
@@ -794,7 +794,7 @@ function Items({ respuestas, defs }: { respuestas: RespuestaConItems[]; defs: Re
 function LineaTiempo({ hitos, f, citas, citaPendiente }: { hitos: Hito[]; f: Ficha; citas: CitaEstudio[]; citaPendiente: CitaEstudio | null }) {
   const TIPO: Record<string, { titulo: (h: Hito) => string; etiqueta: string; tono: { fondo: string; tinta: string }; detalle: (h: Hito) => string }> = {
     consentimiento: { titulo: (h) => h.metadata.aceptado ? 'Aceptó participar y firmó el consentimiento' : 'No aceptó participar', etiqueta: 'Consentimiento', tono: TONO.gris, detalle: (h) => `Versión del texto que leyó: ${h.metadata.version_texto ?? '—'}.` },
-    inicio_seguimiento: { titulo: () => `Empezó el seguimiento en ${f.empresa ?? 'su empresa'}`, etiqueta: 'Inicio', tono: TONO.gris, detalle: () => 'Desde aquí le toca el check-in de lunes a jueves. El OLBI, cuando lo pida el modelo, el sorteo o el control del mes.' },
+    inicio_seguimiento: { titulo: () => `Empezó el seguimiento en ${f.empresa ?? 'su empresa'}`, etiqueta: 'Inicio', tono: TONO.gris, detalle: () => 'Desde aquí le toca el check-in de lunes a viernes. El OLBI, cuando lo pida el modelo, el sorteo o el control del mes.' },
     deteccion: { titulo: () => 'Su OLBI pasó el umbral en las dos dimensiones', etiqueta: 'Detección', tono: TONO.tierra, detalle: (h) => `${Object.entries(h.metadata.puntajes ?? {}).map(([k, v]) => `${k === 'desvinculacion' ? 'desvinculación' : k} ${Number(v).toFixed(2)}`).join(' · ')}. El sistema abrió la derivación y avisó al psicólogo.` },
     derivacion_psicologo: { titulo: (h) => h.metadata.origen === 'solicitud' ? 'Pidió hablar con un psicólogo' : 'Se le asignó un psicólogo', etiqueta: 'Derivación', tono: TONO.gris, detalle: () => 'Si ya tuvo psicólogo, vuelve con el mismo; si no, va a uno de su empresa o, si su empresa no tiene, a uno general, el que tenga menos casos. Solo con esta derivación puede ver quién es.' },
     cita_solicitada: {

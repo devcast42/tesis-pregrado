@@ -13,7 +13,8 @@ import { supabase } from '../nucleo/supabase'
 // v4: el cuestionario largo ya no es «el viernes», sino de vez en cuando y
 // justo después del check-in. Cambia lo que se pide, así que se vuelve a
 // pedir el consentimiento.
-export const VERSION_TEXTO = 'v4-2026-10'
+// v5: el check-in pasa a ser de lunes a viernes.
+export const VERSION_TEXTO = 'v5-2026-10'
 
 export type RegistroConsentimiento = {
   aceptado: boolean

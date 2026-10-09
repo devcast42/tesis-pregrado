@@ -43,7 +43,7 @@ const GRUPOS: Grupo[] = [
   {
     tipo: 'inactivo', urgente: true,
     titulo: 'Llevan cuatro días o más sin responder',
-    porque: 'Siguen activas pero no han hecho ningún check-in en cuatro días seguidos de check-in (de lunes a jueves). Si sigue así, se pierden del estudio.',
+    porque: 'Siguen activas pero no han hecho ningún check-in en cuatro días seguidos de check-in (de lunes a viernes). Si sigue así, se pierden del estudio.',
   },
   {
     tipo: 'deteccion_sin_derivacion', urgente: true,

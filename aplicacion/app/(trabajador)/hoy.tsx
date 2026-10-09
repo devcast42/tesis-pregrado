@@ -116,7 +116,7 @@ const PRESENTACION: Record<string, { insignia: string; accion: string; descripci
     accion: 'Responder ahora',
   },
   diario: {
-    insignia: 'Lunes a jueves',
+    insignia: 'Lunes a viernes',
     descripcion: 'Cuatro frases sobre tu día y unos datos. Responde con lo primero que se te venga.',
     accion: 'Comenzar check-in',
   },
@@ -208,7 +208,7 @@ export default function Hoy() {
     // El nowcast solo tiene sentido de lunes a jueves: el viernes el OLBI
     // resuelve la semana y una predicción nueva pisaría la del jueves, que
     // es la que la retrospectiva confronta (RF-002-14).
-    const esDiaDeNowcast = indiceLunes(ahora()) < 4
+    const esDiaDeNowcast = indiceLunes(ahora()) < 5
     const [envios, cal, dias, s, pred, rachaHoy] = await Promise.all([
       ultimosEnvios(p.id),
       calendarios(),
@@ -280,15 +280,14 @@ export default function Hoy() {
   // mañana» cuando el viernes no hay nada que responder.
   const hoy = indiceLunes(ahoraMismo)
   const hoyHecho = agenda.some((i) => i.clave === 'diario' && i.completado)
-  const diaDeCheckin = hoy <= 3
-  const finDeSemana = hoy >= 5
+  const diaDeCheckin = hoy <= 4
   const dias: EstadoDia[] = Array.from({ length: 7 }, (_, i) => {
     if (i === hoy && diaDeCheckin) return hoyHecho ? 'hoy_respondido' : 'hoy_pendiente'
     return diasRespondidos.has(i) ? 'respondido' : 'otro'
   })
   const cierre = !diaDeCheckin
     ? 'Hoy no hay check-in. Nos vemos el lunes; te avisaremos con una notificación.'
-    : hoy === 3
+    : hoy === 4
       ? 'Ya cerraste tu semana. No hay nada más hasta el lunes; te avisaremos con una notificación.'
       : 'Ya registraste todo lo de hoy. No hay nada más que hacer hasta mañana; te avisaremos con una notificación.'
 
@@ -300,7 +299,7 @@ export default function Hoy() {
         derecha={rachaActual && enSeguimiento ? (
           <PastillaRacha actual={rachaActual.actual} hoyCumplido={rachaActual.hoy_cumplido} onPress={() => Alert.alert(
             rachaActual.actual === 0 ? 'Tu racha' : `Racha de ${rachaActual.actual} ${rachaActual.actual === 1 ? 'día' : 'días'}`,
-            `Días de check-in seguidos, de lunes a jueves. El viernes y el fin de semana no la rompen.${rachaActual.mejor > rachaActual.actual ? ` Tu mejor racha: ${rachaActual.mejor} días.` : ''}${!rachaActual.hoy_cumplido && rachaActual.actual > 0 && diaDeCheckin ? ' Responde hoy para mantenerla.' : ''}`,
+            `Días de check-in seguidos, de lunes a viernes. El fin de semana no la rompe.${rachaActual.mejor > rachaActual.actual ? ` Tu mejor racha: ${rachaActual.mejor} días.` : ''}${!rachaActual.hoy_cumplido && rachaActual.actual > 0 && diaDeCheckin ? ' Responde hoy para mantenerla.' : ''}`,
           )} />
         ) : undefined}
       />
@@ -419,7 +418,7 @@ export default function Hoy() {
 
         {hoyMismo && sesion && <TarjetaApoyo onPress={() => router.push(`/consulta/${sesion.id}`)} />}
 
-        {hoyMismo && prediccion && !finDeSemana && hoy < 4 && <TarjetaProbabilidad p={prediccion} />}
+        {hoyMismo && prediccion && diaDeCheckin && <TarjetaProbabilidad p={prediccion} />}
 
         {/* Aquí había una tarjeta con el último resultado. Se fue: al resultado
             se llega por la tarjeta del cuestionario respondido, que es donde
