@@ -4,7 +4,7 @@ Cada prueba comprueba una propiedad que, de romperse, invalida el capítulo de
 resultados sin dar ningún síntoma visible: una fuga de información produce
 métricas mejores, no un error. Por eso se verifican en código y no a ojo.
 
-    CA-005-01  ninguna entrada usa datos posteriores al viernes de la semana t
+    CA-005-01  ninguna entrada usa datos posteriores a la semana t (lunes a viernes)
     CA-005-02  ningún ítem olbi_* de la semana etiquetada entra como rasgo
     CA-005-03  cada trabajador cae en un solo pliegue
     CA-005-04  nadie aporta semanas posteriores a su primer cruce
@@ -60,11 +60,11 @@ def prueba(nombre: str):
 
 # ---------------------------------------------------------------- CA-005-01
 
-@prueba('CA-005-01 sin datos posteriores al viernes de la semana t')
+@prueba('CA-005-01 sin datos posteriores a la semana t')
 def ca_01(cx):
-    """La vista solo puede mirar lunes-jueves (diario) y el viernes (semanal,
-    OLBI de t). Si alguna fila tuviera rasgos diarios que solo existen en días
-    posteriores, el rasgo vendría del futuro."""
+    """La vista solo puede mirar el check-in de lunes a viernes y el semanal
+    de t. Si alguna fila tuviera rasgos diarios que solo existen en el fin de
+    semana o después, el rasgo vendría del futuro."""
     n = cx.execute("""
         with dia_usado as (
           select r.trabajador_id,
@@ -74,19 +74,19 @@ def ca_01(cx):
           where r.formulario_clave = 'diario'
         )
         select count(*) from dia_usado
-        where extract(isodow from dia)::int > 4
+        where extract(isodow from dia)::int > 5
           and exists (select 1 from semanas_modelo s
                       where s.trabajador_id = dia_usado.trabajador_id
                         and s.semana = dia_usado.semana
                         and s.n_dias > 0)
-          -- ...y esa semana no tiene ningún día lunes-jueves que explique el rasgo
+          -- ...y esa semana no tiene ningún día lunes-viernes que explique el rasgo
           and not exists (select 1 from respuestas r2
                           where r2.trabajador_id = dia_usado.trabajador_id
                             and r2.formulario_clave = 'diario'
                             and semana_de(r2.enviado_en) = dia_usado.semana
-                            and extract(isodow from (r2.enviado_en at time zone tz_estudio())::date)::int between 1 and 4)
+                            and extract(isodow from (r2.enviado_en at time zone tz_estudio())::date)::int between 1 and 5)
     """).fetchone()[0]
-    assert n == 0, f'{n} semanas con rasgos diarios que solo pueden venir de viernes o después'
+    assert n == 0, f'{n} semanas con rasgos diarios que solo pueden venir del fin de semana'
 
     # El semanal que entra como rasgo es el del viernes de t, nunca uno posterior.
     n2 = cx.execute("""
@@ -99,7 +99,7 @@ def ca_01(cx):
               and semana_de(r.enviado_en) = s.semana)
     """).fetchone()[0]
     assert n2 == 0, f'{n2} filas con rasgo semanal que no proviene de la semana t'
-    return 'diario lun-jue y semanal de t'
+    return 'check-in lun-vie y semanal de t'
 
 
 # ---------------------------------------------------------------- CA-005-02
@@ -225,7 +225,7 @@ def ca_05(cx):
               from respuestas r join respuestas_items i on i.respuesta_id = r.id
               where r.trabajador_id = %s and r.formulario_clave = 'diario'
                 and semana_de(r.enviado_en) = %s
-                and extract(isodow from (r.enviado_en at time zone tz_estudio())::date)::int between 1 and 4
+                and extract(isodow from (r.enviado_en at time zone tz_estudio())::date)::int between 1 and 5
               group by dia, r.enviado_en) v
             where od_04 is not null and od_12 is not null and od_03 is not null and od_06 is not null
             order by dia, enviado_en desc

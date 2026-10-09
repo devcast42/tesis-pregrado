@@ -64,10 +64,10 @@ RASGOS = ANIMO + CONTEXTO
 # avisa, cuando sale el sorteo o cuando lleva un mes sin medirse. Así que la
 # pregunta deja de ser «¿cómo saldrá el viernes que viene?» y pasa a ser «¿si
 # le pidiéramos el OLBI ahora, saldría alto?». Es la misma que responde el
-# preentrenamiento, que se entrenó con prefijos de 1 a 4 días justo para poder
-# opinar cualquier día.
+# preentrenamiento v3, que se entrenó con prefijos de 1 a 5 días justo para
+# poder opinar cualquier día del check-in, de lunes a viernes.
 ETIQUETA = 'alto_t'           # el OLBI que cierra esta semana
-W0 = 'preentrenamiento-v1'
+W0 = 'preentrenamiento-v3'
 VERSION = 'producto-v1'
 
 # Fuerza de la penalización hacia w0 en los rasgos de ánimo. Grande = me fío
