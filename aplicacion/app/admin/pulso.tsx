@@ -20,7 +20,7 @@ import {
   etiquetaSemana, participacionSemanal, pulsoEmpresa, pulsoEstudio, rangoSemana, segmentosDisponibles, umbrales,
   type ParticipacionSemana, type PulsoEstudio, type PulsoSemana, type Segmento, type Umbral,
 } from '../../modules/panel/empresario'
-import { EscalaNivel, Caja, NotaAgregacion, Pastilla, PastillaNivel, Pie, SinReporte, TONO_NIVEL } from '../../modules/panel/PiezasEmpresario'
+import { EscalaNivel, Caja, Pastilla, PastillaNivel, Pie, SinReporte, TONO_NIVEL } from '../../modules/panel/PiezasEmpresario'
 import { GraficaLinea } from '../../modules/panel/Grafica'
 import { Aviso, Cargando, Pantalla } from '../../modules/nucleo/ui'
 import { ancho, color, espacio, radio, texto } from '../../modules/nucleo/diseno'
@@ -201,7 +201,6 @@ export default function PulsoEmpresario() {
           </>
         )}
 
-        <NotaAgregacion respondientes={ultima?.respondientes} minimo={MINIMO} />
         <Pie />
       </Pantalla>
     </Panel>

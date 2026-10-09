@@ -23,7 +23,7 @@ import {
   type Empresa, type FilaParticipacion, type ResumenEmpresa,
 } from '../../modules/panel/datos'
 import { darDeBaja, participacionSemanal, type ParticipacionSemana } from '../../modules/panel/empresario'
-import { Caja, NotaAgregacion, Pastilla, PastillaNivel, Pie } from '../../modules/panel/PiezasEmpresario'
+import { Caja, Pastilla, PastillaNivel, Pie } from '../../modules/panel/PiezasEmpresario'
 import { Aviso, Boton, Cargando, Entrada, Etiqueta, Pantalla } from '../../modules/nucleo/ui'
 import { ancho, color, espacio, radio, texto } from '../../modules/nucleo/diseno'
 import {

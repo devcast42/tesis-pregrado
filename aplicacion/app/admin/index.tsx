@@ -21,7 +21,7 @@ import {
   type FactoresSemana, type ParticipacionSemana, type PulsoEstudio, type PulsoSemana, type Umbral,
 } from '../../modules/panel/empresario'
 import {
-  NotaAgregacion, Pie, SinReporte, TarjetaDimension, TarjetaPesa, TarjetaRecomendacion, TarjetaRespondieron, TituloSeccion,
+  Pie, SinReporte, TarjetaDimension, TarjetaPesa, TarjetaRecomendacion, TarjetaRespondieron, TituloSeccion,
 } from '../../modules/panel/PiezasEmpresario'
 import { Aviso, Cargando, Pantalla } from '../../modules/nucleo/ui'
 import { ancho, color, espacio, texto } from '../../modules/nucleo/diseno'
@@ -149,7 +149,6 @@ export default function InicioEmpresario() {
           </>
         )}
 
-        <NotaAgregacion respondientes={ultima?.respondientes} minimo={MINIMO} />
         <Pie />
       </Pantalla>
     </Panel>

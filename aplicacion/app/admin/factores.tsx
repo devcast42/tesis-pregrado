@@ -14,7 +14,7 @@ import {
   FACTORES, factoresEmpresa, fraseRelacion, pulsoEmpresa, relaciones,
   type FactoresSemana, type PulsoSemana, type Relacion,
 } from '../../modules/panel/empresario'
-import { Caja, NotaAgregacion, Pastilla, Pie, SinReporte, TarjetaFactor } from '../../modules/panel/PiezasEmpresario'
+import { Caja, Pastilla, Pie, SinReporte, TarjetaFactor } from '../../modules/panel/PiezasEmpresario'
 import { Aviso, Cargando, Pantalla } from '../../modules/nucleo/ui'
 import { ancho, color, espacio, radio, texto } from '../../modules/nucleo/diseno'
 import { IconoCalendario, IconoEquipo, IconoEscudoCheck, IconoInfo, IconoReloj } from '../../modules/nucleo/iconos'
@@ -166,7 +166,6 @@ export default function FactoresEmpresario() {
           </>
         )}
 
-        <NotaAgregacion respondientes={ultima?.respondientes} minimo={MINIMO} />
         <Pie />
       </Pantalla>
     </Panel>

@@ -9,7 +9,7 @@ import type { ReactNode } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { color, espacio, radio, texto } from '../nucleo/diseno'
 import {
-  IconoActualizar, IconoBarras, IconoCampana, IconoCandado, IconoEscudo, IconoReloj, IconoTendenciaAbajo, IconoTendenciaArriba,
+  IconoActualizar, IconoBarras, IconoCampana, IconoEscudo, IconoReloj, IconoTendenciaAbajo, IconoTendenciaArriba,
 } from '../nucleo/iconos'
 import {
   ETIQUETA_NIVEL, FACTORES, fueraDeReferencia,
@@ -333,23 +333,6 @@ export function TarjetaRecomendacion({ r, numero }: { r: Recomendacion; numero: 
 
 // ---------------------------------------------------------- Nota y pie
 
-export function NotaAgregacion({ respondientes, minimo }: { respondientes?: number; minimo: number }) {
-  return (
-    <View style={e.nota}>
-      <IconoCandado tamano={14} color={color.textoMedio} />
-      <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1, minWidth: 240 }]}>
-        {respondientes
-          ? `Promedio de ${respondientes} respuestas. Nadie de la empresa ve lo que contestó una persona.`
-          : 'Son promedios. Nadie de la empresa ve lo que contestó una persona.'}
-      </Text>
-      <View style={[e.fila, { gap: 6 }]}>
-        <View style={[e.punto, { backgroundColor: color.primario }]} />
-        <Text style={[texto.datoFuerte, { color: color.texto }]}>Mínimo {minimo} respuestas</Text>
-      </View>
-    </View>
-  )
-}
-
 export function SinReporte({ inscritos, minimo }: { inscritos: number; minimo: number }) {
   const faltan = Math.max(0, minimo - inscritos)
   return (
@@ -401,7 +384,6 @@ const e = StyleSheet.create({
   separadorH: { height: 1, backgroundColor: color.borde, marginVertical: 4 },
   mini: { backgroundColor: '#F5F4F1', borderRadius: radio.md, padding: espacio.md, gap: 6 },
   numero: { width: 30, height: 30, borderRadius: 8, backgroundColor: '#E8EFEA', alignItems: 'center', justifyContent: 'center' },
-  nota: { flexDirection: 'row', alignItems: 'center', gap: espacio.md, backgroundColor: '#F1EFEB', borderRadius: radio.md, padding: espacio.base, flexWrap: 'wrap' },
   pie: { flexDirection: 'row', justifyContent: 'space-between', gap: espacio.md, paddingTop: espacio.lg, paddingBottom: espacio.sm, borderTopWidth: 1, borderTopColor: color.borde, flexWrap: 'wrap' },
 })
 
