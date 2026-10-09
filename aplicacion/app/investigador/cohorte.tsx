@@ -10,7 +10,13 @@
  *  tres tablas cortas detrás de un selector, con los nombres completos.
  *
  *  Sin mínimo de reporte: el investigador ve los agregados aunque el grupo
- *  sea pequeño (RN-009-04); el administrador de empresa, no. */
+ *  sea pequeño (RN-009-04); el administrador de empresa, no.
+ *
+ *  La foto del grupo sale del check-in, no del OLBI. El OLBI se pide ahora a
+ *  quien el modelo señala, por sorteo, al mes o tras un alta: su media es la
+ *  de un grupo con más riesgo y su tasa de respuesta no mide participación.
+ *  Con la pantalla anterior, una sola persona de prueba que contestó el OLBI
+ *  un jueves dejaba la semana en «1 de 58 · 4.00 · 100 % pasó el umbral». */
 
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -24,8 +30,8 @@ import { Cargando } from '../../modules/nucleo/ui'
 import { color, espacio, radio, texto } from '../../modules/nucleo/diseno'
 import { IconoCalendario, IconoEquipo, IconoGrafica, IconoPersona } from '../../modules/nucleo/iconos'
 
-/** Los cortes del OLBI del estudio (ESP-003). Se pasa el umbral por
- *  agotamiento O por desvinculación, no solo por el primero. */
+/** Los cortes del OLBI del estudio (ESP-003). Se pasa el umbral con las
+ *  dos dimensiones sobre su corte, como en la detección. */
 const UMBRAL_AGOTAMIENTO = 2.875
 const UMBRAL_DESVINCULACION = 2.75
 const TIERRA = '#8C4A2B'
@@ -33,7 +39,7 @@ const TIERRA = '#8C4A2B'
 type Vista = 'quienes' | 'olbi' | 'declarado'
 const VISTAS: { clave: Vista; titulo: string; apoyo: string }[] = [
   { clave: 'quienes', titulo: 'Quiénes había', apoyo: 'cuántas personas seguía el estudio cada semana' },
-  { clave: 'olbi', titulo: 'Cómo salió el OLBI', apoyo: 'quiénes respondieron el viernes y con qué notas' },
+  { clave: 'olbi', titulo: 'Cómo salió el OLBI', apoyo: 'cuántas lo contestaron y cuántas pasaron el umbral' },
   { clave: 'declarado', titulo: 'Lo que declararon', apoyo: 'horas, sueño, sobretiempo, guardias y apoyo del jefe' },
 ]
 
@@ -52,27 +58,28 @@ export default function Cohorte() {
   if (!filas) return <Panel rol="investigador"><Cargando /></Panel>
 
   const empresa = empresas.find((e) => e.id === filtro.organizacion_id)
-  /** Igual que en el Resumen: la semana en curso ya tiene fila, pero su
-   *  viernes no ha llegado y `respondieron_viernes` es 0. La «última con
-   *  datos» es la última que ya tuvo su OLBI. */
-  const ultima = [...filas].reverse().find((f) => f.respondieron_viernes > 0) ?? filas[filas.length - 1]
-  const enCurso = filas[filas.length - 1]
-  const hayEnCurso = !!enCurso && enCurso !== ultima
-  /** Las gráficas solo pintan semanas que ya tuvieron su viernes: con la
-   *  semana en curso dentro, la línea de participación se desplomaba a 0 como
-   *  si la gente hubiera dejado de responder. */
-  const conOlbi = filas.filter((f) => f.respondieron_viernes > 0)
+  /** La semana en curso es la de este lunes, tenga o no datos. Antes era
+   *  «la que aún no tiene OLBI», y como el OLBI ya llega cualquier día, una
+   *  semana a medias pasaba por cerrada. Las gráficas no la pintan: a medio
+   *  camino, la participación parece desplomarse. */
+  const lunesHoy = lunesDe(new Date())
+  const enCurso = filas.find((f) => f.semana.slice(0, 10) === lunesHoy)
+  const cerradas = filas.filter((f) => f !== enCurso)
+  const ultima = cerradas[cerradas.length - 1] ?? filas[filas.length - 1]
+  const hayEnCurso = !!enCurso
   const n = (x: number | null | undefined) => (x == null ? null : Number(x))
   const f1 = (x: number | null | undefined) => (x == null ? '—' : Number(x).toFixed(1))
   const f2 = (x: number | null | undefined) => (x == null ? '—' : Number(x).toFixed(2))
   // pct_alto y guardia_pct ya vienen en 0–100.
   const pct = (x: number | null | undefined) => (x == null ? '—' : `${Math.round(Number(x))}%`)
   const etiquetaSemana = (iso: string) => `S${filas.findIndex((f) => f.semana === iso) + 1}`
-  /** Quien responde el viernes puede estar detectado o haber terminado, así
-   *  que el denominador honesto es la gente inscrita, no la que sigue activa:
+  /** Quien responde puede estar detectado o haber terminado, así que el
+   *  denominador honesto es la gente inscrita, no la que sigue activa:
    *  dividiendo entre `activos` salían semanas con «106 % de activos». */
-  const respuesta = (f: CohorteSemana) => (f.inscritos ? Math.round((f.respondieron_viernes / f.inscritos) * 100) : null)
-  const altoUltima = n(ultima?.olbi_agotamiento_media) != null && n(ultima?.olbi_agotamiento_media)! >= UMBRAL_AGOTAMIENTO
+  const tasa = (k: number, f: CohorteSemana) => (f.inscritos ? Math.round((Number(k) / f.inscritos) * 100) : null)
+  const checkin = (f: CohorteSemana) => tasa(f.respondieron_checkin, f)
+  const olbi = (f: CohorteSemana) => tasa(f.respondieron_viernes, f)
+  const pasaron = (f: CohorteSemana) => Number(f.pasaron_umbral ?? 0)
 
   return (
     <Panel rol="investigador">
@@ -82,8 +89,8 @@ export default function Cohorte() {
           <Text style={[texto.titulo, { color: color.texto, fontSize: 26, lineHeight: 32 }]}>Cómo va el grupo, semana a semana</Text>
           <Text style={[texto.apoyo, { color: color.textoMedio, maxWidth: 680 }]}>
             {filas.length === 0
-              ? 'Todavía no hay ninguna semana con respuestas del viernes en este corte.'
-              : `${filas.length} ${filas.length === 1 ? 'semana' : 'semanas'} con datos, ${rango(filas[0].semana, enCurso.semana)}. Aquí no se oculta nada por tamaño de grupo: eso solo se aplica al administrador de empresa.`}
+              ? 'Todavía no hay ninguna semana con check-ins en este corte.'
+              : `${filas.length} ${filas.length === 1 ? 'semana' : 'semanas'} con datos, ${rango(filas[0].semana, filas[filas.length - 1].semana)}. Aquí no se oculta nada por tamaño de grupo: eso solo se aplica al administrador de empresa.`}
           </Text>
         </View>
 
@@ -98,9 +105,9 @@ export default function Cohorte() {
         {filas.length > 0 && (
           <>
             <View style={[e.fila, { justifyContent: 'space-between' }]}>
-              <Rotulo>La última semana con datos</Rotulo>
+              <Rotulo>La última semana cerrada</Rotulo>
               <View style={[e.fila, { gap: 6 }]}>
-                {hayEnCurso && <Text style={[texto.dato, { color: color.textoSuave }]}>{`la de ahora (${rangoSemana(enCurso.semana)}) aún no tiene viernes`}</Text>}
+                {hayEnCurso && <Text style={[texto.dato, { color: color.textoSuave }]}>{`la de ahora (${rangoSemana(enCurso!.semana)}) sigue en curso`}</Text>}
                 <Pastilla tono={TONO.verdeSuave}>{rangoSemana(ultima.semana)}</Pastilla>
               </View>
             </View>
@@ -108,24 +115,23 @@ export default function Cohorte() {
             <View style={[e.fila, { gap: espacio.sm, alignItems: 'stretch' }]}>
               <Tarjeta rotulo="Estaban inscritas" icono={<IconoEquipo tamano={16} color={color.primarioProfundo} />}
                 valor={String(ultima.inscritos)} unidad="personas" apoyo={`${ultima.activos} siguen en seguimiento activo`} />
-              <Tarjeta rotulo="Respondieron el viernes" icono={<IconoPersona tamano={16} color={color.primarioProfundo} />}
-                valor={String(ultima.respondieron_viernes)} unidad={`de ${ultima.inscritos}`}
-                apoyo={respuesta(ultima) == null ? 'sin inscritas esa semana' : `${respuesta(ultima)}% contestó el OLBI`}
-                tinta={respuesta(ultima) != null && respuesta(ultima)! < 80 ? TIERRA : color.texto} />
-              <Tarjeta rotulo="Agotamiento medio" icono={<IconoGrafica tamano={16} color={TIERRA} />} fondoIcono="#FBEDE6"
-                valor={f2(ultima.olbi_agotamiento_media)} unidad="de 4.0"
-                apoyo={altoUltima ? `por encima del umbral (${UMBRAL_AGOTAMIENTO})` : `por debajo del umbral (${UMBRAL_AGOTAMIENTO})`}
-                tinta={altoUltima ? TIERRA : color.texto} />
-              <Tarjeta rotulo="Pasaron el umbral esa semana" icono={<IconoGrafica tamano={16} color={TIERRA} />} fondoIcono="#FBEDE6"
-                valor={pct(ultima.pct_alto)} unidad={`de las ${ultima.respondieron_viernes} que contestaron`}
-                apoyo={n(ultima.pct_alto) ? 'ese viernes' : 'ninguna, ese viernes'}
-                tinta={n(ultima.pct_alto) ? TIERRA : color.texto} />
+              <Tarjeta rotulo="Hicieron check-in" icono={<IconoPersona tamano={16} color={color.primarioProfundo} />}
+                valor={String(ultima.respondieron_checkin)} unidad={`de ${ultima.inscritos}`}
+                apoyo={checkin(ultima) == null ? 'sin inscritas esa semana' : `${checkin(ultima)}% respondió al menos un día`}
+                tinta={checkin(ultima) != null && checkin(ultima)! < 80 ? TIERRA : color.texto} />
+              <Tarjeta rotulo="Contestaron el OLBI" icono={<IconoGrafica tamano={16} color={color.primarioProfundo} />}
+                valor={String(ultima.respondieron_viernes)} unidad="personas"
+                apoyo="se pide a quien señala el modelo, por sorteo, al mes o tras un alta" />
+              <Tarjeta rotulo="Pasaron el umbral" icono={<IconoGrafica tamano={16} color={TIERRA} />} fondoIcono="#FBEDE6"
+                valor={String(pasaron(ultima))} unidad={pasaron(ultima) === 1 ? 'persona' : 'personas'}
+                apoyo={ultima.respondieron_viernes ? `de las ${ultima.respondieron_viernes} que contestaron el OLBI` : 'nadie contestó el OLBI esa semana'}
+                tinta={pasaron(ultima) ? TIERRA : color.texto} />
             </View>
 
             {/* Dos cifras que parecen la misma y no lo son. */}
             {ultima.detectados > 0 && (
               <Text style={[texto.dato, { color: color.textoMedio }]}>
-                Ojo con no sumar esto a las <Text style={{ color: TIERRA }}>{ultima.detectados} personas detectadas</Text> del estudio: esa cuenta es acumulada —cruzaron el umbral en alguna semana y siguen marcadas—, mientras que la cifra de arriba es solo de ese viernes.
+                Ojo con no sumar esto a las <Text style={{ color: TIERRA }}>{ultima.detectados} personas detectadas</Text> del estudio: esa cuenta es acumulada —cruzaron el umbral en alguna semana y siguen marcadas—, mientras que la cifra de arriba es solo de esa semana.
               </Text>
             )}
 
@@ -133,26 +139,25 @@ export default function Cohorte() {
               <Caja estilo={{ flex: 1.2, minWidth: 320, gap: espacio.sm }}>
                 <Rotulo>Cómo se sienten, en promedio</Rotulo>
                 <Text style={[texto.dato, { color: color.textoMedio }]}>
-                  {`Media de las dos notas del OLBI entre quienes contestaron. Línea marrón: el umbral de agotamiento (${UMBRAL_AGOTAMIENTO}). Línea gris: el de desvinculación (${UMBRAL_DESVINCULACION}).`}
+                  Las preguntas de agotamiento y desvinculación del check-in diario, de 1 a 5. Las contesta todo el grupo, así que es la foto más fiel; el OLBI ya no, porque se pide sobre todo a quien va peor.
                 </Text>
                 <GraficaLinea
                   series={[
-                    { etiqueta: 'Agotamiento', color: TIERRA, puntos: conOlbi.map((f) => ({ x: f.semana, y: n(f.olbi_agotamiento_media) })) },
-                    { etiqueta: 'Desvinculación', color: color.primarioProfundo, puntos: conOlbi.map((f) => ({ x: f.semana, y: n(f.olbi_desvinculacion_media) })) },
+                    { etiqueta: 'Agotamiento', color: TIERRA, puntos: cerradas.map((f) => ({ x: f.semana, y: n(f.checkin_agotamiento_media) })) },
+                    { etiqueta: 'Desvinculación', color: color.primarioProfundo, puntos: cerradas.map((f) => ({ x: f.semana, y: n(f.checkin_desvinculacion_media) })) },
                   ]}
-                  yMin={1} yMax={4} alto={220} umbral={UMBRAL_AGOTAMIENTO} umbralEtiqueta="Umbral de agotamiento"
-                  referencia={UMBRAL_DESVINCULACION} todasLasEtiquetasX etiquetaX={etiquetaSemana}
+                  yMin={1} yMax={5} alto={220} todasLasEtiquetasX etiquetaX={etiquetaSemana}
                 />
               </Caja>
               <Caja estilo={{ flex: 1, minWidth: 300, gap: espacio.sm }}>
-                <Rotulo>Cuántas responden y cuántas pasan el umbral</Rotulo>
+                <Rotulo>Cuántas responden</Rotulo>
                 <Text style={[texto.dato, { color: color.textoMedio }]}>
-                  En porcentaje. La verde debería mantenerse alta; la marrón es la que importa que no suba.
+                  Porcentaje de las inscritas. El check-in debería mantenerse alto; el OLBI bajará, porque ya no es para todas.
                 </Text>
                 <GraficaLinea
                   series={[
-                    { etiqueta: 'Pasaron el umbral', color: TIERRA, puntos: conOlbi.map((f) => ({ x: f.semana, y: n(f.pct_alto) })) },
-                    { etiqueta: 'Respondieron', color: color.primarioProfundo, puntos: conOlbi.map((f) => ({ x: f.semana, y: respuesta(f) })) },
+                    { etiqueta: 'Check-in', color: color.primarioProfundo, puntos: cerradas.map((f) => ({ x: f.semana, y: checkin(f) })) },
+                    { etiqueta: 'OLBI', color: '#BDB8B1', puntos: cerradas.map((f) => ({ x: f.semana, y: olbi(f) })) },
                   ]}
                   yMin={0} yMax={100} alto={220} todasLasEtiquetasX etiquetaX={etiquetaSemana}
                 />
@@ -176,11 +181,11 @@ export default function Cohorte() {
             <Caja estilo={{ gap: 4 }}>
               {vista === 'quienes' && (
                 <Tabla
-                  cabecera={['Semana', 'Inscritas', 'En seguimiento', 'Detectadas', 'Retiradas', 'Terminadas']}
+                  cabecera={['Semana', 'Inscritas', 'Hicieron check-in', 'En seguimiento', 'Detectadas', 'Retiradas', 'Terminadas']}
                   filas={filas.map((f, i) => ({
-                    clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: f === enCurso && hayEnCurso ? `${rangoSemana(f.semana)} · en curso` : rangoSemana(f.semana),
+                    clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: f === enCurso ? `${rangoSemana(f.semana)} · en curso` : rangoSemana(f.semana),
                     celdas: [
-                      { v: String(f.inscritos) }, { v: String(f.activos) },
+                      { v: String(f.inscritos) }, { v: String(f.respondieron_checkin) }, { v: String(f.activos) },
                       { v: String(f.detectados), tinta: f.detectados ? TIERRA : undefined, fuerte: !!f.detectados },
                       { v: String(f.retirados) }, { v: String(f.finalizados) },
                     ],
@@ -190,36 +195,34 @@ export default function Cohorte() {
               )}
               {vista === 'olbi' && (
                 <Tabla
-                  cabecera={['Semana', 'Respondieron', '% que respondió', 'Agotamiento', 'Desvinculación', 'Pasaron el umbral']}
+                  cabecera={['Semana', 'Contestaron', 'Agotamiento', 'Desvinculación', 'Pasaron el umbral']}
                   filas={filas.map((f, i) => {
-                    const alto = n(f.olbi_agotamiento_media) != null && n(f.olbi_agotamiento_media)! >= UMBRAL_AGOTAMIENTO
-                    const baja = respuesta(f) != null && respuesta(f)! < 80
+                    const cruzaron = pasaron(f)
                     return {
-                      clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: f === enCurso && hayEnCurso ? `${rangoSemana(f.semana)} · en curso` : rangoSemana(f.semana), resaltar: alto,
+                      clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: f === enCurso ? `${rangoSemana(f.semana)} · en curso` : rangoSemana(f.semana), resaltar: cruzaron > 0,
                       celdas: [
                         { v: `${f.respondieron_viernes} de ${f.inscritos}` },
-                        { v: respuesta(f) == null ? '—' : `${respuesta(f)}%`, tinta: baja ? TIERRA : undefined },
-                        { v: f2(f.olbi_agotamiento_media), tinta: alto ? TIERRA : undefined, fuerte: alto },
-                        { v: f2(f.olbi_desvinculacion_media), tinta: n(f.olbi_desvinculacion_media) != null && n(f.olbi_desvinculacion_media)! >= UMBRAL_DESVINCULACION ? TIERRA : undefined },
-                        { v: pct(f.pct_alto), tinta: n(f.pct_alto) ? TIERRA : undefined },
+                        { v: f2(f.olbi_agotamiento_media) },
+                        { v: f2(f.olbi_desvinculacion_media) },
+                        { v: String(cruzaron), tinta: cruzaron ? TIERRA : undefined, fuerte: cruzaron > 0 },
                       ],
                     }
                   })}
-                  nota={`Las medias son de quienes contestaron esa semana, no de toda la cohorte. «Pasaron el umbral» es el porcentaje de esas respuestas con agotamiento ≥ ${UMBRAL_AGOTAMIENTO} o desvinculación ≥ ${UMBRAL_DESVINCULACION}. Una fila en tierra tiene el agotamiento medio sobre el umbral.`}
+                  nota={`Las medias son de quienes contestaron esa semana. Con el OLBI para todos cada viernes eran una foto del grupo; ahora se pide sobre todo a quien el modelo señala, así que hablan de un grupo con más riesgo. «Pasaron el umbral» cuenta personas con agotamiento ≥ ${UMBRAL_AGOTAMIENTO} y desvinculación ≥ ${UMBRAL_DESVINCULACION}.`}
                 />
               )}
               {vista === 'declarado' && (
                 <Tabla
                   cabecera={['Semana', 'Horas al día', 'Horas de sueño', 'Trabajó el finde', 'Sobretiempo', 'De guardia', 'Apoyo del jefe']}
                   filas={filas.map((f, i) => ({
-                    clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: f === enCurso && hayEnCurso ? `${rangoSemana(f.semana)} · en curso` : rangoSemana(f.semana),
+                    clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: f === enCurso ? `${rangoSemana(f.semana)} · en curso` : rangoSemana(f.semana),
                     celdas: [
                       { v: `${f1(f.horas_dia_media)} h` }, { v: `${f1(f.sueno_media)} h` }, { v: `${f1(f.fin_de_semana_media)} h` },
                       { v: `${f1(f.sobretiempo_media)} h` }, { v: pct(f.guardia_pct) },
                       { v: `${f1(f.apoyo_lider_media)} de 5` },
                     ],
                   }))}
-                  nota="Horas al día, de sueño y del fin de semana salen del check-in diario; el sobretiempo, la guardia y el apoyo del jefe, del formulario del viernes. «Apoyo del jefe» va de 1 («nunca conté con él») a 5 («siempre»)."
+                  nota="Horas al día, de sueño y del fin de semana salen del check-in diario, que contesta todo el grupo. El sobretiempo, la guardia y el apoyo del jefe, de las tres preguntas que siguen al OLBI: solo de quienes lo contestaron. «Apoyo del jefe» va de 1 («nunca conté con él») a 5 («siempre»)."
                 />
               )}
               <View style={[e.fila, { justifyContent: 'flex-end', paddingTop: 4 }]}><Mono tono={color.textoSuave}>cohorte_semanal</Mono></View>
@@ -230,7 +233,7 @@ export default function Cohorte() {
         {filas.length === 0 && (
           <Caja>
             <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-              Una semana aparece aquí en cuanto alguien contesta el OLBI de ese viernes. Si acabas de dar de alta la empresa, la primera fila saldrá el viernes que viene.
+              Una semana aparece aquí en cuanto alguien hace un check-in. Si acabas de dar de alta la empresa, la primera fila saldrá con el primer check-in.
             </Text>
           </Caja>
         )}
@@ -312,6 +315,12 @@ function rangoSemana(iso: string): string {
   return l.getMonth() === v.getMonth()
     ? `${l.getDate()} – ${v.getDate()} de ${MESES[l.getMonth()]}`
     : `${l.getDate()} de ${MESES[l.getMonth()]} – ${v.getDate()} de ${MESES[v.getMonth()]}`
+}
+
+/** El lunes de la semana de `d`, como «2026-10-05», en hora local. */
+function lunesDe(d: Date): string {
+  const l = new Date(d); l.setHours(12, 0, 0, 0); l.setDate(l.getDate() - ((l.getDay() + 6) % 7))
+  return `${l.getFullYear()}-${String(l.getMonth() + 1).padStart(2, '0')}-${String(l.getDate()).padStart(2, '0')}`
 }
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'

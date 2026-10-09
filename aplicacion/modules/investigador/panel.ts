@@ -271,6 +271,10 @@ export type CohorteSemana = {
   olbi_agotamiento_media: number | null; olbi_desvinculacion_media: number | null; pct_alto: number | null
   horas_dia_media: number | null; sueno_media: number | null; fin_de_semana_media: number | null
   sobretiempo_media: number | null; guardia_pct: number | null; apoyo_lider_media: number | null
+  /** Lo que contesta todo el grupo (check-in diario, escala 1-5) y cuántas
+   *  personas, no qué porcentaje, cruzaron el umbral esa semana. */
+  pasaron_umbral: number; respondieron_checkin: number
+  checkin_agotamiento_media: number | null; checkin_desvinculacion_media: number | null
 }
 export async function cohorte(filtro?: FiltroGlobal): Promise<CohorteSemana[]> {
   let q = supabase.from('cohorte_semanal').select('*').order('semana')
