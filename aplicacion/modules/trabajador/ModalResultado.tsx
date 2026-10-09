@@ -122,6 +122,10 @@ const AVISO_OLBI: Record<string, { titulo: string; texto: string }> = {
     titulo: 'Cuestionario completo',
     texto: 'Hace un mes que no lo respondes. Conviene medir aunque todo vaya bien.',
   },
+  tras_alta: {
+    titulo: 'Cuestionario completo',
+    texto: 'Han pasado dos semanas desde tu acompañamiento. Es para ver cómo sigues.',
+  },
 }
 
 const LETRA_DIA = ['L', 'M', 'M', 'J', 'V', 'S', 'D']

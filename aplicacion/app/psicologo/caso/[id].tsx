@@ -383,7 +383,7 @@ function HojaCerrar({ visible, onCerrar, onConfirmar }: {
   return (
     <Hoja visible={visible} titulo="¿Cómo termina el caso?" onCerrar={onCerrar}>
       <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-        Al cerrarlo dejas de tener acceso a esta persona. El desenlace sirve para saber si el acompañamiento funcionó.
+        Vuelve a sus check-ins y en dos semanas se le pide otra vez el cuestionario. Si sale alto, vuelve contigo. Al cerrar dejas de ver su contacto.
       </Text>
       <View style={{ gap: espacio.xs }}>
         {DESENLACES_CIERRE.map((d) => (

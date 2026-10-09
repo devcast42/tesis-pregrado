@@ -260,7 +260,13 @@ export default function PersonasAdmin() {
                         que no se vende. Y «en acompañamiento» va sin fecha ni
                         motivo: eso queda entre la persona y su psicólogo. */}
                     <View style={{ flex: 1.6, gap: 3, alignItems: 'flex-start' }}>
-                      {x.nivel_agotamiento ? (
+                      {/* Tras el alta, el nivel guardado es de antes del
+                          acompañamiento: enseñarlo diría «alto» de alguien
+                          que ya pasó por el psicólogo. Hasta su cuestionario
+                          de control, «En seguimiento». */}
+                      {x.tras_alta ? (
+                        <Pastilla fondo="#E4ECFB" tinta="#2F4F8F" punto="#2F4F8F">En seguimiento</Pastilla>
+                      ) : x.nivel_agotamiento ? (
                         <PastillaNivel nivel={x.nivel_agotamiento} />
                       ) : (
                         <Text style={[texto.dato, { color: color.textoSuave }]}>sin medir aún</Text>

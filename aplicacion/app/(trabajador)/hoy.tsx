@@ -54,6 +54,7 @@ const POR_QUE: Record<string, string> = {
   modelo: 'Por cómo va tu semana',
   sorteo: 'Te tocó esta semana',
   sin_medir: 'Hace un mes que no lo respondes',
+  tras_alta: 'Para ver cómo sigues',
 }
 
 function etiquetaDia(iso?: string): string {

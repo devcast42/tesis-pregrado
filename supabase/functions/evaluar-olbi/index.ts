@@ -153,18 +153,35 @@ async function derivar(
   const { data: psicologos } = await db.from('psicologos').select('id').eq('activo', true)
   if (!psicologos?.length) return null
 
-  const { data: cargas } = await db
+  // Quien vuelve a cruzar el umbral después de un alta vuelve con el mismo
+  // psicólogo, si sigue activo. Empezar con otra persona es empezar de cero
+  // —contar otra vez lo que ya contó— justo cuando más cuesta.
+  const { data: anterior } = await db
     .from('derivaciones')
     .select('psicologo_id')
-    .is('cerrada_en', null)
+    .eq('trabajador_id', trabajadorId)
+    .not('cerrada_en', 'is', null)
+    .order('cerrada_en', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const activos = new Set(psicologos.map((p) => p.id as string))
 
-  const conteo = new Map<string, number>(psicologos.map((p) => [p.id as string, 0]))
-  for (const fila of cargas ?? []) {
-    const id = fila.psicologo_id as string
-    conteo.set(id, (conteo.get(id) ?? 0) + 1)
+  let elegido: string
+  if (anterior && activos.has(anterior.psicologo_id as string)) {
+    elegido = anterior.psicologo_id as string
+  } else {
+    const { data: cargas } = await db
+      .from('derivaciones')
+      .select('psicologo_id')
+      .is('cerrada_en', null)
+
+    const conteo = new Map<string, number>(psicologos.map((p) => [p.id as string, 0]))
+    for (const fila of cargas ?? []) {
+      const id = fila.psicologo_id as string
+      conteo.set(id, (conteo.get(id) ?? 0) + 1)
+    }
+    elegido = [...conteo.entries()].sort((a, b) => a[1] - b[1])[0][0]
   }
-
-  const elegido = [...conteo.entries()].sort((a, b) => a[1] - b[1])[0][0]
 
   const { data: nueva } = await db
     .from('derivaciones')
@@ -179,7 +196,7 @@ async function derivar(
   await db.from('eventos').insert({
     trabajador_id: trabajadorId,
     tipo: 'derivacion_psicologo',
-    metadata: { psicologo_id: elegido, automatica: true },
+    metadata: { psicologo_id: elegido, automatica: true, mismo_psicologo: !!anterior && anterior.psicologo_id === elegido },
   })
 
   return (nueva?.id as string) ?? null

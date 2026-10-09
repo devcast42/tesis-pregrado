@@ -62,6 +62,9 @@ export type FilaParticipacion = {
   /** Sí/no, sin fecha ni motivo: que esté en acompañamiento es gestionable;
    *  por qué lo está, no es asunto de la empresa. */
   en_acompanamiento: boolean
+  /** Terminó su acompañamiento y aún no ha respondido el cuestionario de
+   *  control. Su nivel es de antes y no se enseña. */
+  tras_alta: boolean
   ultima_respuesta: string | null
 }
 
