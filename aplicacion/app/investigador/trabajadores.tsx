@@ -455,7 +455,8 @@ function PanelLateral({ p, onCerrar }: { p: FilaTrabajadorV2; onCerrar: () => vo
   const [envios, setEnvios] = useState<Envio[]>([])
   useEffect(() => { calendario(p.id).then(setEnvios).catch(() => setEnvios([])) }, [p.id])
   const semanas = calendarioSemanal(p.inscrito_en, envios)
-  const celdas = semanas.flat()
+  // Solo los días de check-in: la columna del OLBI no es una obligación.
+  const celdas = semanas.flatMap((sem) => sem.slice(0, 4))
   const respondidos = celdas.filter((c) => c === 'ok').length
   const esperados = celdas.filter((c) => c !== 'futuro').length
   const riesgo = p.nowcast != null && p.nowcast >= RIESGO_ALTO
@@ -523,17 +524,17 @@ function PanelLateral({ p, onCerrar }: { p: FilaTrabajadorV2; onCerrar: () => vo
         <Text style={[texto.dato, { color: color.textoMedio }]}>{`respondió ${respondidos} de ${esperados}`}</Text>
       </View>
       <View style={e.matriz}>
-        <View style={e.matrizFila}>{['L', 'M', 'M', 'J', 'V'].map((d, i) => <Text key={i} style={[texto.dato, { color: color.textoMedio, width: 22, textAlign: 'center' }]}>{d}</Text>)}</View>
+        <View style={e.matrizFila}>{['L', 'M', 'M', 'J', 'OLBI'].map((d, i) => <Text key={i} style={[texto.dato, { color: color.textoMedio, width: i === 4 ? 34 : 22, textAlign: 'center', fontSize: i === 4 ? 10 : undefined }]}>{d}</Text>)}</View>
         {semanas.map((sem, i) => (
           <View key={i} style={e.matrizFila}>
-            {sem.map((c, j) => <View key={j} style={[e.celda, c === 'ok' ? e.celdaOk : c === 'alerta' ? e.celdaAlerta : c === 'futuro' ? e.celdaFuturo : e.celdaOmitido]} />)}
+            {sem.map((c, j) => <View key={j} style={[e.celda, j === 4 && { width: 26 }, c === 'ok' ? e.celdaOk : c === 'olbi' ? e.celdaOlbi : c === 'futuro' || c === 'sin' ? e.celdaFuturo : e.celdaOmitido]} />)}
           </View>
         ))}
         <View style={e.leyenda}>
-          <Leyenda tinta={color.primarioProfundo}>Respondió</Leyenda>
-          <Leyenda tinta="#D9D5CF">No respondió</Leyenda>
-          <Leyenda tinta="#F3DDD2">Faltó el OLBI del viernes</Leyenda>
-          <Leyenda tinta="#EDEBE7">Aún no toca</Leyenda>
+          <Leyenda tinta={color.primarioProfundo}>Hizo el check-in</Leyenda>
+          <Leyenda tinta="#D9D5CF">No lo hizo</Leyenda>
+          <Leyenda tinta="#C9A27E">Contestó el OLBI</Leyenda>
+          <Leyenda tinta="#EDEBE7">Aún no toca / sin OLBI</Leyenda>
         </View>
       </View>
 
@@ -554,23 +555,33 @@ function Leyenda({ children, tinta }: { children: string; tinta: string }) {
   )
 }
 
-/** 5 semanas × L–V: ok / omitido / futuro (alerta: viernes sin OLBI). */
-function calendarioSemanal(inscritoEn: string, envios: Envio[]): ('ok' | 'omitido' | 'alerta' | 'futuro')[][] {
+/** 5 semanas × (L–J del check-in + si contestó el OLBI esa semana).
+ *
+ *  Antes eran L–V y el viernes esperaba el OLBI: sin él, «alerta». Ahora el
+ *  check-in es de lunes a jueves y el OLBI se pide cualquier día y no a
+ *  todos, así que la quinta columna solo dice si lo contestó, sin alarma. */
+type CeldaCal = 'ok' | 'omitido' | 'olbi' | 'sin' | 'futuro'
+function calendarioSemanal(inscritoEn: string, envios: Envio[]): CeldaCal[][] {
   const lunes = new Date(`${inscritoEn.slice(0, 10)}T12:00:00`); lunes.setDate(lunes.getDate() - ((lunes.getDay() + 6) % 7))
   const hoy = new Date(); hoy.setHours(12, 0, 0, 0)
   const dias = new Map<string, Set<string>>()
   for (const en of envios) (dias.get(en.dia) ?? dias.set(en.dia, new Set()).get(en.dia)!).add(en.formulario_clave)
-  const out: ('ok' | 'omitido' | 'alerta' | 'futuro')[][] = []
+  const iso = (f: Date) => `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`
+  const out: CeldaCal[][] = []
   for (let s = 0; s < 5; s++) {
-    const fila: ('ok' | 'omitido' | 'alerta' | 'futuro')[] = []
-    for (let d = 0; d < 5; d++) {
+    const fila: CeldaCal[] = []
+    for (let d = 0; d < 4; d++) {
       const f = new Date(lunes); f.setDate(lunes.getDate() + s * 7 + d)
-      const iso = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`
       if (f > hoy) { fila.push('futuro'); continue }
-      const set = dias.get(iso)
-      if (d === 4) fila.push(set?.has('olbi') ? 'ok' : 'alerta')
-      else fila.push(set?.has('diario') ? 'ok' : 'omitido')
+      fila.push(dias.get(iso(f))?.has('diario') ? 'ok' : 'omitido')
     }
+    const inicioSemana = new Date(lunes); inicioSemana.setDate(lunes.getDate() + s * 7)
+    let olbi = false
+    for (let d = 0; d < 7; d++) {
+      const f = new Date(inicioSemana); f.setDate(inicioSemana.getDate() + d)
+      if (dias.get(iso(f))?.has('olbi')) olbi = true
+    }
+    fila.push(olbi ? 'olbi' : inicioSemana > hoy ? 'futuro' : 'sin')
     out.push(fila)
   }
   return out
@@ -611,7 +622,7 @@ const e = StyleSheet.create({
   matrizFila: { flexDirection: 'row', justifyContent: 'space-between' },
   celda: { width: 14, height: 14, borderRadius: 7, marginHorizontal: 4 },
   celdaOk: { backgroundColor: color.primarioProfundo },
-  celdaAlerta: { backgroundColor: '#F3DDD2' },
+  celdaOlbi: { backgroundColor: '#C9A27E' },
   celdaOmitido: { backgroundColor: '#D9D5CF' },
   celdaFuturo: { backgroundColor: '#EDEBE7' },
   leyenda: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 4, paddingTop: 4 },

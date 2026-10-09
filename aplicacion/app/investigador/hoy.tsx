@@ -45,7 +45,7 @@ const GRUPOS: Grupo[] = [
   {
     tipo: 'inactivo', urgente: true,
     titulo: 'Llevan cuatro días o más sin responder',
-    porque: 'Siguen activas pero no han hecho ningún check-in en cuatro días hábiles. Si sigue así, se pierden del estudio.',
+    porque: 'Siguen activas pero no han hecho ningún check-in en cuatro días seguidos de check-in (de lunes a jueves). Si sigue así, se pierden del estudio.',
     puedes: 'Abre su ficha para ver desde cuándo, o su empresa, que es donde está el administrador al que pedirle que la contacte. Él nunca sabe por qué.',
   },
   {
@@ -67,10 +67,10 @@ const GRUPOS: Grupo[] = [
     puedes: 'El psicólogo la tiene en su app como «cita por confirmar». Si no responde, cámbiale el profesional desde la ficha.',
   },
   {
-    tipo: 'sin_viernes',
-    titulo: 'Semanas sin el OLBI del viernes',
-    porque: 'Hicieron sus check-ins de lunes a jueves pero no contestaron el cuestionario del viernes, así que esa semana se queda sin nota y el modelo no la puede usar.',
-    puedes: 'El viernes admite dos días de gracia. Pasado el domingo la semana queda así y la persona sigue con la siguiente; no hay nada que reabrir.',
+    tipo: 'olbi_sin_contestar',
+    titulo: 'Se les pidió el OLBI y no lo contestaron',
+    porque: 'La app les ofreció el cuestionario —porque el modelo avisó, por sorteo, por llevar un mes sin medirse o tras un alta— y la semana se cerró sin respuesta. Si fue el modelo, esa alerta se queda sin comprobar.',
+    puedes: 'No hay nada que reabrir: si vuelve a tocar, la app se lo ofrece otra vez. La alerta desaparece en cuanto contesta un OLBI.',
   },
   {
     tipo: 'informe_pendiente',
@@ -227,7 +227,7 @@ function Fila({ p }: { p: Pendiente }) {
 
   const DETALLE: Record<TipoPendiente, { pastilla: string; linea: string; tierra?: boolean }> = {
     inactivo: { pastilla: `${dias} sin responder`, linea: `Su último check-in fue el ${p.desde ? fechaCorta(p.desde) : '—'}.`, tierra: true },
-    sin_viernes: { pastilla: `Viernes ${fechaCorta(p.desde)}`, linea: 'Contestó de lunes a jueves, pero no el OLBI de ese viernes.' },
+    olbi_sin_contestar: { pastilla: `Pedido el ${fechaCorta(p.desde)}`, linea: 'Se le ofreció el OLBI esa semana y no lo contestó.' },
     deteccion_sin_derivacion: { pastilla: `Detectada el ${fechaCorta(p.desde)}`, linea: 'Cruzó el umbral y no había ningún psicólogo activo a quien asignarla.', tierra: true },
     derivacion_sin_sesion: { pastilla: `Derivada hace ${dias}`, linea: 'Puede que falte elegir horario, que el psicólogo no lo haya confirmado o que la cita esté puesta más adelante; se ve en su ficha.', tierra: true },
     cita_sin_confirmar: { pastilla: `Pedida hace ${dias}`, linea: 'Eligió una hora y espera que el psicólogo la confirme.', tierra: true },

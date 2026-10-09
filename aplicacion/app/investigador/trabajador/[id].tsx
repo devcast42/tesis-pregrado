@@ -42,7 +42,7 @@ const TIERRA = '#8C4A2B'
 const SECCIONES = [
   { id: 'calendario', titulo: 'Qué días respondió' },
   { id: 'serie', titulo: 'Cómo se sintió cada día' },
-  { id: 'olbi', titulo: 'El OLBI, viernes a viernes' },
+  { id: 'olbi', titulo: 'Cada vez que contestó el OLBI' },
   { id: 'modelo', titulo: 'Qué dijo el modelo y si acertó' },
   { id: 'items', titulo: 'Respuesta por respuesta' },
   { id: 'linea', titulo: 'Todo lo que pasó, en orden' },
@@ -217,7 +217,7 @@ export default function FichaTrabajador() {
                   <Nota nombre="Desvinculación" valor={Number(f.ultimo_olbi.desvinculacion)} umbral={umbralDes} />
                   <Text style={[texto.dato, { color: color.textoSuave, fontSize: 11 }]}>{`semana ${semanaDe(f.inscrito_en, f.ultimo_olbi.semana)}`}</Text>
                 </>
-              ) : <Text style={[texto.apoyo, { color: color.textoSuave }]}>Todavía no ha contestado ningún OLBI del viernes.</Text>}
+              ) : <Text style={[texto.apoyo, { color: color.textoSuave }]}>Todavía no ha contestado ningún OLBI.</Text>}
             </Tarjeta>
 
             <Tarjeta titulo="Qué dijo el modelo">
@@ -435,19 +435,22 @@ function construirCalendario(f: Ficha, envios: Envio[]): DatosCalendario {
     for (let d = 0; d < 7; d++) {
       const dia = new Date(lunes0); dia.setDate(lunes0.getDate() + s * 7 + d)
       const iso = isoLocal(dia)
-      if (d >= 5) { fila.push({ estado: 'finde' }); continue }
-      if (dia > hoy) { fila.push({ estado: 'futuro' }); continue }
+      // El check-in es de lunes a jueves. El OLBI ya no tiene día: se marca
+      // el día en que lo contestó, sea cual sea, y no se espera ninguno.
+      if (dia > hoy) { fila.push({ estado: d >= 4 ? 'finde' : 'futuro' }); continue }
       if (iso < inscripcion) { fila.push({ estado: 'previo' }); continue }
       const es = porDia.get(iso) ?? []
-      const hora = es[0] ? new Date(es[0].enviado_en).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false }) : undefined
-      const clave = d === 4 ? 'olbi' : 'diario'
-      const ok = es.some((x) => x.formulario_clave === clave)
+      const olbi = es.find((x) => x.formulario_clave === 'olbi')
+      const diario = es.find((x) => x.formulario_clave === 'diario')
+      const hora = (x?: Envio) => x ? new Date(x.enviado_en).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false }) : undefined
+      if (d >= 4) { fila.push(olbi ? { estado: 'olbi', hora: hora(olbi) } : { estado: 'finde' }); continue }
       // Hoy se ve pero no se cuenta: queda el día entero por delante, y así
       // esta cuenta da lo mismo que la vista `adherencia` de ESP-007, que
-      // solo mira los días ya cerrados. Contándolo, la cabecera decía «9 de
-      // 12» y el desglose de al lado «9 de 13».
-      if (iso !== hoyIso) { esperados++; if (ok) cumplidos++ }
-      fila.push({ estado: ok ? (d === 4 ? 'olbi' : 'checkin') : iso === hoyIso ? 'futuro' : 'omitido', hora: ok ? hora : undefined })
+      // solo mira los días ya cerrados.
+      if (iso !== hoyIso) { esperados++; if (diario) cumplidos++ }
+      fila.push(olbi ? { estado: 'olbi', hora: hora(olbi) }
+        : diario ? { estado: 'checkin', hora: hora(diario) }
+        : { estado: iso === hoyIso ? 'futuro' : 'omitido' })
     }
     semanas.push(fila)
     const pendiente = fila.every((c) => c.estado === 'futuro' || c.estado === 'finde' || c.estado === 'previo')
@@ -472,19 +475,19 @@ function Calendario({ cal, detectada, semanaActual }: { cal: DatosCalendario; de
   const tardePct = cal.diarios ? Math.round((cal.tardes / cal.diarios) * 100) : 0
   return (
     <Seccion numero={1} titulo={SECCIONES[0].titulo}
-      subtitulo={`De lunes a jueves toca un check-in corto; los viernes, el cuestionario OLBI. Cada cuadro es un día, y la hora es cuando lo envió.`}>
+      subtitulo={`De lunes a jueves toca un check-in corto. El OLBI no tiene día: llega cuando lo pide el modelo, por sorteo, al mes sin medirse o tras un alta. Cada cuadro es un día, y la hora es cuando lo envió.`}>
       <View style={[e.fila, { gap: espacio.base }]}>
-        <Leyenda tinta="#A8DFCF" texto="Respondió el check-in" />
-        <Leyenda tinta="#005C55" texto="Respondió el OLBI del viernes" />
-        <Leyenda tinta={TIERRA} texto="No respondió" hueco />
-        <Leyenda tinta="#E4E1DC" texto="Fin de semana" />
+        <Leyenda tinta="#A8DFCF" texto="Hizo el check-in" />
+        <Leyenda tinta="#005C55" texto="Contestó el OLBI" />
+        <Leyenda tinta={TIERRA} texto="No hizo el check-in" hueco />
+        <Leyenda tinta="#E4E1DC" texto="No hay check-in" />
         <Leyenda tinta="#F1EFEB" texto="Aún no toca" />
       </View>
       <View style={[e.fila, { alignItems: 'flex-start', gap: espacio.lg }]}>
         <View style={{ flex: 1.6, minWidth: 320 }}>
           <View style={[e.calFila, { paddingLeft: 66 }]}>
             {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((d, i) => (
-              <Text key={`${d}-${i}`} style={[texto.dato, { color: d === 'Vie' ? color.primarioProfundo : color.textoMedio, flex: 1, textAlign: 'center', fontWeight: d === 'Vie' ? '600' : '400' }]}>{d}</Text>
+              <Text key={`${d}-${i}`} style={[texto.dato, { color: color.textoMedio, flex: 1, textAlign: 'center' }]}>{d}</Text>
             ))}
           </View>
           {cal.semanas.map((sem, i) => (
@@ -535,29 +538,28 @@ function Calendario({ cal, detectada, semanaActual }: { cal: DatosCalendario; de
 
 function SerieDiaria({ f, serie }: { f: Ficha; serie: DiaSerie[] }) {
   const items: { clave: keyof DiaSerie; etiqueta: string; c: string }[] = [
-    { clave: 'od_04', etiqueta: 'Agotamiento físico', c: TIERRA }, { clave: 'od_12', etiqueta: 'Carga mental', c: '#B0532F' },
-    { clave: 'od_03', etiqueta: 'Desconexión al salir', c: '#005C55' }, { clave: 'od_06', etiqueta: 'Presión que siente', c: '#3F7F72' },
+    // Los nombres dicen lo que la frase pregunta. Antes od_03 era «Desconexión
+    // al salir» y od_06 «Presión que siente», y las frases son otras.
+    { clave: 'od_04', etiqueta: 'Le cuesta recuperarse', c: TIERRA }, { clave: 'od_12', etiqueta: 'Acaba exhausto', c: '#B0532F' },
+    { clave: 'od_03', etiqueta: 'Habla mal de su trabajo', c: '#005C55' }, { clave: 'od_06', etiqueta: 'Trabaja en automático', c: '#3F7F72' },
   ]
-  const viernes = new Set(serie.filter((d) => new Date(`${d.dia}T12:00:00`).getDay() === 5).map((d) => d.dia))
   const sem = (dia: string) => `S${semanaDe(f.inscrito_en, dia)}`
   const promedio = (k: keyof DiaSerie) => { const v = serie.map((d) => d[k]).filter((x): x is number => x != null); return v.length ? v.reduce((a, b) => a + Number(b), 0) / v.length : null }
   const trab = promedio('horas_trabajadas'), sueno = promedio('horas_sueno')
 
   return (
     <Seccion numero={2} titulo={SECCIONES[1].titulo}
-      subtitulo="Cada día contesta cuatro frases cortas, de 1 («nada») a 5 («muchísimo»), y cuántas horas trabajó y durmió. Esto es lo que el modelo mira para adelantarse al viernes.">
+      subtitulo="De lunes a jueves contesta cuatro frases cortas, de 1 («totalmente en desacuerdo») a 5 («totalmente de acuerdo»), y cuántas horas trabajó y durmió. Las dos primeras son de agotamiento y las otras dos de desvinculación. Con esto el modelo decide si pedirle el OLBI.">
       <View style={[e.fila, { gap: espacio.base }]}>{items.map((i) => <Leyenda key={i.clave} tinta={i.c} texto={i.etiqueta} />)}</View>
       <View style={e.panelGris}>
         <View style={[e.fila, { justifyContent: 'space-between' }]}>
           <Rotulo>Las cuatro frases del día, de 1 a 5</Rotulo>
-          <Text style={[texto.dato, { color: color.textoSuave }]}>La línea de puntos marca cada viernes</Text>
         </View>
         {serie.length === 0 ? <Text style={[texto.apoyo, { color: color.textoMedio }]}>Todavía no ha hecho ningún check-in diario.</Text> : (
           <GraficaLinea
             series={items.map((i) => ({ etiqueta: i.etiqueta, color: i.c, puntos: serie.map((d) => ({ x: d.dia, y: d[i.clave] == null ? null : Number(d[i.clave]) })) }))}
             yMin={1} yMax={5} alto={200} sinLeyenda todasLasEtiquetasX
             etiquetaX={(x, i) => (i === 0 || (i > 0 && sem(x) !== sem(serie[i - 1].dia))) ? sem(x) : ''}
-            colorEtiquetaX={(x) => viernes.has(x) ? color.primarioProfundo : undefined}
           />
         )}
       </View>
@@ -565,22 +567,20 @@ function SerieDiaria({ f, serie }: { f: Ficha; serie: DiaSerie[] }) {
         <View style={[e.fila, { justifyContent: 'space-between' }]}>
           <Rotulo>Horas de trabajo y de sueño que declara</Rotulo>
           <View style={[e.fila, { gap: espacio.base }]}>
-            <Leyenda tinta="#005C55" texto="Trabajo" /><Leyenda tinta="#BDB8B1" texto="Sueño" /><Leyenda tinta={TIERRA} texto="Fin de semana (lo dice el lunes)" />
+            <Leyenda tinta="#005C55" texto="Trabajo" /><Leyenda tinta="#BDB8B1" texto="Sueño" />
           </View>
         </View>
         {serie.length === 0 ? <Text style={[texto.apoyo, { color: color.textoMedio }]}>Sin datos todavía.</Text> : (
           <>
             <Text style={[texto.dato, { color: color.textoMedio }]}>
-              {`De media, ${trab?.toFixed(1) ?? '—'} h de trabajo y ${sueno?.toFixed(1) ?? '—'} h de sueño al día. Cada barra es un día; llenas, 12 horas.`}
+              {`De media, ${trab?.toFixed(1) ?? '—'} h de trabajo y ${sueno?.toFixed(1) ?? '—'} h de sueño al día. Cada barra es un día; llenas, 12 horas. Las elige por rangos («8 a 9 h») y se guarda el punto medio.`}
             </Text>
             <View style={e.barras}>
               {serie.map((d, i) => (
                 <View key={`${d.dia}-${i}`} style={e.barraCol}>
-                  <Text style={[texto.dato, { color: TIERRA, fontSize: 9, height: 12 }]}>{d.horas_fin_de_semana != null && Number(d.horas_fin_de_semana) > 0 ? `+${Number(d.horas_fin_de_semana).toFixed(1)}` : ''}</Text>
                   <View style={[e.fila, { gap: 2, alignItems: 'flex-end', height: 70 }]}>
                     <View style={[e.barra, { height: Math.min(70, (Number(d.horas_trabajadas ?? 0) / 12) * 70), backgroundColor: '#005C55' }]} />
                     <View style={[e.barra, { height: Math.min(70, (Number(d.horas_sueno ?? 0) / 12) * 70), backgroundColor: '#BDB8B1' }]} />
-                    {d.horas_fin_de_semana != null && Number(d.horas_fin_de_semana) > 0 && <View style={[e.barra, { height: Math.min(70, (Number(d.horas_fin_de_semana) / 12) * 70), backgroundColor: TIERRA }]} />}
                   </View>
                 </View>
               ))}
@@ -596,8 +596,9 @@ function SerieDiaria({ f, serie }: { f: Ficha; serie: DiaSerie[] }) {
 
 function TrayectoriaOlbi({ f, olbi, detectadoEn, umbralAg, umbralDes }: { f: Ficha; olbi: OlbiSemana[]; detectadoEn: number | null; umbralAg: number; umbralDes: number }) {
   const semanaN = (s: OlbiSemana) => semanaDe(f.inscrito_en, s.enviado_en)
-  // «Cerca» es estar a menos de 0.6 de cualquiera de los dos umbrales.
-  const cerca = (ag: number, de: number) => ag >= umbralAg - 0.6 || de >= umbralDes - 0.6
+  // «Cerca» es estar a menos de medio punto de un umbral, o pasar solo uno:
+  // la misma regla que «a vigilar» en Trabajadores y en el Resumen.
+  const cerca = (ag: number, de: number) => ag >= umbralAg - 0.5 || de >= umbralDes - 0.5
   const comoQueda = (ag: number, de: number, alto: boolean) => alto ? 'Pasó el umbral' : cerca(ag, de) ? 'Cerca del umbral' : 'Bien'
   const tono = (ag: number, de: number, alto: boolean) => alto ? TONO.tierra : cerca(ag, de) ? TONO.ambar : TONO.verde
 
@@ -613,7 +614,7 @@ function TrayectoriaOlbi({ f, olbi, detectadoEn, umbralAg, umbralDes }: { f: Fic
             </View>
             <View style={[e.fila, { gap: espacio.base }]}><Leyenda tinta={TIERRA} texto="Agotamiento" /><Leyenda tinta="#005C55" texto="Desvinculación" /></View>
           </View>
-          {olbi.length === 0 ? <Text style={[texto.apoyo, { color: color.textoMedio }]}>Todavía no ha contestado ningún OLBI del viernes.</Text> : (
+          {olbi.length === 0 ? <Text style={[texto.apoyo, { color: color.textoMedio }]}>Todavía no ha contestado ningún OLBI.</Text> : (
             <GraficaLinea
               series={[
                 { etiqueta: 'Agotamiento', color: TIERRA, puntos: olbi.map((s) => ({ x: s.semana, y: Number(s.agotamiento) })) },
@@ -622,8 +623,8 @@ function TrayectoriaOlbi({ f, olbi, detectadoEn, umbralAg, umbralDes }: { f: Fic
               yMin={1} yMax={4} alto={220} sinLeyenda todasLasEtiquetasX
               bandas={[
                 { desde: Math.min(umbralAg, umbralDes), hasta: 4, color: '#FBEDE6', etiqueta: 'Pasa el umbral' },
-                { desde: Math.min(umbralAg, umbralDes) - 0.6, hasta: Math.min(umbralAg, umbralDes), color: '#FBF3E6', etiqueta: 'Cerca' },
-                { desde: 1, hasta: Math.min(umbralAg, umbralDes) - 0.6, color: '#E8F3EE', etiqueta: 'Bien' },
+                { desde: Math.min(umbralAg, umbralDes) - 0.5, hasta: Math.min(umbralAg, umbralDes), color: '#FBF3E6', etiqueta: 'Cerca' },
+                { desde: 1, hasta: Math.min(umbralAg, umbralDes) - 0.5, color: '#E8F3EE', etiqueta: 'Bien' },
               ]}
               umbral={umbralAg} referencia={umbralDes} etiquetaX={(x) => `S${semanaN(olbi.find((o) => o.semana === x)!)}`}
               marcarX={detectadoEn && olbi.find((o) => semanaN(o) === detectadoEn) ? { x: olbi.find((o) => semanaN(o) === detectadoEn)!.semana, etiqueta: 'Aquí' } : undefined}
@@ -631,7 +632,7 @@ function TrayectoriaOlbi({ f, olbi, detectadoEn, umbralAg, umbralDes }: { f: Fic
           )}
         </View>
         <View style={{ flex: 1, minWidth: 260, gap: espacio.sm }}>
-          <Rotulo>Viernes a viernes</Rotulo>
+          <Rotulo>Uno por fila</Rotulo>
           <View style={e.tablaCab}>
             {[['Semana', 1.1, color.textoMedio], ['Fecha', 1, color.textoMedio], ['Agotam.', 1, TIERRA], ['Desvinc.', 1, '#005C55'], ['Cómo queda', 1.3, color.textoMedio]].map(([h, fl, c]) => (
               <Text key={String(h)} style={[texto.etiqueta, { color: String(c), fontSize: 9.5, flex: Number(fl) }]}>{String(h)}</Text>
@@ -660,35 +661,36 @@ function TrayectoriaOlbi({ f, olbi, detectadoEn, umbralAg, umbralDes }: { f: Fic
 // ------------------------------------------------------------------ Modelo
 
 function Modelo({ f, preds }: { f: Ficha; preds: Prediccion[] }) {
+  // Solo el modelo que decide cuándo pedir el OLBI: el pronóstico de la
+  // semana siguiente está guardado y el producto no lo usa.
   const nowcasts = preds.filter((p) => p.tarea === 'nowcast' && !p.tardio)
-  const pronos = preds.filter((p) => p.tarea === 'pronostico')
   // Última predicción por semana (la que se confronta).
   const porSemana = (lista: Prediccion[]) => { const m = new Map<string, Prediccion>(); for (const p of lista) m.set(p.semana, p); return [...m.values()] }
-  const nw = porSemana(nowcasts), pr = porSemana(pronos)
+  const nw = porSemana(nowcasts)
   const aciertos = (l: Prediccion[]) => ({ ok: l.filter((p) => p.acierto === true).length, n: l.filter((p) => p.acierto !== null).length })
-  const aN = aciertos(nw), aP = aciertos(pr)
+  const aN = aciertos(nw)
   const version = preds[preds.length - 1]?.version ?? '—'
   const semanaN = (iso: string) => semanaDe(f.inscrito_en, `${iso}T12:00:00`)
 
-  const FilaPred = ({ p, pron }: { p: Prediccion; pron?: boolean }) => {
+  const FilaPred = ({ p }: { p: Prediccion }) => {
     const pct = Math.round(Number(p.probabilidad) * 100)
     const tinta = p.acierto === false ? TIERRA : p.acierto === true ? color.primarioProfundo : color.textoMedio
     return (
       <View style={[e.pred, p.senalado && { borderLeftWidth: 3, borderLeftColor: TIERRA }]}>
         <View style={{ flex: 1, gap: 3 }}>
           <Text style={[texto.datoFuerte, { color: color.texto }]}>
-            {pron ? `Al acabar la semana ${semanaN(p.semana)}, para la ${semanaN(p.semana_objetivo)}` : `Semana ${semanaN(p.semana)}, con ${p.n_dias ?? 0} ${p.n_dias === 1 ? 'día' : 'días'} de check-ins`}
+            {`Semana ${semanaN(p.semana)}, con ${p.n_dias ?? 0} ${p.n_dias === 1 ? 'día' : 'días'} de check-ins`}
           </Text>
           <Text style={[texto.dato, { color: color.textoMedio }]}>
-            {p.senalado ? 'Dijo que pasaría el umbral' : 'Dijo que se mantendría por debajo'} · <Text style={{ color: p.senalado ? TIERRA : color.texto, fontWeight: '600' }}>{pct}%</Text> de riesgo
+            {p.senalado ? 'Vio riesgo y le pidió el OLBI' : 'No vio riesgo'} · <Text style={{ color: p.senalado ? TIERRA : color.texto, fontWeight: '600' }}>{pct}%</Text> de riesgo
           </Text>
           <View style={e.pista}><View style={[e.lleno, { width: `${pct}%`, backgroundColor: p.senalado ? TIERRA : color.primarioProfundo }]} /></View>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 2, minWidth: 124 }}>
           <Text style={[texto.datoFuerte, { color: tinta }]}>{p.acierto === null ? 'Sin comprobar' : p.acierto ? 'Acertó' : 'Falló'}</Text>
           <Text style={[texto.dato, { color: color.textoMedio, fontSize: 11, textAlign: 'right' }]}>
-            {p.resultado_real == null ? 'sin OLBI con que compararlo'
-              : `de verdad salió ${p.resultado_real ? 'por encima' : 'por debajo'} (${Number(p.agotamiento_real).toFixed(2)})`}
+            {p.resultado_real == null ? 'esa semana no contestó el OLBI'
+              : `el OLBI salió ${p.resultado_real ? 'por encima' : 'por debajo'} (${Number(p.agotamiento_real).toFixed(2)} · ${Number(p.desvinculacion_real).toFixed(2)})`}
           </Text>
         </View>
       </View>
@@ -697,28 +699,18 @@ function Modelo({ f, preds }: { f: Ficha; preds: Prediccion[] }) {
 
   return (
     <Seccion numero={4} titulo={SECCIONES[3].titulo}
-      subtitulo="El modelo intenta adivinar, antes de que llegue el viernes, si el OLBI de esa semana va a pasar el umbral. Aquí está cada intento y lo que pasó de verdad."
+      subtitulo="Tras cada check-in, el modelo estima si la persona está cruzando el umbral; si pasa del corte, le pide el OLBI ese día. Aquí está su última estimación de cada semana antes del cuestionario y, si lo contestó, lo que salió."
       derecha={<View style={[e.fila, { gap: 6 }]}><Text style={[texto.dato, { color: color.textoMedio }]}>Versión</Text><Pastilla tono={TONO.gris} mono>{version}</Pastilla></View>}>
       <View style={[e.fila, { alignItems: 'flex-start', gap: espacio.base }]}>
         <View style={[e.panelGris, { flex: 1, minWidth: 280, gap: espacio.sm }]}>
           <View style={[e.fila, { justifyContent: 'space-between' }]}>
             <View style={{ flex: 1, minWidth: 160 }}>
-              <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Durante la semana</Text>
+              <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Semana a semana</Text>
               <Text style={[texto.dato, { color: color.textoMedio }]}>De lunes a jueves, con los check-ins que lleva.</Text>
             </View>
             <Pastilla tono={aN.n === 0 ? TONO.gris : aN.ok === aN.n ? TONO.verde : TONO.ambar}>{aN.n === 0 ? 'sin comprobar' : `acertó ${aN.ok} de ${aN.n}`}</Pastilla>
           </View>
           {nw.length === 0 ? <Text style={[texto.dato, { color: color.textoMedio }]}>Sin intentos todavía: se generan cuando abre la app de lunes a jueves.</Text> : nw.map((p) => <FilaPred key={p.evento_id} p={p} />)}
-        </View>
-        <View style={[e.panelGris, { flex: 1, minWidth: 280, gap: espacio.sm }]}>
-          <View style={[e.fila, { justifyContent: 'space-between' }]}>
-            <View style={{ flex: 1, minWidth: 160 }}>
-              <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Para la semana siguiente</Text>
-              <Text style={[texto.dato, { color: color.textoMedio }]}>El viernes, ya con el OLBI contestado.</Text>
-            </View>
-            <Pastilla tono={aP.n === 0 ? TONO.gris : aP.ok === aP.n ? TONO.verde : TONO.ambar}>{aP.n === 0 ? 'sin comprobar' : `acertó ${aP.ok} de ${aP.n}`}</Pastilla>
-          </View>
-          {pr.length === 0 ? <Text style={[texto.dato, { color: color.textoMedio }]}>Sin intentos todavía: se generan al responder el OLBI del viernes.</Text> : pr.map((p) => <FilaPred key={p.evento_id} p={p} pron />)}
         </View>
       </View>
     </Seccion>
@@ -733,11 +725,16 @@ function Items({ respuestas, defs }: { respuestas: RespuestaConItems[]; defs: Re
   const [abierta, setAbierta] = useState<string | null>(porDefecto)
   useEffect(() => { if (!abierta && respuestas[0]) setAbierta(porDefecto()) }, [respuestas])
   const def = (r: RespuestaConItems) => defs[r.formulario_clave]?.find((d) => d.version === r.formulario_version)
-  const NOMBRE: Record<string, string> = { olbi: 'OLBI del viernes', diario: 'Check-in del día', semanal: 'Sobre tu semana', estable: 'Datos del inicio' }
+  const NOMBRE: Record<string, string> = { olbi: 'OLBI', diario: 'Check-in del día', semanal: 'Sobre tu semana', estable: 'Datos del inicio' }
   const literal = (it: DefinicionItem | undefined, v: number | null, t: string | null) => {
     if (t != null) return it?.opciones?.find((o) => o.valor === t)?.etiqueta ?? t
     if (v == null) return '—'
     if (it?.tipo === 'booleano') return v ? 'Sí' : 'No'
+    // Las etiquetas, de la propia definición: v4 dice «Más bien de acuerdo»
+    // y «Ni sí ni no», no «De acuerdo» y «Neutral».
+    const propias = (it?.escala as { etiquetas?: string[] } | undefined)?.etiquetas
+    if (propias && it?.escala) return propias[v - it.escala.min] ?? String(v)
+    if (it?.opciones) return it.opciones.find((o) => Number(o.valor) === v)?.etiqueta ?? String(v)
     if (it?.escala && it.escala.max === 4) return ['', 'Totalmente en desacuerdo', 'En desacuerdo', 'De acuerdo', 'Totalmente de acuerdo'][v] ?? String(v)
     if (it?.escala && it.escala.max === 5) return ['', 'Totalmente en desacuerdo', 'En desacuerdo', 'Neutral', 'De acuerdo', 'Totalmente de acuerdo'][v] ?? String(v)
     return String(v)
@@ -793,9 +790,9 @@ function Items({ respuestas, defs }: { respuestas: RespuestaConItems[]; defs: Re
 function LineaTiempo({ hitos, f, citas, citaPendiente }: { hitos: Hito[]; f: Ficha; citas: CitaEstudio[]; citaPendiente: CitaEstudio | null }) {
   const TIPO: Record<string, { titulo: (h: Hito) => string; etiqueta: string; tono: { fondo: string; tinta: string }; detalle: (h: Hito) => string }> = {
     consentimiento: { titulo: (h) => h.metadata.aceptado ? 'Aceptó participar y firmó el consentimiento' : 'No aceptó participar', etiqueta: 'Consentimiento', tono: TONO.gris, detalle: (h) => `Versión del texto que leyó: ${h.metadata.version_texto ?? '—'}.` },
-    inicio_seguimiento: { titulo: () => `Empezó el seguimiento en ${f.empresa ?? 'su empresa'}`, etiqueta: 'Inicio', tono: TONO.gris, detalle: () => 'Desde aquí le toca el check-in de lunes a jueves y el OLBI los viernes.' },
-    deteccion: { titulo: () => 'Su agotamiento pasó el umbral', etiqueta: 'Detección', tono: TONO.tierra, detalle: (h) => `${Object.entries(h.metadata.puntajes ?? {}).map(([k, v]) => `${k === 'desvinculacion' ? 'desvinculación' : k} ${Number(v).toFixed(2)}`).join(' · ')}. El sistema abrió la derivación y avisó al psicólogo.` },
-    derivacion_psicologo: { titulo: (h) => h.metadata.origen === 'solicitud' ? 'Pidió hablar con un psicólogo' : 'Se le asignó un psicólogo', etiqueta: 'Derivación', tono: TONO.gris, detalle: () => 'Va al profesional con menos casos abiertos. Solo con esta derivación puede él ver quién es.' },
+    inicio_seguimiento: { titulo: () => `Empezó el seguimiento en ${f.empresa ?? 'su empresa'}`, etiqueta: 'Inicio', tono: TONO.gris, detalle: () => 'Desde aquí le toca el check-in de lunes a jueves. El OLBI, cuando lo pida el modelo, el sorteo o el control del mes.' },
+    deteccion: { titulo: () => 'Su OLBI pasó el umbral en las dos dimensiones', etiqueta: 'Detección', tono: TONO.tierra, detalle: (h) => `${Object.entries(h.metadata.puntajes ?? {}).map(([k, v]) => `${k === 'desvinculacion' ? 'desvinculación' : k} ${Number(v).toFixed(2)}`).join(' · ')}. El sistema abrió la derivación y avisó al psicólogo.` },
+    derivacion_psicologo: { titulo: (h) => h.metadata.origen === 'solicitud' ? 'Pidió hablar con un psicólogo' : 'Se le asignó un psicólogo', etiqueta: 'Derivación', tono: TONO.gris, detalle: () => 'Si ya tuvo psicólogo, vuelve con el mismo; si no, va al que tiene menos casos abiertos. Solo con esta derivación puede ver quién es.' },
     cita_solicitada: {
       titulo: () => 'Pidió una cita', etiqueta: 'Cita', tono: TONO.verdeSuave,
       // El evento solo guarda el `cita_id`; la hora propuesta vive en la cita,
@@ -813,7 +810,13 @@ function LineaTiempo({ hitos, f, citas, citaPendiente }: { hitos: Hito[]; f: Fic
     informe_aprobado: { titulo: () => 'El psicólogo cerró su informe', etiqueta: 'Cierre', tono: TONO.verde, detalle: () => 'Lo que dice queda entre la persona y su psicólogo.' },
     acceso_identidad: { titulo: (h) => `${h.metadata.por === 'investigador' ? 'El investigador' : 'El psicólogo'} miró quién es`, etiqueta: 'Acceso', tono: TONO.ambar, detalle: () => 'Queda anotado aquí y en la auditoría del estudio.' },
     salida_seguimiento: { titulo: (h) => `Salió del seguimiento (${h.metadata.motivo ?? '—'})`, etiqueta: 'Cierre', tono: TONO.gris, detalle: (h) => `Lo registró ${h.metadata.por ?? 'el sistema'}. Sus respuestas se conservan sin nombre.` },
-    alerta_adherencia: { titulo: () => 'Llevaba demasiados días sin responder', etiqueta: 'Adherencia', tono: TONO.ambar, detalle: () => 'Salta cuando pasa del corte de días hábiles sin ningún registro.' },
+    alerta_adherencia: { titulo: () => 'Llevaba demasiados días sin responder', etiqueta: 'Adherencia', tono: TONO.ambar, detalle: () => 'Salta cuando pasa del corte de días de check-in sin ningún registro.' },
+    olbi_requerido: {
+      titulo: (h) => ({ modelo: 'El modelo vio riesgo y le pidió el OLBI', sorteo: 'Le tocó el OLBI por sorteo', sin_medir: 'Le tocó el OLBI: llevaba un mes sin medirse', tras_alta: 'Le tocó el OLBI de control tras el alta' } as Record<string, string>)[h.metadata.motivo] ?? 'Se le pidió el OLBI',
+      etiqueta: 'OLBI', tono: TONO.gris,
+      detalle: (h) => h.metadata.probabilidad != null ? `Riesgo estimado: ${Math.round(Number(h.metadata.probabilidad) * 100)} %. Se le ofrece en la app durante esa semana.` : 'Se le ofrece en la app durante esa semana.',
+    },
+    derivacion_cerrada: { titulo: () => 'Terminó el acompañamiento', etiqueta: 'Alta', tono: TONO.verde, detalle: () => 'Vuelve a sus check-ins. A los 14 días se le pide el OLBI de control.' },
     reasignacion_psicologo: { titulo: () => 'Pasó a otro psicólogo', etiqueta: 'Cambio', tono: TONO.gris, detalle: () => 'Lo decidió el investigador; las citas vigentes van con él.' },
   }
   const enCurso = citaPendiente?.estado === 'confirmada'

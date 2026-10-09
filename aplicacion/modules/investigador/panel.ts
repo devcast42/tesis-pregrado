@@ -15,7 +15,7 @@ export const FILTRO_POR_DEFECTO: FiltroGlobal = { organizacion_id: null }
 // ----------------------------------------------------------------- Bandeja
 
 export type TipoPendiente =
-  | 'inactivo' | 'sin_viernes' | 'deteccion_sin_derivacion' | 'derivacion_sin_sesion'
+  | 'inactivo' | 'olbi_sin_contestar' | 'deteccion_sin_derivacion' | 'derivacion_sin_sesion'
   | 'cita_sin_confirmar' | 'informe_pendiente' | 'consentimiento_pendiente'
 
 export type Pendiente = {

@@ -41,13 +41,13 @@ export default function Resumen() {
   } | null>(null)
 
   useDatosDelFiltro(() => setDatos(null), async (vigente) => {
-    const [cohorte, adherencia, empresas, circuito, citas, trabajadores, versiones, dNow, dPro] = await Promise.all([
+    const [cohorte, adherencia, empresas, circuito, citas, trabajadores, versiones, dNow] = await Promise.all([
       cargarCohorte(filtro), adherenciaGlobal(filtro), adherenciaPorEmpresa().catch(() => [] as AdherenciaEmpresa[]), cargarCircuito(filtro),
-      citasEstudio(filtro).catch(() => [] as CitaEstudio[]), cargarTrabajadores(filtro), cargarVersiones(), cargarDesempeno('nowcast'), cargarDesempeno('pronostico'),
+      citasEstudio(filtro).catch(() => [] as CitaEstudio[]), cargarTrabajadores(filtro), cargarVersiones(), cargarDesempeno('nowcast'),
     ])
     if (!vigente()) return
     setDatos({
-      cohorte, adherencia, circuito, citas, trabajadores, versiones, desempeno: [...dNow, ...dPro],
+      cohorte, adherencia, circuito, citas, trabajadores, versiones, desempeno: dNow,
       empresas: filtro.organizacion_id ? empresas.filter((e) => e.organizacion_id === filtro.organizacion_id) : empresas,
     })
   }, [filtro.organizacion_id])
@@ -56,19 +56,20 @@ export default function Resumen() {
   const { cohorte, adherencia, empresas, circuito, citas, trabajadores, versiones, desempeno } = datos
 
   const semanas = cohorte.slice(-8)
-  /** La semana en curso ya tiene fila —hay check-ins de lunes y martes— pero
-   *  su viernes todavía no ha llegado, así que `respondieron_viernes` es 0.
-   *  Tomarla como «la última» hacía anunciar «0% contestó el OLBI» un
-   *  miércoles. La última con datos es la última que ya tuvo su viernes. */
-  const ultima = [...semanas].reverse().find((s) => s.respondieron_viernes > 0) ?? semanas[semanas.length - 1]
-  const enCurso = semanas[semanas.length - 1]
-  const hayEnCurso = !!enCurso && enCurso !== ultima
+  /** La semana en curso es la de este lunes. Antes era «la que aún no tiene
+   *  OLBI», y como el OLBI ya llega cualquier día —y no a todos—, una semana
+   *  a medias con una sola respuesta pasaba por cerrada. */
+  const enCurso = semanas.find((s) => s.semana.slice(0, 10) === lunesDe(new Date()))
+  const cerradas = semanas.filter((s) => s !== enCurso)
+  const ultima = cerradas[cerradas.length - 1] ?? semanas[semanas.length - 1]
+  const hayEnCurso = !!enCurso
   const nSemana = semanas.length
   const tasaAdh = adherencia.esperados ? adherencia.cumplidos / adherencia.esperados : null
 
-  // pct_alto viene en 0–100 (cohorte_semanal) y es de ESA semana, no acumulado.
-  const cruzaronEsaSemana = ultima?.pct_alto != null && ultima.respondieron_viernes ? Math.round((Number(ultima.pct_alto) / 100) * ultima.respondieron_viernes) : 0
-  const tasaCruce = ultima?.respondieron_viernes ? cruzaronEsaSemana / ultima.respondieron_viernes : null
+  // Cuántas personas, no qué porcentaje: el OLBI se pide sobre todo a quien
+  // el modelo señala, así que un porcentaje sobre quienes lo contestaron
+  // habla de un grupo elegido, no de la cohorte. Es de ESA semana.
+  const cruzaronEsaSemana = Number(ultima?.pasaron_umbral ?? 0)
 
   const tiempos = circuito.map((c) => c.detectado_en && c.primera_sesion_en ? (new Date(c.primera_sesion_en).getTime() - new Date(c.detectado_en).getTime()) / 86_400_000 : null)
   const medCircuito = mediana(tiempos)
@@ -95,7 +96,7 @@ export default function Resumen() {
   const conCita = new Set(citas.filter((c) => c.estado === 'confirmada' || c.estado === 'atendida').map((c) => c.trabajador_id)).size
 
   const embudo = [
-    { titulo: 'Cruzaron el umbral', nota: 'su OLBI del viernes pasó el corte del estudio', valor: cruzaronAlguna },
+    { titulo: 'Cruzaron el umbral', nota: 'su OLBI pasó el corte en las dos dimensiones', valor: cruzaronAlguna },
     { titulo: 'Se les asignó psicólogo', nota: 'la derivación se abrió sola, o la pidieron', valor: circuito.length },
     { titulo: 'Consiguieron cita', nota: 'confirmada por el psicólogo, o ya atendida', valor: conCita },
     { titulo: 'Tuvieron la sesión', nota: 'llegaron a hablar con el profesional', valor: circuito.filter((c) => c.primera_sesion_en).length },
@@ -109,10 +110,10 @@ export default function Resumen() {
   const activa = (t: string) => versiones.find((v) => v.tarea === t && v.activa)
   const totalDe = (t: string) => desempeno.find((d) => d.tarea === t && d.semana === null && d.version === activa(t)?.version)
   const pct = (x: number | null | undefined, d = 1) => (x == null ? '—' : `${(Number(x) * 100).toFixed(d)}%`)
-  /** Quien responde el viernes puede estar detectado o haber terminado, así
-   *  que el denominador honesto son las personas inscritas. Dividiendo entre
-   *  las activas salían semanas con «106 %». */
-  const respuestaViernes = ultima?.inscritos ? ultima.respondieron_viernes / ultima.inscritos : null
+  /** El denominador honesto son las personas inscritas: dividiendo entre las
+   *  activas salían semanas con «106 %». Es el check-in, no el OLBI, porque
+   *  el check-in es lo único que se pide a todas cada semana. */
+  const respuestaSemana = ultima?.inscritos ? Number(ultima.respondieron_checkin) / ultima.inscritos : null
 
   return (
     <Panel rol="investigador">
@@ -143,11 +144,12 @@ export default function Resumen() {
 
           <Indicador
             rotulo="Cuántas cruzaron el umbral la última semana"
-            valor={pct(tasaCruce)}
-            veredicto={cruzaronEsaSemana === 0 ? 'ninguna, ese viernes' : `${cruzaronEsaSemana} ${cruzaronEsaSemana === 1 ? 'persona' : 'personas'} ese viernes`}
+            valor={String(cruzaronEsaSemana)}
+            sufijo={cruzaronEsaSemana === 1 ? 'persona' : 'personas'}
+            veredicto={cruzaronEsaSemana === 0 ? 'ninguna, esa semana' : 'esa semana'}
             cumple={cruzaronEsaSemana === 0}
             tinta={cruzaronEsaSemana ? TIERRA : color.texto}
-            calculo={`${cruzaronEsaSemana} con el OLBI sobre el corte ÷ ${ultima?.respondieron_viernes ?? 0} que contestaron ese viernes`}
+            calculo={`Personas con agotamiento y desvinculación sobre el corte, de las ${ultima?.respondieron_viernes ?? 0} que contestaron el OLBI`}
             pie={`Corte individual de ESP-003. Es de esa semana, no acumulado: en total han cruzado ${cruzaronAlguna}.`} />
 
           <Indicador
@@ -175,7 +177,7 @@ export default function Resumen() {
                 <Leyenda tinta="#8A8580" texto="Retiradas" /><Leyenda tinta="#E4E1DC" texto="Terminadas" />
               </View>
             </View>
-            {semanas.length === 0 && <Text style={[texto.apoyo, { color: color.textoMedio }]}>Todavía no hay semanas con datos: aparecerán cuando alguien conteste su primer OLBI del viernes.</Text>}
+            {semanas.length === 0 && <Text style={[texto.apoyo, { color: color.textoMedio }]}>Todavía no hay semanas con datos: aparecerán con el primer check-in.</Text>}
             {semanas.map((s, i) => {
               const esUltima = i === semanas.length - 1
               const total = Math.max(1, s.inscritos)
@@ -187,8 +189,8 @@ export default function Resumen() {
                     <View style={[e.fila, { gap: 8 }]}>
                       <Text style={[texto.datoFuerte, { color: esUltima ? color.primarioProfundo : color.texto }]}>{`Semana ${i + 1}`}</Text>
                       <Text style={[texto.dato, { color: color.textoMedio }]}>{rangoSemana(s.semana)}</Text>
-                      {s === ultima && <Pastilla tono={TONO.verde}>la última con OLBI</Pastilla>}
-                      {s === enCurso && hayEnCurso && <Pastilla tono={TONO.gris}>en curso, sin viernes aún</Pastilla>}
+                      {s === ultima && hayEnCurso && <Pastilla tono={TONO.verde}>la última cerrada</Pastilla>}
+                      {s === enCurso && <Pastilla tono={TONO.gris}>en curso</Pastilla>}
                     </View>
                     <Mono tono={color.texto}>{`${siguen} de ${s.inscritos} (${Math.round((siguen / total) * 100)}%)`}</Mono>
                   </View>
@@ -212,10 +214,10 @@ export default function Resumen() {
               <View style={e.pastillaClara}><Text style={[texto.datoFuerte, { color: '#FFFFFF', fontSize: 10.5 }]}>LA ÚLTIMA SEMANA</Text></View>
               {ultima && <Mono tono="#DDF3EA">{rangoSemana(ultima.semana)}</Mono>}
             </View>
-            <Text style={[texto.dato, { color: '#DDF3EA' }]}>Contestaron el OLBI de ese viernes</Text>
+            <Text style={[texto.dato, { color: '#DDF3EA' }]}>Hicieron al menos un check-in esa semana</Text>
             <View style={[e.fila, { alignItems: 'baseline', gap: 6 }]}>
-              <Text style={[texto.cifra, { color: '#FFFFFF', fontFamily: MONO, fontSize: 34 }]}>{respuestaViernes == null ? '—' : `${Math.round(respuestaViernes * 100)}%`}</Text>
-              <Text style={[texto.dato, { color: '#DDF3EA' }]}>{ultima ? `${ultima.respondieron_viernes} de ${ultima.inscritos}` : ''}</Text>
+              <Text style={[texto.cifra, { color: '#FFFFFF', fontFamily: MONO, fontSize: 34 }]}>{respuestaSemana == null ? '—' : `${Math.round(respuestaSemana * 100)}%`}</Text>
+              <Text style={[texto.dato, { color: '#DDF3EA' }]}>{ultima ? `${ultima.respondieron_checkin} de ${ultima.inscritos}` : ''}</Text>
             </View>
             <FilaVerde k="Inscritas en total" v={String(trabajadores.length)} />
             <FilaVerde k="Respondiendo el día a día" v={String(activos)} />
@@ -308,24 +310,22 @@ export default function Resumen() {
           <View style={{ flex: 2, minWidth: 380, gap: espacio.sm }}>
             <View style={{ gap: 2 }}>
               <Rotulo>Qué modelo está funcionando</Rotulo>
-              <Text style={[texto.dato, { color: color.textoMedio }]}>Uno se adelanta dentro de la semana; el otro, a la semana siguiente. Regresión logística sobre los ítems diarios.</Text>
+              <Text style={[texto.dato, { color: color.textoMedio }]}>Regresión logística sobre los ítems diarios. El pronóstico de la semana siguiente está guardado y el producto no lo usa.</Text>
             </View>
             <View style={[e.fila, { gap: espacio.sm, alignItems: 'stretch' }]}>
-              {(['nowcast', 'pronostico'] as const).map((t) => {
+              {(['nowcast'] as const).map((t) => {
                 const v = activa(t), d = totalDe(t)
                 return (
                   <Caja key={t} estilo={{ flex: 1, minWidth: 220, gap: 8 }}>
                     <View style={[e.fila, { justifyContent: 'space-between' }]}>
                       <View style={[e.fila, { gap: 6 }]}>
                         <View style={[e.punto, { backgroundColor: t === 'nowcast' ? color.primarioProfundo : TIERRA }]} />
-                        <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{t === 'nowcast' ? 'Dentro de la semana' : 'Para la semana siguiente'}</Text>
+                        <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Cuándo pedir el cuestionario</Text>
                       </View>
                       <Pastilla tono={v ? TONO.gris : TONO.ambar} mono>{v?.version ?? 'ninguna activa'}</Pastilla>
                     </View>
                     <Text style={[texto.dato, { color: color.textoMedio }]}>
-                      {t === 'nowcast'
-                        ? 'Con los check-ins de lunes a jueves, estima si el OLBI del viernes va a pasar el umbral.'
-                        : 'El viernes, ya con el OLBI contestado, estima cómo saldrá el de la semana que viene.'}
+                      Tras cada check-in estima, con los días de la semana que van, si la persona está cruzando el umbral. Si pasa del corte, le pide el OLBI ese mismo día.
                     </Text>
                     <View style={e.metricas}>
                       <Metrica rotulo="Umbral" valor={v ? Number(v.umbral_decision).toFixed(2) : '—'} />
@@ -345,7 +345,7 @@ export default function Resumen() {
             {cruzaronAlguna < 10 && (
               <View style={e.notaAmbar}>
                 <Text style={[texto.dato, { color: AMBAR }]}>
-                  {`Estas dos cifras se calculan sobre ${cruzaronAlguna} ${cruzaronAlguna === 1 ? 'caso real' : 'casos reales'}. Con tan pocos, un acierto o un fallo mueven el porcentaje veinte puntos: sirven para ver si el circuito funciona, no para afirmar que el modelo funciona.`}
+                  {`Estas cifras se calculan sobre ${cruzaronAlguna} ${cruzaronAlguna === 1 ? 'caso real' : 'casos reales'}. Con tan pocos, un acierto o un fallo mueven el porcentaje veinte puntos: sirven para ver si el circuito funciona, no para afirmar que el modelo funciona.`}
                 </Text>
               </View>
             )}
@@ -358,8 +358,8 @@ export default function Resumen() {
             </View>
             {([
               ['bajo', 'Bien', 'lejos de los dos umbrales', color.primarioProfundo, '#F5F4F1'],
-              ['a_vigilar', 'Cerca del umbral', 'a menos de medio punto', '#E4E1DC', '#F5F4F1'],
-              ['alto', 'Pasaron el umbral', 'por agotamiento o por desvinculación', TIERRA, '#FBEDE6'],
+              ['a_vigilar', 'Cerca del umbral', 'una nota pasa su corte o le falta menos de medio punto', '#E4E1DC', '#F5F4F1'],
+              ['alto', 'Pasaron el umbral', 'agotamiento y desvinculación sobre su corte', TIERRA, '#FBEDE6'],
             ] as const).map(([k, t, s, c, f]) => (
               <View key={k} style={[e.nivel, { backgroundColor: f }]}>
                 <View style={[e.punto, { backgroundColor: c }]} />
@@ -393,6 +393,12 @@ export default function Resumen() {
       </ScrollView>
     </Panel>
   )
+}
+
+/** El lunes de la semana de `d`, como «2026-10-05», en hora local. */
+function lunesDe(d: Date): string {
+  const l = new Date(d); l.setHours(12, 0, 0, 0); l.setDate(l.getDate() - ((l.getDay() + 6) % 7))
+  return `${l.getFullYear()}-${String(l.getMonth() + 1).padStart(2, '0')}-${String(l.getDate()).padStart(2, '0')}`
 }
 
 /** Indicador de la tesis: la cifra, el veredicto y —RF-009-04— cómo se
