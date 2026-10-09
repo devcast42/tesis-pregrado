@@ -28,10 +28,9 @@ import { Aviso, Boton, Cargando, Entrada, Etiqueta, Pantalla } from '../../modul
 import { ancho, color, espacio, radio, texto } from '../../modules/nucleo/diseno'
 import {
   IconoAgregar, IconoBarras, IconoCandado, IconoCheckCirculo, IconoChevronAbajo, IconoCredencial, IconoEquipo, IconoEscudo,
-  IconoEscudoCheck, IconoLupa, IconoNota, IconoReloj,
+  IconoEscudoCheck, IconoLupa, IconoNota,
 } from '../../modules/nucleo/iconos'
 
-const MINIMO = 10
 type Filtro = 'todos' | 'seguimiento' | 'fuera' | 'pendiente'
 
 export default function PersonasAdmin() {
@@ -169,35 +168,6 @@ export default function PersonasAdmin() {
                 nota={tasa != null && tasa < 60 ? 'bajo el 60 %: poco fiable' : undefined} notaIcono="tendencia"
                 tono={tasa != null && tasa < 60 ? color.alerta : undefined} />
             </View>
-
-            {/* Si hay suficiente gente, y quién lleva días sin contestar */}
-            <View style={e.muestra}>
-              <View style={e.muestraIcono}><IconoCheckCirculo tamano={22} color={color.primarioProfundo} /></View>
-              <View style={{ flex: 1, minWidth: 260, gap: 4 }}>
-                <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>
-                  {resumen?.reportable ? 'Hay suficiente gente para enseñar promedios' : 'Todavía no hay suficiente gente'}
-                </Text>
-                <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-                  {resumen?.reportable
-                    ? tasa != null && tasa >= 60
-                      ? 'Las cifras de las otras pantallas se pueden leer sin reservas.'
-                      : `Esta semana contestó el ${tasa ?? 0} %. Bajo el 60 %, la lectura semanal es poco fiable.`
-                    : `Hacen falta ${MINIMO} respuestas en la misma semana; con menos, una cifra señalaría a alguien.`}
-                </Text>
-              </View>
-              <Text style={[texto.dato, { color: color.textoSuave }]}>El cuestionario largo es los viernes</Text>
-            </View>
-
-            {/* Lo único accionable de esta pantalla, y estaba en los datos
-                sin enseñarse: cuánta gente lleva días sin responder. */}
-            {(resumen?.sin_responder_4d ?? 0) > 0 && (
-              <View style={e.recordatorio}>
-                <IconoReloj tamano={16} color="#8A5A12" />
-                <Text style={[texto.apoyo, { color: color.texto, flex: 1, minWidth: 260 }]}>
-                  {`${resumen!.sin_responder_4d} ${resumen!.sin_responder_4d === 1 ? 'persona lleva' : 'personas llevan'} cuatro días o más sin contestar. Van marcadas en la lista.`}
-                </Text>
-              </View>
-            )}
 
             {/* Herramientas */}
             {/* `zIndex` en la tarjeta entera, no solo en el menú: la tabla
@@ -416,9 +386,6 @@ const e = StyleSheet.create({
   aislamiento: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, backgroundColor: '#F1EFEB', borderRadius: radio.md, padding: espacio.md, maxWidth: 300 },
   indicadores: { flexDirection: 'row', gap: espacio.base, flexWrap: 'wrap' },
   puntoNota: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.primario },
-  muestra: { flexDirection: 'row', alignItems: 'center', gap: espacio.base, backgroundColor: '#F1EFEB', borderRadius: radio.lg, padding: espacio.lg, flexWrap: 'wrap' },
-  muestraIcono: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#DDF3EA', alignItems: 'center', justifyContent: 'center' },
-  recordatorio: { flexDirection: 'row', alignItems: 'flex-start', gap: espacio.sm, backgroundColor: '#FBEFD9', borderRadius: radio.md, padding: espacio.base, flexWrap: 'wrap' },
   buscador: { flex: 1, minWidth: 220, flexDirection: 'row', alignItems: 'center', gap: espacio.sm, backgroundColor: '#F5F4F1', borderRadius: radio.md, paddingHorizontal: espacio.md, height: 44 },
   buscadorEntrada: { flex: 1, ...texto.apoyo, color: color.texto, paddingVertical: 8 },
   selector: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, backgroundColor: '#F5F4F1', borderRadius: radio.md, paddingHorizontal: espacio.md, height: 44, minWidth: 190, justifyContent: 'space-between' },
