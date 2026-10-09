@@ -26,7 +26,7 @@ import { BotonChico, Caja, Cifra, Codigo, Pastilla, Rotulo, TONO } from '../../m
 import { Cargando, Pantalla } from '../../modules/nucleo/ui'
 import { ancho, color, espacio, radio, texto } from '../../modules/nucleo/diseno'
 import {
-  IconoArchivo, IconoCheckCirculo, IconoChevronAbajo, IconoEquipo, IconoEscudoCheck, IconoPersona, IconoReloj,
+  IconoArchivo, IconoCheckCirculo, IconoChevronAbajo, IconoEquipo, IconoPersona, IconoReloj,
 } from '../../modules/nucleo/iconos'
 
 const TIERRA = '#8C4A2B'
@@ -36,8 +36,6 @@ type Grupo = {
   titulo: string
   /** Por qué este caso está en la bandeja. */
   porque: string
-  /** Qué puede hacer de verdad quien lo lee. */
-  puedes: string
   urgente?: boolean
 }
 
@@ -46,43 +44,36 @@ const GRUPOS: Grupo[] = [
     tipo: 'inactivo', urgente: true,
     titulo: 'Llevan cuatro días o más sin responder',
     porque: 'Siguen activas pero no han hecho ningún check-in en cuatro días seguidos de check-in (de lunes a jueves). Si sigue así, se pierden del estudio.',
-    puedes: 'Abre su ficha para ver desde cuándo, o su empresa, que es donde está el administrador al que pedirle que la contacte. Él nunca sabe por qué.',
   },
   {
     tipo: 'deteccion_sin_derivacion', urgente: true,
     titulo: 'Cruzaron el umbral y se quedaron sin psicólogo',
     porque: 'El sistema las detectó, pero en ese momento no había ningún psicólogo activo a quien asignarlas.',
-    puedes: 'Da de alta o reactiva a alguien en Psicólogos: a partir de ahí las detecciones vuelven a derivar solas. Las que ya están detectadas hay que asignarlas a mano desde Derivaciones.',
   },
   {
     tipo: 'derivacion_sin_sesion', urgente: true,
     titulo: 'Tienen psicólogo hace más de una semana y aún no se han visto',
     porque: 'La derivación se abrió hace siete días o más y la sesión no llega.',
-    puedes: 'Abre su ficha para ver si falta que la persona elija horario o que el psicólogo confirme. Desde ahí también puedes pasarla a otro profesional.',
   },
   {
     tipo: 'cita_sin_confirmar', urgente: true,
     titulo: 'Pidieron cita y el psicólogo no la ha confirmado',
     porque: 'Propusieron una hora hace más de dos días y siguen esperando respuesta.',
-    puedes: 'El psicólogo la tiene en su app como «cita por confirmar». Si no responde, cámbiale el profesional desde la ficha.',
   },
   {
     tipo: 'olbi_sin_contestar',
     titulo: 'Se les pidió el OLBI y no lo contestaron',
     porque: 'La app les ofreció el cuestionario —porque el modelo avisó, por sorteo, por llevar un mes sin medirse o tras un alta— y la semana se cerró sin respuesta. Si fue el modelo, esa alerta se queda sin comprobar.',
-    puedes: 'No hay nada que reabrir: si vuelve a tocar, la app se lo ofrece otra vez. La alerta desaparece en cuanto contesta un OLBI.',
   },
   {
     tipo: 'informe_pendiente',
     titulo: 'Ya tuvieron su sesión y el informe sigue abierto',
     porque: 'El psicólogo no ha dado por bueno el borrador, y han pasado más de siete días desde la sesión.',
-    puedes: 'Aquí no se ve lo que dice el informe, solo si está cerrado o no (RN-009-03). Lo cierra el psicólogo desde su app.',
   },
   {
     tipo: 'consentimiento_pendiente',
     titulo: 'Cuentas creadas que nadie ha aceptado',
     porque: 'La empresa dio de alta a la persona hace más de una semana y todavía no ha firmado el consentimiento, así que no ha empezado a responder.',
-    puedes: 'Abre la empresa: su administrador puede volver a enviarle la invitación.',
   },
 ]
 
@@ -123,7 +114,7 @@ export default function Hoy() {
           <Text style={[texto.apoyo, { color: color.textoMedio, maxWidth: 660 }]}>
             {items.length === 0
               ? 'Nada pendiente con el filtro puesto. Esta pantalla se llena sola cuando algo se sale de los plazos del protocolo.'
-              : `${items.length} ${items.length === 1 ? 'cosa pendiente' : 'cosas pendientes'} en ${conCasos.length} ${conCasos.length === 1 ? 'categoría' : 'categorías'}. Cada una dice por qué está aquí y qué puedes hacer; ninguna se resuelve sola.`}
+              : `${items.length} ${items.length === 1 ? 'cosa pendiente' : 'cosas pendientes'} en ${conCasos.length} ${conCasos.length === 1 ? 'categoría' : 'categorías'}. Cada una dice por qué está aquí; ninguna se resuelve sola.`}
           </Text>
         </View>
 
@@ -193,10 +184,6 @@ export default function Hoy() {
 
               {!plegado && (
                 <>
-                  <View style={e.puedes}>
-                    <Rotulo tinta={color.primarioProfundo}>Qué puedes hacer</Rotulo>
-                    <Text style={[texto.dato, { color: color.texto }]}>{g.puedes}</Text>
-                  </View>
                   {ordenadas.map((p) => <Fila key={`${p.tipo}-${p.referencia_id}`} p={p} />)}
                 </>
               )}
@@ -204,15 +191,6 @@ export default function Hoy() {
           )
         })}
 
-        <View style={e.resguardo}>
-          <View style={[e.fila, { gap: 6 }]}>
-            <IconoEscudoCheck tamano={16} color={color.primarioProfundo} />
-            <Text style={[texto.cuerpoFuerte, { color: color.primarioProfundo }]}>Lo que sabe la empresa</Text>
-          </View>
-          <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-            Cuando hay que pedirle a un administrador que contacte a alguien, lo que recibe es un aviso de que esa persona lleva días sin registrar datos. Nunca sabe si fue detectada, ni qué contestó, ni si habló con un psicólogo.
-          </Text>
-        </View>
       </Pantalla>
     </Panel>
   )
@@ -269,8 +247,6 @@ const e = StyleSheet.create({
   grupo: { gap: espacio.sm },
   grupoCabecera: { flexDirection: 'row', alignItems: 'flex-start', gap: espacio.md, backgroundColor: '#F5F4F1', borderRadius: radio.md, padding: espacio.base, flexWrap: 'wrap' },
   numero: { width: 28, height: 28, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  puedes: { backgroundColor: '#EAF4EF', borderRadius: radio.sm, padding: 10, gap: 3 },
   filaPendiente: { flexDirection: 'row', alignItems: 'center', gap: espacio.base, backgroundColor: color.superficie, borderRadius: radio.md, padding: espacio.base, borderWidth: 1, borderColor: '#EEECE8', flexWrap: 'wrap' },
   codigoCaja: { backgroundColor: '#F1EFEB', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 8, minWidth: 54, alignItems: 'center' },
-  resguardo: { backgroundColor: '#EAF4EF', borderRadius: radio.md, padding: espacio.base, gap: 6 },
 })
