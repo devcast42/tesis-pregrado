@@ -322,10 +322,7 @@ export default function InformeMensual() {
                   <Text style={[texto.cuerpo, { color: color.texto }]}>
                     {sesiones != null
                       ? <>Alrededor de <Text style={{ color: color.primarioProfundo }}>{sesiones} sesiones</Text> este mes.</>
-                      : 'Hubo menos de cinco sesiones, así que no se da la cifra.'}
-                  </Text>
-                  <Text style={[texto.dato, { color: color.textoMedio }]}>
-                    La cifra va redondeada y solo aparece a partir de cinco. Nunca sabrás quién fue, ni cuándo, ni de qué área.
+                      : 'Menos de 5 sesiones este mes.'}
                   </Text>
                 </View>
               </View>
