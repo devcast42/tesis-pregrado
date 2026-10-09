@@ -32,7 +32,8 @@ import {
   IconoEscudoCheck, IconoLupa, IconoReloj,
 } from '../../modules/nucleo/iconos'
 
-const SEMANAS_ESTUDIO = 6
+/** El filtro agrupa de la 6 en adelante: el seguimiento no tiene fin fijo. */
+const SEMANAS_FILTRO = 6
 const POR_PAGINA = 12
 /** Cortes del protocolo: cuatro días sin responder es lo que ESP-007 llama
  *  inactivo, y 50 % es el umbral de decisión del nowcast. */
@@ -117,7 +118,7 @@ export default function Trabajadores() {
     if (!pruebaVista(x)) return false
     if (estado !== 'todos' && x.estado !== estado) return false
     if (nivel !== 'todos' && x.olbi_nivel !== nivel) return false
-    if (semana != null && Math.min(x.semana, SEMANAS_ESTUDIO) !== semana) return false
+    if (semana != null && Math.min(x.semana, SEMANAS_FILTRO) !== semana) return false
     if (riesgo50 && !(x.nowcast != null && x.nowcast >= RIESGO_ALTO)) return false
     if (callados && !(x.dias_sin_checkin != null && x.dias_sin_checkin >= DIAS_CALLADO)) return false
     if (conDerivacion && !x.derivacion_id) return false
@@ -242,11 +243,11 @@ export default function Trabajadores() {
                     onPress={() => { setNivel(k); setPagina(0) }}>{`${t} · ${n}`}</Chip>
                 })}
               </Grupo>
-              <Grupo rotulo={`Semana del estudio (de 1 a ${SEMANAS_ESTUDIO})`}>
+              <Grupo rotulo="Semana de seguimiento">
                 <Chip activo={semana == null} onPress={() => { setSemana(null); setPagina(0) }}>Cualquiera</Chip>
-                {Array.from({ length: SEMANAS_ESTUDIO }, (_, i) => i + 1).map((s) => {
-                  const n = cuenta((x) => Math.min(x.semana, SEMANAS_ESTUDIO) === s)
-                  return <Chip key={s} activo={semana === s} vacio={n === 0} onPress={() => { setSemana(s); setPagina(0) }}>{`${s} · ${n}`}</Chip>
+                {Array.from({ length: SEMANAS_FILTRO }, (_, i) => i + 1).map((s) => {
+                  const n = cuenta((x) => Math.min(x.semana, SEMANAS_FILTRO) === s)
+                  return <Chip key={s} activo={semana === s} vacio={n === 0} onPress={() => { setSemana(s); setPagina(0) }}>{`${s === SEMANAS_FILTRO ? `${s}+` : s} · ${n}`}</Chip>
                 })}
               </Grupo>
               <Grupo rotulo="Además">
@@ -323,7 +324,7 @@ export default function Trabajadores() {
                   <View style={{ flex: 2.4, gap: 1 }}>
                     <Codigo>{x.codigo_anonimo}</Codigo>
                     <Text style={[texto.dato, { color: color.textoMedio, fontSize: 11.5 }]} numberOfLines={1}>
-                      {`${x.organizacion} · semana ${Math.min(x.semana, SEMANAS_ESTUDIO)} de ${SEMANAS_ESTUDIO}`}
+                      {`${x.organizacion} · semana ${x.semana}`}
                     </Text>
                   </View>
 
@@ -466,7 +467,7 @@ function PanelLateral({ p, onCerrar }: { p: FilaTrabajadorV2; onCerrar: () => vo
       <View style={[e.fila, { justifyContent: 'space-between' }]}>
         <View style={{ flex: 1 }}>
           <Codigo grande>{p.codigo_anonimo}</Codigo>
-          <Text style={[texto.dato, { color: color.textoMedio }]}>{`${p.organizacion} · semana ${Math.min(p.semana, SEMANAS_ESTUDIO)} de ${SEMANAS_ESTUDIO}`}</Text>
+          <Text style={[texto.dato, { color: color.textoMedio }]}>{`${p.organizacion} · semana ${p.semana} de seguimiento`}</Text>
         </View>
         <Pressable onPress={onCerrar} hitSlop={8} accessibilityRole="button" accessibilityLabel="Cerrar la vista previa"><IconoCerrar tamano={16} color={color.textoMedio} /></Pressable>
       </View>

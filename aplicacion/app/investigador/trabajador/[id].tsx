@@ -34,7 +34,10 @@ import {
   IconoArchivo, IconoCandado, IconoCheckCirculo, IconoEquipo, IconoEscudoCheck, IconoVolver,
 } from '../../../modules/nucleo/iconos'
 
-const SEMANAS_ESTUDIO = 6
+/** Semanas que caben en el calendario: las más recientes. El seguimiento no
+ *  tiene fin fijo; antes se pintaban las 8 primeras y, pasada la octava,
+ *  dejaban de verse justo las de ahora. */
+const SEMANAS_CALENDARIO = 8
 const TIERRA = '#8C4A2B'
 
 /** Los títulos son los del índice lateral y los de cada sección: una sola
@@ -89,8 +92,10 @@ export default function FichaTrabajador() {
 
   if (!f) return <Panel rol="investigador"><Cargando /></Panel>
 
-  const semanaReal = semanaDe(f.inscrito_en, new Date())
-  const semanaActual = Math.min(semanaReal, SEMANAS_ESTUDIO)
+  // Sin tope: el producto no tiene «6 semanas previstas». Con el tope, la
+  // cabecera decía «Semana 6 de 6 · lleva 7 semanas» y el desglose marcaba
+  // la 6 como «en curso» siendo la 7.
+  const semanaActual = semanaDe(f.inscrito_en, new Date())
   const detectadoEn = f.deteccion ? semanaDe(f.inscrito_en, f.deteccion.ocurrido_en) : null
   const cal = construirCalendario(f, envios)
   // `f.cita` llega siempre en nulo (ver `citasDelTrabajador`); estas salen
@@ -168,8 +173,7 @@ export default function FichaTrabajador() {
         {/* Encabezado */}
         <View style={e.cabecera}>
           <Text style={[texto.titulo, { color: color.texto, fontSize: 26 }]}>
-            {f.codigo_anonimo} · {f.empresa ?? '—'} · <Text style={{ color: color.primarioProfundo }}>Semana {semanaActual} de {SEMANAS_ESTUDIO}</Text>
-            {semanaReal > SEMANAS_ESTUDIO ? <Text style={[texto.apoyo, { color: color.textoMedio }]}>{`  · lleva ${semanaReal} semanas, más de las 6 previstas`}</Text> : null}
+            {f.codigo_anonimo} · {f.empresa ?? '—'} · <Text style={{ color: color.primarioProfundo }}>Semana {semanaActual} de seguimiento</Text>
           </Text>
           <View style={[e.fila, { gap: 6 }]}>
             <PastillaEstado estado={f.estado} />
@@ -227,7 +231,7 @@ export default function FichaTrabajador() {
                     {Math.round(Number(f.ultima_prediccion.probabilidad) * 100)}% <Text style={[texto.dato, { color: color.textoMedio }]}>de riesgo</Text>
                   </Text>
                   <Text style={[texto.dato, { color: color.textoMedio }]}>
-                    {Number(f.ultima_prediccion.probabilidad) >= 0.5 ? 'esperaba que pasara el umbral' : 'esperaba que se mantuviera abajo'}
+                    {Number(f.ultima_prediccion.probabilidad) >= 0.5 ? 'vio riesgo y le pidió el OLBI' : 'no vio riesgo'}
                   </Text>
                   <Text style={[texto.dato, { color: f.ultima_prediccion.acierto === false ? TIERRA : f.ultima_prediccion.acierto ? color.primarioProfundo : color.textoSuave, fontSize: 11 }]}>
                     {f.ultima_prediccion.acierto == null ? 'aún sin comprobar' : f.ultima_prediccion.acierto ? 'y acertó' : 'y falló'}
@@ -428,8 +432,8 @@ function construirCalendario(f: Ficha, envios: Envio[]): DatosCalendario {
 
   const semanas: Celda[][] = []
   const desglose: DatosCalendario['desglose'] = []
-  const nSemanas = Math.min(8, Math.max(SEMANAS_ESTUDIO, semanaDe(f.inscrito_en, new Date())))
-  for (let s = 0; s < nSemanas; s++) {
+  const nSemanas = Math.max(1, semanaDe(f.inscrito_en, new Date()))
+  for (let s = Math.max(0, nSemanas - SEMANAS_CALENDARIO); s < nSemanas; s++) {
     const fila: Celda[] = []
     let cumplidos = 0, esperados = 0
     for (let d = 0; d < 7; d++) {
