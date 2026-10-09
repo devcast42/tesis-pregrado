@@ -299,11 +299,13 @@ export default function DesempenoModelo() {
                   <Text style={[texto.dato, { color: color.textoMedio, paddingLeft: 16 }]}>{v.origen}</Text>
                 </View>
                 {/* Cada fila dice de dónde salen sus cifras. Antes ponía siempre
-                    «1880 vtas (entren.)» aunque la versión ya tuviera datos
-                    reales, y se comparaba el 30 % del entrenamiento de una
-                    con el 4,6 % real de la otra como si fueran lo mismo. */}
+                    «1880 vtas (entren.)» aunque la versión ya tuviera
+                    predicciones en la app, y se comparaba el 30 % del
+                    entrenamiento de una con el 4,6 % de la otra como si
+                    fueran lo mismo. «Uso en la app» y no «datos reales»: en
+                    un entorno de demostración esas semanas son simuladas. */}
                 <View style={{ flex: 1.3, alignItems: 'flex-end' }}>
-                  <Text style={[texto.datoFuerte, { color: t ? color.texto : color.textoMedio }]}>{t ? 'Datos reales' : 'Entrenamiento'}</Text>
+                  <Text style={[texto.datoFuerte, { color: t ? color.texto : color.textoMedio }]}>{t ? 'Uso en la app' : 'Entrenamiento'}</Text>
                   <Mono>{t ? `${t.n} semanas` : m.n != null ? `${m.n} semanas` : '—'}</Mono>
                 </View>
                 <Text style={[texto.datoFuerte, { color: esElegida ? color.primarioProfundo : color.texto, flex: 1, textAlign: 'right', fontFamily: MONO }]}>{pct(prec)}</Text>
