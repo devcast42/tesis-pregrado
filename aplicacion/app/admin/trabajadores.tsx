@@ -302,6 +302,17 @@ export default function PersonasAdmin() {
                               : `hace ${x.dias_sin_responder} ${x.dias_sin_responder === 1 ? 'día' : 'días'}`}
                           </Text>
                         </>
+                      ) : x.en_acompanamiento ? (
+                        // Mientras está con su psicólogo la app no le pide
+                        // check-ins. Antes caía en «se dio de baja»: al
+                        // empresario le decía que había dejado el programa
+                        // a alguien que en realidad estaba siendo atendido.
+                        <>
+                          <View style={{ flexDirection: 'row' }}>
+                            <Pastilla fondo="#E8EFEA" tinta={color.primarioProfundo}>Check-ins en pausa</Pastilla>
+                          </View>
+                          <Text style={[texto.dato, { color: color.textoSuave, fontSize: 11 }]}>mientras está en acompañamiento</Text>
+                        </>
                       ) : (
                         <>
                           <View style={{ flexDirection: 'row' }}>
