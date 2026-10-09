@@ -3,7 +3,14 @@
  *
  *  Todo se calcula sobre predicciones registradas en su momento y
  *  confrontadas con el OLBI objetivo (vista `predicciones_evaluables`):
- *  nunca se recalcula post-hoc con el modelo actual. */
+ *  nunca se recalcula post-hoc con el modelo actual.
+ *
+ *  Solo el modelo que decide cuándo pedir el cuestionario: el pronóstico de
+ *  la semana siguiente ya no se usa, y el selector entre los dos hablaba de
+ *  un «OLBI del viernes» que ya no existe. Ahora el OLBI llega el día en que
+ *  el modelo cruza el corte, por sorteo, al mes o tras un alta, y eso cambia
+ *  cómo se leen las cifras: a quien el modelo no avisa se le mide poco, así
+ *  que la pantalla dice de dónde salió cada OLBI evaluado. */
 
 import { useCallback, useMemo, useState } from 'react'
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -29,7 +36,7 @@ const MINIMO_POSITIVOS = 20
 
 export default function DesempenoModelo() {
   const { filtro } = useFiltro()
-  const [tarea, setTarea] = useState<Tarea>('nowcast')
+  const tarea: Tarea = 'nowcast'
   const [versiones, setVersiones] = useState<VersionModelo[] | null>(null)
   const [version, setVersion] = useState<string | null>(null)
   const [menu, setMenu] = useState(false)
@@ -37,27 +44,32 @@ export default function DesempenoModelo() {
   const [todas, setTodas] = useState<Desempeno[]>([])
   const [cal, setCal] = useState<Calibracion[]>([])
   const [auc, setAuc] = useState<number | null>(null)
-  const [pares, setPares] = useState<{ probabilidad: number; resultado_real: boolean }[]>([])
+  const [pares, setPares] = useState<{ probabilidad: number; resultado_real: boolean; senalado: boolean; motivo: string | null }[]>([])
   const [empresa, setEmpresa] = useState<Empresa | null>(null)
+  // Hasta tener las cifras de la versión, «Cargando»: antes se pintaba la
+  // matriz a cero y el aviso de «0 casos reales» durante varios segundos.
+  const [listo, setListo] = useState(false)
 
   const deTarea = useMemo(() => (versiones ?? []).filter((v) => v.tarea === tarea), [versiones, tarea])
   const activa = deTarea.find((v) => v.activa) ?? deTarea[0]
   const elegida = deTarea.find((v) => v.version === version) ?? activa
 
-  const cargar = useDatosDelFiltro(() => setVersiones(null), async (vigente) => {
+  const cargar = useDatosDelFiltro(() => { setVersiones(null); setListo(false) }, async (vigente) => {
     const [vs, td, emps] = await Promise.all([cargarVersiones(), cargarDesempeno(tarea), listarEmpresas().catch(() => [] as Empresa[])])
     if (!vigente()) return
     setVersiones(vs); setTodas(td)
     setEmpresa(emps.find((e) => e.id === filtro.organizacion_id) ?? null)
     const v = vs.filter((x) => x.tarea === tarea)
     const ver = v.find((x) => x.version === version) ?? v.find((x) => x.activa) ?? v[0]
-    if (!ver) { setFilas([]); setCal([]); setAuc(null); setPares([]); return }
-    setVersion(ver.version)
+    if (!ver) { setFilas([]); setCal([]); setAuc(null); setPares([]); setListo(true); return }
+    // No se guarda la versión elegida por defecto: cambiar `version` vuelve a
+    // lanzar esta carga, y eso duplicaba todas las consultas al entrar.
     const [f, c, a, p] = await Promise.all([cargarDesempeno(tarea, ver.version), cargarCalibracion(tarea, ver.version), rocAuc(tarea, ver.version), cargarEvaluables(tarea, ver.version)])
-    setFilas(f); setCal(c); setAuc(a); setPares(p)
+    if (!vigente()) return
+    setFilas(f); setCal(c); setAuc(a); setPares(p); setListo(true)
   }, [tarea, version, filtro.organizacion_id])
 
-  if (!versiones) return <Panel rol="investigador"><Cargando /></Panel>
+  if (!versiones || !listo) return <Panel rol="investigador"><Cargando /></Panel>
 
   const total = filas.find((f) => f.semana === null) ?? { n: 0, vp: 0, fp: 0, vn: 0, fn: 0, precision: null, recall: null, especificidad: null, exactitud: null }
   const porSemana = filas.filter((f) => f.semana !== null).sort((a, b) => (a.semana! < b.semana! ? -1 : 1))
@@ -73,7 +85,7 @@ export default function DesempenoModelo() {
 
   const aviso = (t: string, m: string) => Platform.OS === 'web' ? window.alert(`${t}\n\n${m}`) : Alert.alert(t, m)
   async function activar(v: VersionModelo) {
-    const ok = Platform.OS === 'web' ? window.confirm(`Activar ${v.version} para ${tarea === 'nowcast' ? 'nowcast' : 'pronóstico'}.\n\nLas predicciones nuevas se registrarán con esta versión. Las anteriores conservan la suya.`) : true
+    const ok = Platform.OS === 'web' ? window.confirm(`Activar ${v.version}.\n\nLas predicciones nuevas se registrarán con esta versión. Las anteriores conservan la suya.`) : true
     if (!ok) return
     try { await activarVersion(v.version, tarea); cargar() } catch (e) { aviso('No se pudo activar', e instanceof Error ? e.message : '') }
   }
@@ -82,7 +94,7 @@ export default function DesempenoModelo() {
     <Panel rol="investigador">
       <ScrollView style={{ flex: 1 }} contentContainerStyle={e.contenido}>
         <Encabezado eyebrow="Modelo · ESP-009" titulo="Desempeño del modelo"
-          subtitulo="Qué acertó y qué falló, contando solo lo que predijo en su momento."
+          subtitulo="Qué acertó y qué falló al decidir a quién pedirle el cuestionario."
           derecha={empresa ? (
             <View style={e.notaCohorte}>
               <IconoInfo tamano={14} color={color.primarioProfundo} />
@@ -117,22 +129,11 @@ export default function DesempenoModelo() {
 
         {/* Controles */}
         <View style={[e.fila, { gap: espacio.base, alignItems: 'flex-end' }]}>
-          <View style={{ gap: 6 }}>
-            <Rotulo>Qué predice</Rotulo>
-            <View style={e.segmentos}>
-              {([['nowcast', 'El viernes de esta semana', 'con lo de lunes a jueves'], ['pronostico', 'El viernes de la próxima', 'con la semana entera']] as const).map(([k, t, s]) => (
-                <Pressable key={k} onPress={() => { setTarea(k); setVersion(null) }} style={[e.segmento, tarea === k && e.segmentoActivo]}>
-                  <Text style={[texto.datoFuerte, { color: tarea === k ? color.texto : color.textoMedio }]}>{t}</Text>
-                  <Text style={[texto.dato, { color: color.textoMedio, fontSize: 11 }]}>{s}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
           <View style={{ gap: 6, zIndex: 20 }}>
             <Rotulo>Versión</Rotulo>
-            <Pressable onPress={() => setMenu((m) => !m)} style={e.selector}>
-              <Text style={[texto.datoFuerte, { color: color.texto }]}>{elegida ? `${elegida.activa ? 'Modelo activo' : 'Versión'}: ${elegida.version} (${elegida.origen})` : 'Sin versiones registradas'}</Text>
-              <Text style={{ color: color.textoMedio }}>▾</Text>
+            <Pressable onPress={() => setMenu((m) => !m)} disabled={deTarea.length < 2} style={e.selector}>
+              <Text style={[texto.datoFuerte, { color: color.texto }]}>{elegida ? `${elegida.activa ? 'En uso' : 'Versión'}: ${elegida.version}` : 'Sin versiones registradas'}</Text>
+              {deTarea.length > 1 && <Text style={{ color: color.textoMedio }}>▾</Text>}
             </Pressable>
             {menu && (
               <View style={e.menu}>
@@ -154,9 +155,11 @@ export default function DesempenoModelo() {
           <IconoCandado tamano={13} color={color.primarioProfundo} />
           <Text style={[texto.dato, { color: color.texto, flex: 1 }]}>
             <Text style={texto.datoFuerte}>Sin trampa: </Text>
-            Nada se recalcula después con el modelo de hoy: cada cifra sale de lo que el modelo dijo entonces, antes de saber el resultado.
+            Cada cifra sale de lo último que el modelo dijo antes de que la persona contestara el OLBI. Nada se recalcula después.
           </Text>
         </View>
+
+        <Origen pares={pares} />
 
         {/* Bloque 1: matriz + métricas */}
         <View style={[e.fila, { alignItems: 'stretch', gap: espacio.base }]}>
@@ -178,7 +181,7 @@ export default function DesempenoModelo() {
           <View style={{ flex: 1.3, minWidth: 320, gap: espacio.base }}>
             <View style={[e.fila, { gap: espacio.base, alignItems: 'stretch' }]}>
               <Metrica rotulo="De cada aviso, cuántos eran" valor={total.precision} n={total.vp + total.fp} k={total.vp} texto="Cuando el modelo avisa, con qué frecuencia esa persona sí cruzó el umbral." />
-              <Metrica rotulo="De los que cruzaron, cuántos pilló" valor={total.recall} n={total.vp + total.fn} k={total.vp} texto="Lo que más importa: dejar pasar a alguien es peor que una conversación de más." tinta="#8C4A2B" />
+              <Metrica rotulo="De los que cruzaron, cuántos pilló" valor={total.recall} n={total.vp + total.fn} k={total.vp} texto="Lo que más importa. Los que se le escapan solo se ven si les toca el sorteo o el control del mes." tinta="#8C4A2B" />
             </View>
             <View style={[e.fila, { gap: espacio.base, alignItems: 'stretch' }]}>
               <Metrica rotulo="De los que estaban bien, cuántos dejó en paz" valor={total.especificidad} n={total.vn + total.fp} k={total.vn} texto="Si baja, el psicólogo recibe avisos de gente que está bien." />
@@ -258,7 +261,7 @@ export default function DesempenoModelo() {
         <Caja estilo={{ gap: espacio.sm }}>
           <View style={[e.fila, { justifyContent: 'space-between', alignItems: 'flex-start' }]}>
             <View style={{ flex: 1 }}>
-              <Rotulo>{tarea === 'nowcast' ? 'El viernes de esta semana' : 'El viernes de la próxima'}</Rotulo>
+              <Rotulo>Cuándo pedir el cuestionario</Rotulo>
               <Text style={[texto.seccion, { color: color.texto }]}>Comparar versiones</Text>
             </View>
             <Pastilla tono={TONO.verdeSuave} icono={<IconoEscudoCheck tamano={12} color={color.primarioProfundo} />}>{`Medido sobre ${todas.filter((t) => t.semana === null).reduce((s, t) => s + t.n, 0)} semanas evaluables`}</Pastilla>
@@ -315,7 +318,7 @@ export default function DesempenoModelo() {
           )}
         </Caja>
         <View style={[e.fila, { justifyContent: 'space-between' }]}>
-          <Text style={[texto.dato, { color: color.textoSuave, flex: 1, minWidth: 280 }]}>Solo cuentan las predicciones que el modelo registró en su momento (RN-009-05). Una semana sin OLBI del viernes no se puede evaluar y queda fuera.</Text>
+          <Text style={[texto.dato, { color: color.textoSuave, flex: 1, minWidth: 280 }]}>Solo cuentan las predicciones que el modelo registró en su momento (RN-009-05). Una semana sin OLBI no se puede evaluar y queda fuera.</Text>
           <Mono tono={color.textoSuave}>Fuente: predicciones_evaluables · desempeno_modelo · calibracion_modelo · roc_auc_modelo()</Mono>
         </View>
       </ScrollView>
@@ -371,11 +374,50 @@ function Metrica({ rotulo, valor, n, k, texto: t, tinta = color.primarioProfundo
   )
 }
 
+/** De dónde salió cada OLBI evaluado. Sin esto la matriz parece una
+ *  muestra de todo el equipo, y no lo es: a quien el modelo avisa se le mide
+ *  siempre; a quien no, solo por sorteo (una de cada cuatro semanas), al mes
+ *  sin medirse o tras un alta. */
+const ORIGENES: { clave: string | null; titulo: string; nota: string }[] = [
+  { clave: 'modelo', titulo: 'Avisó el modelo', nota: 'cruzó el corte tras un check-in' },
+  { clave: 'sorteo', titulo: 'Sorteo', nota: 'una de cada cuatro semanas, al azar' },
+  { clave: 'sin_medir', titulo: 'Un mes sin medirse', nota: 'control a quien nadie ha medido' },
+  { clave: 'tras_alta', titulo: 'Tras un alta', nota: 'a los 14 días de cerrar el caso' },
+  { clave: null, titulo: 'Antes del cambio', nota: 'cuando el OLBI era para todos los viernes' },
+]
+function Origen({ pares }: { pares: { senalado: boolean; motivo: string | null }[] }) {
+  if (!pares.length) return null
+  const filas = ORIGENES.map((o) => ({ ...o, n: pares.filter((p) => (p.motivo ?? null) === o.clave).length })).filter((o) => o.n > 0)
+  const sinAviso = pares.filter((p) => !p.senalado && p.motivo != null).length
+  return (
+    <Caja estilo={{ gap: espacio.sm }}>
+      <View>
+        <Rotulo>De dónde sale cada OLBI evaluado</Rotulo>
+        <Text style={[texto.dato, { color: color.textoMedio }]}>
+          A quien el modelo avisa se le mide siempre. A quien no, solo por sorteo, al mes o tras un alta: por eso los fallos se ven en pocos casos.
+        </Text>
+      </View>
+      <View style={[e.fila, { gap: espacio.base, alignItems: 'stretch' }]}>
+        {filas.map((o) => (
+          <View key={o.titulo} style={e.origen}>
+            <Text style={[texto.cifra, { color: color.texto, fontFamily: MONO, fontSize: 22 }]}>{o.n}</Text>
+            <Text style={[texto.datoFuerte, { color: color.texto }]}>{o.titulo}</Text>
+            <Text style={[texto.dato, { color: color.textoMedio, fontSize: 12 }]}>{o.nota}</Text>
+          </View>
+        ))}
+      </View>
+      {pares.some((p) => p.motivo != null) && (
+        <Mono>{`Semanas sin aviso medidas desde el cambio: ${sinAviso}`}</Mono>
+      )}
+    </Caja>
+  )
+}
+
 function Leyenda({ tinta, texto: t }: { tinta: string; texto: string }) {
   return <View style={[e.fila, { gap: 4 }]}><View style={{ width: 10, height: 2, backgroundColor: tinta }} /><Mono tono={tinta}>{t}</Mono></View>
 }
 function Vacio() {
-  return <View style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}><Text style={[texto.apoyo, { color: color.textoSuave, textAlign: 'center' }]}>Sin predicciones evaluables todavía.{'\n'}Aparecen cuando una predicción registrada se confronta con el OLBI de su viernes objetivo.</Text></View>
+  return <View style={{ height: 200, alignItems: 'center', justifyContent: 'center' }}><Text style={[texto.apoyo, { color: color.textoSuave, textAlign: 'center' }]}>Sin predicciones evaluables todavía.{'\n'}Aparecen cuando una predicción registrada se confronta con el OLBI de esa semana.</Text></View>
 }
 
 /** Intervalo de Wilson para una proporción k/n. */
@@ -402,9 +444,7 @@ const e = StyleSheet.create({
   contenido: { padding: espacio.lg, gap: espacio.lg, width: '100%', maxWidth: 1100, alignSelf: 'center' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap' },
   notaCohorte: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#F5F4F1', borderRadius: radio.md, padding: 12, maxWidth: 300 },
-  segmentos: { flexDirection: 'row', backgroundColor: '#F1EFEB', borderRadius: 8, padding: 3 },
-  segmento: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, alignItems: 'center' },
-  segmentoActivo: { backgroundColor: color.superficie, borderWidth: 1, borderColor: color.borde },
+  origen: { flex: 1, minWidth: 150, backgroundColor: '#F5F4F1', borderRadius: 8, padding: 10, gap: 2 },
   selector: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 44, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: color.borde, backgroundColor: color.superficie },
   menu: { position: 'absolute', top: 66, left: 0, minWidth: 260, backgroundColor: color.superficie, borderRadius: 8, borderWidth: 1, borderColor: color.borde, paddingVertical: 4, zIndex: 30, elevation: 6 },
   menuItem: { paddingHorizontal: 12, paddingVertical: 9 },

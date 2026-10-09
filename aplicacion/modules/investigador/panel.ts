@@ -245,8 +245,8 @@ export async function calibracion(tarea: string, version: string): Promise<Calib
 }
 
 /** Pares (probabilidad, resultado) para Brier e intervalos en el cliente. */
-export async function evaluables(tarea: string, version: string): Promise<{ probabilidad: number; resultado_real: boolean; senalado: boolean; semana_objetivo: string }[]> {
-  const { data } = await supabase.from('predicciones_evaluables').select('probabilidad, resultado_real, senalado, semana_objetivo').eq('tarea', tarea).eq('version', version)
+export async function evaluables(tarea: string, version: string): Promise<{ probabilidad: number; resultado_real: boolean; senalado: boolean; semana_objetivo: string; motivo: string | null }[]> {
+  const { data } = await supabase.from('predicciones_evaluables').select('probabilidad, resultado_real, senalado, semana_objetivo, motivo').eq('tarea', tarea).eq('version', version)
   return (data ?? []).map((r: any) => ({ ...r, probabilidad: Number(r.probabilidad) }))
 }
 
