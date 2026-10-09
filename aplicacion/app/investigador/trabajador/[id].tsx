@@ -103,11 +103,9 @@ export default function FichaTrabajador() {
   const hitoDerivacion = hitos.find((h) => h.tipo === 'derivacion_psicologo')
   const hitoInforme = hitos.find((h) => h.tipo === 'informe_aprobado')
   const enMarcha = f.estado === 'activo' || f.estado === 'detectado'
-  /** Se cruza el umbral por agotamiento O por desvinculación: así lo define
-   *  `olbi_semanal_etiquetado` («alto = ag >= u_ag OR dv >= u_dv»). La
-   *  pantalla hablaba solo del agotamiento, y a quien saltó por la otra
-   *  dimensión —AND-016, con 1.38 de agotamiento— le decía que 1.38 estaba
-   *  «por encima del umbral de 2.88». */
+  /** Se cruza el umbral cuando las dos dimensiones pasan el suyo, igual que
+   *  en `evaluar-olbi` y en `olbi_semanal_etiquetado`. `queCruzo` conserva
+   *  los casos de una sola dimensión para las detecciones antiguas. */
   const umbralAg = Number(olbi[0]?.umbral_agotamiento ?? f.deteccion?.umbrales?.agotamiento ?? 2.875)
   const umbralDes = Number(olbi[0]?.umbral_desvinculacion ?? f.deteccion?.umbrales?.desvinculacion ?? 2.75)
 
@@ -605,7 +603,7 @@ function TrayectoriaOlbi({ f, olbi, detectadoEn, umbralAg, umbralDes }: { f: Fic
 
   return (
     <Seccion numero={3} titulo={SECCIONES[2].titulo}
-      subtitulo={`Cada viernes contesta el OLBI entero y salen dos notas, de 1 a 4. Basta con que una pase su umbral —${umbralAg.toFixed(2)} en agotamiento, ${umbralDes.toFixed(2)} en desvinculación— para que se abra la derivación.`}>
+      subtitulo={`Cada vez que contesta el OLBI salen dos notas, de 1 a 4. La derivación se abre cuando las dos pasan su umbral: ${umbralAg.toFixed(2)} en agotamiento y ${umbralDes.toFixed(2)} en desvinculación.`}>
       <View style={[e.fila, { alignItems: 'flex-start', gap: espacio.lg }]}>
         <View style={[e.panelGris, { flex: 1.3, minWidth: 320 }]}>
           <View style={[e.fila, { justifyContent: 'space-between' }]}>

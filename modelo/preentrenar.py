@@ -38,6 +38,9 @@ warnings.filterwarnings('ignore')
 
 VERSION = 'preentrenamiento-v1'
 VERSION_PRONOSTICO = 'preentrenamiento-pronostico-v1'
+# v2: la etiqueta pide las dos dimensiones altas, como la detección del
+# producto (`evaluar-olbi`). La v1 usaba la media de los 8 ítems juntos.
+VERSION_V2 = 'preentrenamiento-v2'
 # Los cuatro ítems del check-in propio y su equivalente en el diario polaco.
 ITEMS = {'od_04': '2E', 'od_12': '7E', 'od_03': '1D', 'od_06': '3D'}
 AGOT = ['od_04', 'od_12']
@@ -61,13 +64,31 @@ def rasgos(dias: list[dict]) -> dict:
             'E_media': E.mean(), 'D_media': D.mean(), 'n_dias': n}
 
 
-def ejemplos_nowcast(L: pd.DataFrame) -> pd.DataFrame:
+E8 = ['2E', '7E', '4E', '8E']
+D8 = ['1D', '3D', '5D', '6D']
+
+
+def alto_media(fila: pd.Series) -> bool:
+    """v1: la media de los 8 ítems del día, juntos."""
+    return fila[E8 + D8].mean() >= UMBRAL_DIARIO
+
+
+def alto_ambas(fila: pd.Series) -> bool:
+    """v2: agotamiento Y desvinculación, cada una con su media de 4 ítems.
+
+    El corte se queda en 3 de 5 en las dos. Reescalar los del producto
+    (2.875 y 2.75 de 4 → 3.50 y 3.33 de 5) deja un 4 % de positivos en el
+    diario de referencia y el modelo acierta 1 de cada 12 avisos."""
+    return fila[E8].mean() >= UMBRAL_DIARIO and fila[D8].mean() >= UMBRAL_DIARIO
+
+
+def ejemplos_nowcast(L: pd.DataFrame, alto=alto_media) -> pd.DataFrame:
     filas = []
     for pid, g in L.groupby('id'):
         g = g.sort_values('dia').set_index('dia')
         for lunes, viernes in ((1, 5), (6, 10)):
             dias = [{k: g.loc[d, v] for k, v in ITEMS.items()} for d in range(lunes, lunes + 4)]
-            y = int(g.loc[viernes, [v for v in ITEMS.values()] + ['4E', '8E', '5D', '6D']].mean() >= UMBRAL_DIARIO)
+            y = int(alto(g.loc[viernes]))
             for k in range(1, 5):
                 fila = rasgos(dias[:k]); fila.update(id=pid, y=y)
                 filas.append(fila)
@@ -115,7 +136,7 @@ def modelo():
     return make_pipeline(StandardScaler(), LogisticRegression(C=C, class_weight='balanced', max_iter=1000))
 
 
-def entrenar(D: pd.DataFrame, nombre: str, tarea: str, etiqueta: str) -> tuple[dict, str]:
+def entrenar(D: pd.DataFrame, nombre: str, tarea: str, etiqueta: str, activa: bool = True) -> tuple[dict, str]:
     metricas = validar(D)
     m = modelo().fit(D[RASGOS], D.y)
     esc, lr = m.named_steps['standardscaler'], m.named_steps['logisticregression']
@@ -147,7 +168,7 @@ values (
   {version['intercepto']}, 0.5,
   '{json.dumps(metricas)}'::jsonb,
   '{version['fuente']}',
-  true,
+  {'true' if activa else 'false'},
   array['investigador', 'psicologo', 'trabajador']
 )
 on conflict (version) do update set
@@ -165,7 +186,7 @@ def main():
                           f'media diaria de 8 ítems >= {UMBRAL_DIARIO} en escala 1-5 el viernes (no es el OLBI completo)')
     _, sql_pro = entrenar(ejemplos_pronostico(L), VERSION_PRONOSTICO, 'pronostico',
                           f'media de la semana siguiente (8 ítems, 5 días) >= {UMBRAL_DIARIO} en escala 1-5')
-    migraciones = pathlib.Path(__file__).parents[1] / 'supabase' / 'migrations'
+    migraciones = pathlib.Path(__file__).resolve().parents[1] / 'supabase' / 'migrations'
     cabecera = ("-- Generado por modelo/preentrenar.py. NO editar a mano: volver a ejecutar el script.\n"
                 "-- Versión preentrenada del modelo de ESP-005 ({tarea}) con el diario OLBI de\n"
                 "-- referencia. Métricas de validación por persona (5 pliegues) sobre los datos\n"
@@ -174,6 +195,14 @@ def main():
     (migraciones / '20260918130000_modelo_version_preentrenamiento.sql').write_text(cabecera.format(tarea='nowcast') + sql_now)
     (migraciones / '20260918140000_modelo_version_pronostico.sql').write_text(cabecera.format(tarea='pronóstico') + sql_pro)
     print('escritas las migraciones 20260918130000 y 20260918140000')
+
+    # v2 se guarda sin activar: se pone en uso desde Versiones.
+    _, sql_v2 = entrenar(ejemplos_nowcast(L, alto_ambas), VERSION_V2, 'nowcast',
+                         f'agotamiento >= {UMBRAL_DIARIO} y desvinculación >= {UMBRAL_DIARIO} (4 ítems cada una, escala 1-5) el viernes',
+                         activa=False)
+    (migraciones / '20261008180000_modelo_version_v2.sql').write_text(
+        cabecera.format(tarea='nowcast, v2: las dos dimensiones, como la detección') + sql_v2)
+    print('escrita la migración 20261008180000')
 
 
 if __name__ == '__main__':

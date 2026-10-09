@@ -1,0 +1,79 @@
+{
+  "version": "preentrenamiento-v2",
+  "origen": "preentrenamiento",
+  "tarea": "nowcast",
+  "fuente": "Gruszczynska, Basinska & Schaufeli (2021), Mendeley Data doi:10.17632/vwp3xvp2x8.2, CC BY 4.0",
+  "rasgos": [
+    "T_media",
+    "T_ultimo",
+    "T_max",
+    "T_pendiente",
+    "E_media",
+    "D_media",
+    "n_dias"
+  ],
+  "medias": [
+    2.299978,
+    2.303191,
+    2.693617,
+    0.008418,
+    2.428923,
+    2.171033,
+    2.5
+  ],
+  "desviaciones": [
+    0.755506,
+    0.873077,
+    0.894843,
+    0.537963,
+    0.925086,
+    0.754469,
+    1.118034
+  ],
+  "pesos": [
+    0.138262,
+    0.24598,
+    0.170949,
+    0.00806,
+    -0.02678,
+    0.309739,
+    -0.064327
+  ],
+  "intercepto": -0.172759,
+  "umbral_decision": 0.5,
+  "etiqueta": "agotamiento >= 3.0 y desvinculación >= 3.0 (4 ítems cada una, escala 1-5) el viernes",
+  "metricas": {
+    "global": {
+      "precision": 0.301,
+      "recall": 0.633,
+      "f1": 0.408,
+      "pr_auc": 0.345,
+      "roc_auc": 0.695,
+      "brier": 0.22,
+      "n": 1880,
+      "positivos": 0.191
+    },
+    "por_dias_respondidos": {
+      "1": {
+        "roc_auc": 0.647,
+        "precision": 0.267,
+        "recall": 0.6
+      },
+      "2": {
+        "roc_auc": 0.688,
+        "precision": 0.303,
+        "recall": 0.656
+      },
+      "3": {
+        "roc_auc": 0.703,
+        "precision": 0.304,
+        "recall": 0.644
+      },
+      "4": {
+        "roc_auc": 0.752,
+        "precision": 0.337,
+        "recall": 0.633
+      }
+    }
+  }
+}
