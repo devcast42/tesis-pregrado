@@ -39,6 +39,12 @@ Deja **cuatro pestañas abiertas y con sesión iniciada**, en este orden:
 
 Es `Test1234!`, con «Test», no «Tesis».
 
+Psicóloga **de empresa** (solo atiende a Nexa Software; la dio de alta el
+admin desde «Psicólogos» el 9-oct-2026, para probar esa función):
+`psicologa.nexa@ejemplo.test` · contraseña temporal `brisa-islote-duna-633`.
+Mientras esté activa, los casos nuevos de Nexa van a ella y no a
+`test+psicologo`, que es general.
+
 En la pestaña 3 el selector de empresa de arriba a la izquierda es tu amigo:
 déjalo en «Todas las empresas» para el panorama y filtra por una cuando
 quieras entrar al detalle.
