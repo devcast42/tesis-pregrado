@@ -44,6 +44,7 @@ export default function DesempenoModelo() {
   const [todas, setTodas] = useState<Desempeno[]>([])
   const [cal, setCal] = useState<Calibracion[]>([])
   const [auc, setAuc] = useState<number | null>(null)
+  const [aucs, setAucs] = useState<Record<string, number | null>>({})
   const [pares, setPares] = useState<{ probabilidad: number; resultado_real: boolean; senalado: boolean; motivo: string | null }[]>([])
   const [empresa, setEmpresa] = useState<Empresa | null>(null)
   // Hasta tener las cifras de la versión, «Cargando»: antes se pintaba la
@@ -58,6 +59,12 @@ export default function DesempenoModelo() {
     const [vs, td, emps] = await Promise.all([cargarVersiones(), cargarDesempeno(tarea), listarEmpresas().catch(() => [] as Empresa[])])
     if (!vigente()) return
     setVersiones(vs); setTodas(td)
+    // El AUC real de cada versión, para que la tabla no mezcle el de una con
+    // el del entrenamiento de otra.
+    const conDatos = vs.filter((x) => x.tarea === tarea && td.some((t) => t.version === x.version && t.semana === null))
+    const valores = await Promise.all(conDatos.map((x) => rocAuc(tarea, x.version)))
+    if (!vigente()) return
+    setAucs(Object.fromEntries(conDatos.map((x, i) => [x.version, valores[i]])))
     setEmpresa(emps.find((e) => e.id === filtro.organizacion_id) ?? null)
     const v = vs.filter((x) => x.tarea === tarea)
     const ver = v.find((x) => x.version === version) ?? v.find((x) => x.activa) ?? v[0]
@@ -267,7 +274,7 @@ export default function DesempenoModelo() {
             <Pastilla tono={TONO.verdeSuave} icono={<IconoEscudoCheck tamano={12} color={color.primarioProfundo} />}>{`Medido sobre ${todas.filter((t) => t.semana === null).reduce((s, t) => s + t.n, 0)} semanas evaluables`}</Pastilla>
           </View>
           <View style={e.tablaCab}>
-            {[['Versión', 2.2], ['Entrenada con', 1], ['Precisión', 1], ['Recall', 0.8], ['AUC', 0.8], ['F1', 0.8], ['Falsas alarmas', 1], ['', 1]].map(([h, f]) => (
+            {[['Versión', 2.2], ['Medido con', 1.3], ['Precisión', 1], ['Recall', 0.8], ['AUC', 0.8], ['F1', 0.8], ['Falsas alarmas', 1], ['', 1]].map(([h, f]) => (
               <Text key={String(h)} style={[texto.etiqueta, { color: color.textoMedio, fontSize: 9.5, flex: Number(f), textAlign: h === 'Versión' ? 'left' : 'right' }]}>{String(h).toUpperCase()}</Text>
             ))}
           </View>
@@ -279,7 +286,7 @@ export default function DesempenoModelo() {
             const rec = t?.recall != null ? Number(t.recall) : num(m.recall)
             const f1 = prec != null && rec != null && prec + rec > 0 ? (2 * prec * rec) / (prec + rec) : num(m.f1)
             const fpTasa = t && t.vn + t.fp > 0 ? t.fp / (t.vn + t.fp) : null
-            const aucV = v.version === elegida?.version ? auc : num(m.auc ?? m.roc_auc)
+            const aucV = t ? (aucs[v.version] ?? null) : num(m.auc ?? m.roc_auc)
             const esElegida = v.version === elegida?.version
             return (
               <View key={v.version} style={[e.tablaFila, esElegida && { backgroundColor: '#F5F4F1' }]}>
@@ -291,7 +298,14 @@ export default function DesempenoModelo() {
                   </View>
                   <Text style={[texto.dato, { color: color.textoMedio, paddingLeft: 16 }]}>{v.origen}</Text>
                 </View>
-                <Mono tono={color.texto}>{m.n != null ? `${m.n} vtas (entren.)` : t ? `${t.n} vtas (vivo)` : '—'}</Mono>
+                {/* Cada fila dice de dónde salen sus cifras. Antes ponía siempre
+                    «1880 vtas (entren.)» aunque la versión ya tuviera datos
+                    reales, y se comparaba el 30 % del entrenamiento de una
+                    con el 4,6 % real de la otra como si fueran lo mismo. */}
+                <View style={{ flex: 1.3, alignItems: 'flex-end' }}>
+                  <Text style={[texto.datoFuerte, { color: t ? color.texto : color.textoMedio }]}>{t ? 'Datos reales' : 'Entrenamiento'}</Text>
+                  <Mono>{t ? `${t.n} semanas` : m.n != null ? `${m.n} semanas` : '—'}</Mono>
+                </View>
                 <Text style={[texto.datoFuerte, { color: esElegida ? color.primarioProfundo : color.texto, flex: 1, textAlign: 'right', fontFamily: MONO }]}>{pct(prec)}</Text>
                 <Text style={[texto.datoFuerte, { color: esElegida ? color.primarioProfundo : color.texto, flex: 0.8, textAlign: 'right', fontFamily: MONO }]}>{pct(rec)}</Text>
                 <Text style={[texto.datoFuerte, { color: esElegida ? color.primarioProfundo : color.texto, flex: 0.8, textAlign: 'right', fontFamily: MONO }]}>{aucV == null ? '—' : aucV.toFixed(3)}</Text>
