@@ -7,8 +7,8 @@
  *
  *  El pronóstico de la semana siguiente sigue guardado, pero el producto no
  *  lo usa: salía como «Ninguna versión activa» en rojo, como si faltara
- *  algo. Ahora es una línea al pie, sin botón para activarlo, porque
- *  activarlo añadiría un bloque al resultado del trabajador.
+ *  algo. Ya no se enseña: activarlo añadiría un bloque al resultado del
+ *  trabajador.
  *
  *  Activar una versión no toca las predicciones ya registradas: cada una
  *  lleva la suya (RN-009-05). */
@@ -125,19 +125,6 @@ export default function Versiones() {
             </Caja>
           )
         })}
-
-        {lista.some((v) => v.tarea === 'pronostico') && (
-          <View style={e.otra}>
-            <Text style={[texto.dato, { color: color.textoMedio, flex: 1, minWidth: 220 }]}>
-              {`También hay ${lista.filter((v) => v.tarea === 'pronostico').length === 1 ? 'una versión guardada' : 'versiones guardadas'} del pronóstico de la semana siguiente. El producto no lo usa.`}
-            </Text>
-            <Mono>{lista.filter((v) => v.tarea === 'pronostico').map((v) => v.version).join(', ')}</Mono>
-          </View>
-        )}
-
-        <Text style={[texto.dato, { color: color.textoSuave }]}>
-          Cambiar de versión no recalcula nada hacia atrás: cada predicción conserva la versión con la que se hizo (RN-009-05). Las cifras de aquí son las del entrenamiento; cómo va con datos reales está en Desempeño.
-        </Text>
       </ScrollView>
     </Panel>
   )
