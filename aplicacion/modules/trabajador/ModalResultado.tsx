@@ -154,11 +154,15 @@ function TarjetaSemana({ dias }: { dias: DiaSemana[] }) {
   const conDato = semana.filter((d) => d.valor != null)
   const sueno = media(dias.map((d) => d.sueno))
   const horas = media(dias.map((d) => d.horas))
-  if (conDato.length < 2 && sueno == null) return null
+  if (conDato.length === 0 && sueno == null) return null
 
+  // Desde el primer día: con uno solo no hay con qué comparar, pero la barra
+  // y las horas ya dicen algo. Antes hacían falta dos y el lunes —o el primer
+  // día de alguien nuevo— el cierre quedaba casi vacío.
   const ultimo = conDato[conDato.length - 1]?.valor as number | undefined
   const previo = conDato[conDato.length - 2]?.valor as number | undefined
-  const lectura = ultimo == null || previo == null ? null
+  const lectura = ultimo == null ? null
+    : previo == null ? 'Tu primer check-in de la semana'
     : ultimo - previo > 0.4 ? 'Hoy terminaste peor que ayer'
     : previo - ultimo > 0.4 ? 'Hoy terminaste mejor que ayer'
     : 'Vienes estable'
@@ -167,7 +171,7 @@ function TarjetaSemana({ dias }: { dias: DiaSemana[] }) {
     <View style={e.semana}>
       <Text style={[texto.etiqueta, { color: color.textoSuave }]}>TU SEMANA</Text>
 
-      {conDato.length >= 2 && (
+      {conDato.length >= 1 && (
         <>
           <View style={e.barras}>
             {semana.map((d, i) => {

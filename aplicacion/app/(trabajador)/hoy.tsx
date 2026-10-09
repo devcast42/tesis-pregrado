@@ -35,7 +35,7 @@ import { fechaLarga, fraseDelDia, saludoPorHora } from '../../modules/trabajador
 import { Cargando } from '../../modules/nucleo/ui'
 import { ahora, cargarDesfase } from '../../modules/nucleo/reloj'
 import {
-  ultimoResultado, guardarResultado, tomarConsejo, type Prediccion, type ResultadoSemana,
+  consejoDelDia, ultimoResultado, guardarResultado, tomarConsejo, type Prediccion, type ResultadoSemana,
 } from '../../modules/trabajador/resultado'
 import { ModalResultado, TarjetaProbabilidad, type ModoModal } from '../../modules/trabajador/ModalResultado'
 import { color, espacio } from '../../modules/nucleo/diseno'
@@ -55,6 +55,11 @@ const POR_QUE: Record<string, string> = {
   sorteo: 'Te tocó esta semana',
   sin_medir: 'Hace un mes que no lo respondes',
   tras_alta: 'Para ver cómo sigues',
+}
+
+/** «2026-10-09», en hora local: el formato de `DiaSemana.dia`. */
+function claveHoy(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function etiquetaDia(iso?: string): string {
@@ -387,7 +392,15 @@ export default function Hoy() {
             accion={PRESENTACION[item.clave].accion}
             // Volver a abrir lo que respondiste: el cierre se veía una vez y
             // desaparecía, y con él el consejo del día.
-            onPress={() => setModal(item.clave === 'olbi' ? 'resultado' : 'cierre')}
+            onPress={() => {
+              // Al volver a abrirlo, el consejo se rehace con las horas de hoy:
+              // solo se guardaba justo al enviar y, tras recargar, faltaba.
+              if (item.clave !== 'olbi' && !consejo) {
+                const d = semana.find((x) => x.dia === claveHoy(ahora()))
+                if (d) setConsejo(consejoDelDia({ horas_trabajadas: d.horas, horas_sueno: d.sueno }))
+              }
+              setModal(item.clave === 'olbi' ? 'resultado' : 'cierre')
+            }}
           />
         ))}
 
