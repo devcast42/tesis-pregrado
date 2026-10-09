@@ -137,6 +137,11 @@ export default function Psicologos() {
                     calculaba el porcentaje sobre 6 mientras la leyenda hablaba de
                     4. La cifra de casos abiertos, coloreada, lo dice sin ambigüedad. */}
                 <Mono>{/^cpsp/i.test(p.colegiatura) ? p.colegiatura : `CPsP ${p.colegiatura}`}</Mono>
+                {/* Los generales los crea el investigador; los de empresa, su
+                    administrador, y solo reciben casos de ella. */}
+                <Text style={[texto.dato, { color: p.organizacion_id ? color.texto : color.textoMedio }]}>
+                  {p.organizacion_id ? `Solo ${p.organizacion ?? 'su empresa'} · lo dio de alta su administrador` : 'Atiende a todas las empresas'}
+                </Text>
                 {!p.activo && <Text style={[texto.dato, { color: color.textoMedio }]}>No recibe derivaciones nuevas.</Text>}
               </View>
               {/* Sin caja gris: tres columnas sueltas, igual que en la lista de
@@ -172,7 +177,10 @@ export default function Psicologos() {
       <Modal transparent visible={!!baja} animationType="fade" onRequestClose={() => setBaja(null)}>
         {baja && (() => {
           const abiertos = abiertosDe(baja.psicologo.id)
-          const candidatos = activos.filter((p) => p.id !== baja.psicologo.id)
+          // Solo quien pueda atender a todos sus casos: un psicólogo de otra
+          // empresa no puede recibirlos.
+          const candidatos = activos.filter((p) => p.id !== baja.psicologo.id
+            && (!p.organizacion_id || abiertos.every((c) => c.organizacion_id === p.organizacion_id)))
           const menorCarga = [...candidatos].sort((a, b) => abiertosDe(a.id).length - abiertosDe(b.id).length)[0]
           return (
             <View style={e.velo}>
@@ -195,7 +203,7 @@ export default function Psicologos() {
                           ))}
                         </View>
                         <Rotulo>Reasignar todos a</Rotulo>
-                        {candidatos.length === 0 && <Text style={[texto.dato, { color: '#8C4A2B' }]}>No hay otro psicólogo activo. Crea o reactiva uno antes de desactivar a {baja.psicologo.nombre}.</Text>}
+                        {candidatos.length === 0 && <Text style={[texto.dato, { color: '#8C4A2B' }]}>No hay otro psicólogo activo que pueda atender estos casos. Crea o reactiva uno antes de desactivar a {baja.psicologo.nombre}.</Text>}
                         {candidatos.map((p) => (
                           <Pressable key={p.id} onPress={() => setBaja({ ...baja, destino: p.id })} style={[e.opcion, baja.destino === p.id && { borderColor: color.primarioProfundo, backgroundColor: '#EAF4EF' }]}>
                             <Text style={[texto.datoFuerte, { color: color.texto, flex: 1 }]}>{p.nombre}</Text>

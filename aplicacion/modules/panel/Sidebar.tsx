@@ -15,7 +15,7 @@ import { supabase } from '../nucleo/supabase'
 import { color, espacio, fuente, radio, texto } from '../nucleo/diseno'
 import { Logo } from '../nucleo/Logo'
 import {
-  IconoAjustes, IconoArchivo, IconoCuadricula, IconoEquipo, IconoGrafica, IconoHoja, IconoPersona, IconoSalir,
+  IconoAjustes, IconoApoyo, IconoArchivo, IconoCuadricula, IconoEquipo, IconoGrafica, IconoHoja, IconoPersona, IconoSalir,
 } from '../nucleo/iconos'
 import type { Rol } from '../nucleo/rol'
 import { PanelInvestigador } from './SidebarInvestigador'
@@ -96,6 +96,7 @@ const SECCIONES: Record<'investigador' | 'admin', Seccion[]> = {
     { ruta: '/admin/pulso', titulo: 'Pulso', icono: (c) => <IconoGrafica tamano={18} color={c} /> },
     { ruta: '/admin/factores', titulo: 'Factores de trabajo', icono: (c) => <IconoAjustes tamano={16} color={c} /> },
     { ruta: '/admin/trabajadores', titulo: 'Personas y participación', icono: (c) => <IconoEquipo tamano={18} color={c} /> },
+    { ruta: '/admin/psicologos', titulo: 'Psicólogos', icono: (c) => <IconoApoyo tamano={18} color={c} /> },
     { ruta: '/admin/informe', titulo: 'Informe mensual', icono: (c) => <IconoArchivo tamano={18} color={c} /> },
   ],
 }

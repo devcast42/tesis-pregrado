@@ -90,7 +90,7 @@ export default function Consulta() {
 
       <Text style={texto.titulo}>Preparación de sesión{codigo ? ` · ${codigo}` : ''}</Text>
       <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
-        Sesión de apoyo confidencial e independiente de la empresa.
+        Sesión de apoyo confidencial: la empresa no ve lo que se habla.
       </Text>
 
       <View style={e.marco}>

@@ -81,7 +81,7 @@ export default function Derivaciones() {
                 {sinPsicologo.length === 1 ? 'Derivación' : 'Derivaciones'} <Mono tono="#8C4A2B">{sinPsicologo.map((c) => c.codigo_anonimo).join(', ')}</Mono> no tienen a quién acudir: no había ningún psicólogo activo cuando se detectaron. Hay que asignarlos a mano.
               </Text>
             </View>
-            <Pressable onPress={() => setMenu({ derivaciones: sinPsicologo.map((c) => c.derivacion_id), titulo: sinPsicologo.map((c) => c.codigo_anonimo).join(', ') })} style={e.botonTierra}>
+            <Pressable onPress={() => setMenu({ derivaciones: sinPsicologo.map((c) => c.derivacion_id), titulo: sinPsicologo.map((c) => c.codigo_anonimo).join(', '), organizaciones: sinPsicologo.map((c) => c.organizacion_id) })} style={e.botonTierra}>
               <IconoPersona tamano={13} color="#FFFFFF" /><Text style={[texto.datoFuerte, { color: '#FFFFFF' }]}>Asignar psicólogo</Text>
             </Pressable>
           </View>
@@ -150,7 +150,7 @@ export default function Derivaciones() {
                     <Text style={[texto.dato, { color: color.texto, flex: 1.2 }]}>{nombreEmpresa(c.organizacion_id)}</Text>
                     <View style={{ flex: 1.4 }}>
                       {c.psicologo ? <Text style={[texto.dato, { color: color.texto }]}>{c.psicologo}</Text>
-                        : <Pressable onPress={() => setMenu({ derivaciones: [c.derivacion_id], titulo: c.codigo_anonimo })}><Text style={[texto.datoFuerte, { color: '#8C4A2B' }]}>Sin asignar · asignar</Text></Pressable>}
+                        : <Pressable onPress={() => setMenu({ derivaciones: [c.derivacion_id], titulo: c.codigo_anonimo, organizaciones: [c.organizacion_id] })}><Text style={[texto.datoFuerte, { color: '#8C4A2B' }]}>Sin asignar · asignar</Text></Pressable>}
                     </View>
                     <Chip dias={c.dias_a_derivacion} limite={1} pendienteDesde={c.origen === 'solicitud' ? undefined : c.detectado_en} hito={c.derivado_en} cerrada={!!c.cerrada_en} />
                     <Chip dias={c.dias_a_cita} limite={2} pendienteDesde={c.derivado_en} hito={c.cita_confirmada_en} cerrada={!!c.cerrada_en} />
@@ -202,7 +202,7 @@ export default function Derivaciones() {
                           <View style={e.avatar}><Text style={[texto.datoFuerte, { color: color.primarioProfundo }]}>{iniciales(p.nombre)}</Text></View>
                           <View><Text style={[texto.cuerpoFuerte, { color: color.texto }]}>{p.nombre}</Text><Mono>{/^cpsp/i.test(p.colegiatura) ? p.colegiatura : `CPsP ${p.colegiatura}`}</Mono></View>
                         </View>
-                        {abiertos.length > 0 && <BotonChico onPress={() => setMenu({ derivaciones: abiertos.map((c) => c.derivacion_id), titulo: `${abiertos.length} casos`, actualId: p.id, actualNombre: p.nombre })} icono={<IconoEquipo tamano={13} color={color.texto} />}>Pasar sus casos a otro</BotonChico>}
+                        {abiertos.length > 0 && <BotonChico onPress={() => setMenu({ derivaciones: abiertos.map((c) => c.derivacion_id), titulo: `${abiertos.length} casos`, actualId: p.id, actualNombre: p.nombre, organizaciones: abiertos.map((c) => c.organizacion_id) })} icono={<IconoEquipo tamano={13} color={color.texto} />}>Pasar sus casos a otro</BotonChico>}
                       </View>
                       <View style={[e.fila, { gap: espacio.base }]}>
                         <Dato rotulo="Casos abiertos" valor={String(abiertos.length)} nota={abiertos.length > 4 ? 'conviene repartir' : 'carga razonable'} tinta={abiertos.length > 4 ? '#8C4A2B' : color.primarioProfundo} />

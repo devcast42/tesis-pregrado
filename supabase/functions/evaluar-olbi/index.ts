@@ -150,12 +150,14 @@ async function derivar(
 
   if (abierta) return abierta.id as string
 
-  const { data: psicologos } = await db.from('psicologos').select('id').eq('activo', true)
-  if (!psicologos?.length) return null
+  // La regla vive en la base (`elegir_psicologo`), la misma que usa la cita
+  // que pide el trabajador: su psicólogo anterior si puede atenderle; si no,
+  // uno de su empresa; si su empresa no tiene, uno general. Sin ninguno
+  // disponible no se deriva y el investigador lo ve en su bandeja.
+  const { data: elegidoRpc } = await db.rpc('elegir_psicologo', { p_trabajador: trabajadorId })
+  if (!elegidoRpc) return null
+  const elegido = elegidoRpc as string
 
-  // Quien vuelve a cruzar el umbral después de un alta vuelve con el mismo
-  // psicólogo, si sigue activo. Empezar con otra persona es empezar de cero
-  // —contar otra vez lo que ya contó— justo cuando más cuesta.
   const { data: anterior } = await db
     .from('derivaciones')
     .select('psicologo_id')
@@ -164,24 +166,6 @@ async function derivar(
     .order('cerrada_en', { ascending: false })
     .limit(1)
     .maybeSingle()
-  const activos = new Set(psicologos.map((p) => p.id as string))
-
-  let elegido: string
-  if (anterior && activos.has(anterior.psicologo_id as string)) {
-    elegido = anterior.psicologo_id as string
-  } else {
-    const { data: cargas } = await db
-      .from('derivaciones')
-      .select('psicologo_id')
-      .is('cerrada_en', null)
-
-    const conteo = new Map<string, number>(psicologos.map((p) => [p.id as string, 0]))
-    for (const fila of cargas ?? []) {
-      const id = fila.psicologo_id as string
-      conteo.set(id, (conteo.get(id) ?? 0) + 1)
-    }
-    elegido = [...conteo.entries()].sort((a, b) => a[1] - b[1])[0][0]
-  }
 
   const { data: nueva } = await db
     .from('derivaciones')

@@ -91,6 +91,7 @@ export default function Layout() {
         <Stack.Screen name="admin/pulso" options={{ headerShown: false }} />
         <Stack.Screen name="admin/factores" options={{ headerShown: false }} />
         <Stack.Screen name="admin/informe" options={{ headerShown: false }} />
+        <Stack.Screen name="admin/psicologos" options={{ headerShown: false }} />
       </Stack>
     </>
   )

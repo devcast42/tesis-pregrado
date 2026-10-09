@@ -84,6 +84,9 @@ export type Psicologo = {
   nombre: string
   colegiatura: string
   activo: boolean
+  /** Nulo: general, atiende a todas las empresas. Con valor: solo a esa. */
+  organizacion_id: string | null
+  organizacion: string | null
 }
 
 export type Credenciales = { correo: string; contrasena: string }
@@ -252,10 +255,10 @@ export async function crearAdmin(datos: {
 export async function listarPsicologos(): Promise<Psicologo[]> {
   const { data, error } = await supabase
     .from('psicologos')
-    .select('id, auth_user_id, nombre, colegiatura, activo')
+    .select('id, auth_user_id, nombre, colegiatura, activo, organizacion_id, organizaciones(nombre)')
     .order('nombre')
   if (error) throw error
-  return (data ?? []) as Psicologo[]
+  return ((data ?? []) as any[]).map(({ organizaciones, ...p }) => ({ ...p, organizacion: organizaciones?.nombre ?? null })) as Psicologo[]
 }
 
 export async function crearPsicologo(datos: {

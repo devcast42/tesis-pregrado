@@ -328,8 +328,8 @@ export function TarjetaApoyo({ onPress }: { onPress: () => void }) {
         </Text>
       </View>
       <Text style={[texto.cuerpo, e.tarjetaDescripcion]}>
-        Un espacio confidencial de escucha e intercambio con un profesional de la salud
-        mental, enteramente independiente de tu trabajo.
+        Un espacio confidencial de escucha con un profesional de la salud mental.
+        Tu empresa no ve lo que hablen.
       </Text>
       <BotonFila onPress={onPress} fondo="#FFFFFF" tono={color.primarioProfundo}
         icono={<IconoAbrir tamano={15} color={color.primarioProfundo} />}>

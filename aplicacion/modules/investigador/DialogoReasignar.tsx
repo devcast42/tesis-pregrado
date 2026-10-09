@@ -33,6 +33,14 @@ export type PedidoReasignacion = {
   /** Psicólogo actual (se excluye de la lista y se nombra en el texto). */
   actualId?: string | null
   actualNombre?: string | null
+  /** Empresas de los casos a mover. Un psicólogo de empresa solo puede
+   *  recibir casos de la suya; los generales, de cualquiera. */
+  organizaciones?: string[]
+}
+
+/** ¿Puede este psicólogo recibir casos de todas estas empresas? */
+export function puedeAtender(p: Psicologo, organizaciones: string[] = []): boolean {
+  return !p.organizacion_id || organizaciones.every((o) => o === p.organizacion_id)
 }
 
 export function DialogoReasignar({ pedido, onCerrar, onHecho }: { pedido: PedidoReasignacion | null; onCerrar: () => void; onHecho: (nuevo: Psicologo) => void }) {
@@ -51,7 +59,7 @@ export function DialogoReasignar({ pedido, onCerrar, onHecho }: { pedido: Pedido
   }, [pedido])
 
   if (!pedido) return null
-  const candidatos = psicologos.filter((p) => p.id !== pedido.actualId)
+  const candidatos = psicologos.filter((p) => p.id !== pedido.actualId && puedeAtender(p, pedido.organizaciones))
   const listo = !!elegido && !!motivo && !ocupado
 
   async function confirmar() {

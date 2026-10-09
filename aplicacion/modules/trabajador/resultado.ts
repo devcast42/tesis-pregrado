@@ -108,7 +108,7 @@ export const MENSAJE_GENERAL: Record<Nivel, { titulo: string; cuerpo: string }> 
   },
   alto: {
     titulo: 'Está pesando más de la cuenta',
-    cuerpo: 'Tus respuestas muestran un nivel de desgaste alto. No estás solo con esto: te ofreceremos una sesión confidencial con un psicólogo, independiente de tu empresa, para conversarlo con calma.',
+    cuerpo: 'Tus respuestas muestran un nivel de desgaste alto. No estás solo con esto: te ofreceremos una sesión confidencial con un psicólogo para conversarlo con calma. Tu empresa no verá lo que hablen.',
   },
 }
 

@@ -265,7 +265,7 @@ export default function FichaTrabajador() {
 
           <View style={e.acciones}>
             <BotonChico onPress={exportarFicha} icono={<IconoArchivo tamano={13} color={color.texto} />}>Descargar la ficha</BotonChico>
-            <BotonChico onPress={() => f.derivacion ? setReasignacion({ derivaciones: [f.derivacion.id], titulo: f.codigo_anonimo, actualId: f.derivacion.psicologo_id, actualNombre: f.derivacion.psicologo }) : aviso('Sin derivación abierta', 'No hay ninguna derivación que pasar a otro psicólogo.')} icono={<IconoEquipo tamano={13} color={color.texto} />}>Cambiar de psicólogo</BotonChico>
+            <BotonChico onPress={() => f.derivacion ? setReasignacion({ derivaciones: [f.derivacion.id], titulo: f.codigo_anonimo, actualId: f.derivacion.psicologo_id, actualNombre: f.derivacion.psicologo, organizaciones: [f.organizacion_id] }) : aviso('Sin derivación abierta', 'No hay ninguna derivación que pasar a otro psicólogo.')} icono={<IconoEquipo tamano={13} color={color.texto} />}>Cambiar de psicólogo</BotonChico>
             {enMarcha && <BotonChico onPress={cerrar} icono={<IconoCheckCirculo tamano={13} color={color.texto} />}>Cerrar el seguimiento</BotonChico>}
             <View style={{ flex: 1 }} />
             <BotonChico onPress={abrirIdentidad} tono="suave" icono={<IconoCandado tamano={12} color={color.texto} />}>Ver quién es · queda registrado</BotonChico>

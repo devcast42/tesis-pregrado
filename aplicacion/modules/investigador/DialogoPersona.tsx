@@ -32,9 +32,9 @@ const COPIA = {
     nota: 'Contraseña temporal: la cambia al entrar. No se vuelve a mostrar.',
   },
   psicologo: {
-    titulo: 'Nuevo psicólogo',
+    titulo: 'Nuevo psicólogo general',
     boton: 'Crear acceso',
-    nota: 'Contraseña temporal: la cambia al entrar. No se vuelve a mostrar.',
+    nota: 'Atiende a todas las empresas. Contraseña temporal: la cambia al entrar. No se vuelve a mostrar.',
   },
 } as const
 

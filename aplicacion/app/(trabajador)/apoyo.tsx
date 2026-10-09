@@ -92,7 +92,7 @@ export default function Apoyo() {
           <Text style={[texto.etiqueta, { color: color.primarioProfundo }]}>APOYO PROFESIONAL</Text>
           <Text style={[texto.titulo, { color: color.texto }]}>Habla con un psicólogo</Text>
           <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
-            Confidencial e independiente de tu empresa. Pídelo cuando quieras.
+            Confidencial: tu empresa no ve lo que hables. Pídelo cuando quieras.
           </Text>
         </View>
 
