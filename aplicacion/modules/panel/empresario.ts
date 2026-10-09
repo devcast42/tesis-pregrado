@@ -211,6 +211,14 @@ function pearson(x: number[], y: number[]): number {
   return sxx === 0 || syy === 0 ? 0 : sxy / Math.sqrt(sxx * syy)
 }
 
+/** Si la relación va en el sentido que predice la literatura: más horas o
+ *  menos sueño, más agotamiento. Una relación al revés —jornadas largas con
+ *  menos agotamiento— con seis u ocho semanas de datos es casi siempre
+ *  casualidad, y no debe convertirse en un titular. */
+export function enSentidoEsperado(rel: Relacion): boolean {
+  return FACTORES.find((f) => f.clave === rel.clave)!.peorSi === 'mayor' ? rel.r > 0 : rel.r < 0
+}
+
 export function fraseRelacion(rel: Relacion): string {
   const F: Record<ClaveFactor, [string, string]> = {
     horas_dia_media: ['Las semanas con jornadas más largas son las de mayor agotamiento', 'Las semanas con jornadas más largas muestran menor agotamiento'],
@@ -220,8 +228,7 @@ export function fraseRelacion(rel: Relacion): string {
     guardia_pct: ['Las semanas con más gente de guardia son las de mayor agotamiento', 'Las semanas con más guardias muestran menor agotamiento'],
     apoyo_lider_media: ['El apoyo del líder amortigua el agotamiento: a más apoyo, menos desgaste', 'El apoyo del líder sube junto con el agotamiento'],
   }
-  const esperado = FACTORES.find((f) => f.clave === rel.clave)!.peorSi === 'mayor' ? rel.r > 0 : rel.r < 0
-  return F[rel.clave][esperado ? 0 : 1]
+  return F[rel.clave][enSentidoEsperado(rel) ? 0 : 1]
 }
 
 // ------------------------------------------------------- Recomendaciones

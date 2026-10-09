@@ -17,7 +17,7 @@ import { useFocusEffect } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
 import { miEmpresa, resumenDeEmpresa, type Empresa, type ResumenEmpresa } from '../../modules/panel/datos'
 import {
-  FACTORES, factoresEmpresa, fueraDeReferencia, participacionSemanal, pulsoEmpresa, pulsoEstudio, rangoSemana, recomendaciones, umbrales,
+  FACTORES, FACTORES_DEL_EQUIPO, factoresEmpresa, fueraDeReferencia, participacionSemanal, pulsoEmpresa, pulsoEstudio, rangoSemana, recomendaciones, umbrales,
   type FactoresSemana, type ParticipacionSemana, type PulsoEstudio, type PulsoSemana, type Umbral,
 } from '../../modules/panel/empresario'
 import {
@@ -82,12 +82,12 @@ export default function InicioEmpresario() {
     : factores[factores.length - 1]
   const estudioUltima = ultima ? estudio.find((s) => s.semana === ultima.semana) : undefined
   const partUltima = ultima ? participacion.find((s) => s.semana === ultima.semana) : participacion[participacion.length - 1]
+  // Solo jornada y sueño: son los que contesta todo el equipo cada día (ver
+  // `FACTORES_DEL_EQUIPO`). Los otros cuatro salían de pocas personas.
   const pesan = ultimosFactores
-    ? FACTORES.filter((f) => fueraDeReferencia(f.clave, ultimosFactores[f.clave]))
-        .sort((a, b) => (a.clave === 'horas_dia_media' ? -1 : b.clave === 'horas_dia_media' ? 1 : 0))
-        .slice(0, 3)
+    ? FACTORES.filter((f) => FACTORES_DEL_EQUIPO.includes(f.clave) && fueraDeReferencia(f.clave, ultimosFactores[f.clave]))
     : []
-  const recs = recomendaciones(ultimosFactores, pulso, partUltima).slice(0, 2)
+  const recs = recomendaciones(ultimosFactores, pulso, partUltima, { soloDelEquipo: true }).slice(0, 2)
   const hoy = new Date()
   const actualizado = `Al día: ${hoy.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}`
 
@@ -125,7 +125,7 @@ export default function InicioEmpresario() {
               <View style={e.col}><TarjetaDimension dimension="desvinculacion" pulso={pulso} estudio={estudioUltima?.desvinculacion_media} umbral={cortes.find((c) => c.dimension === 'desvinculacion')} /></View>
             </View>
 
-            {pesan.length > 0 && (
+            {pesan.length > 0 ? (
               <>
                 <TituloSeccion titulo="Qué le está pesando al equipo"
                   subtitulo="Lo que se salió de lo previsto esa semana." />
@@ -134,6 +134,16 @@ export default function InicioEmpresario() {
                     <View key={f.clave} style={e.col}><TarjetaPesa clave={f.clave} valor={Number(ultimosFactores![f.clave])} /></View>
                   ))}
                 </View>
+              </>
+            ) : ultimosFactores?.horas_dia_media != null && (
+              // Si nada pesa, se dice con las cifras. Antes la sección
+              // desaparecía sin más y no se sabía si había datos.
+              <>
+                <TituloSeccion titulo="Qué le está pesando al equipo" subtitulo="Jornada y sueño de la última semana cerrada." />
+                <Text style={[texto.apoyo, { color: color.textoMedio }]}>
+                  {`Nada fuera de lo previsto: jornada media de ${Number(ultimosFactores.horas_dia_media).toFixed(1)} h al día`}
+                  {ultimosFactores.sueno_media != null ? ` y ${Number(ultimosFactores.sueno_media).toFixed(1)} h de sueño por noche.` : '.'}
+                </Text>
               </>
             )}
 

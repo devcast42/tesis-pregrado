@@ -1,9 +1,14 @@
 /** Factores de trabajo — implementa ESP-008 rev. 2 (RF-008-15, RF-008-16).
  *  Diseño: Figma 3fRKKoY8Urkjlh1KQkPC9x «Factores de Trabajo».
  *
- *  Seis factores JD-R con su referencia y, con seis semanas de datos, qué
- *  se mueve junto con el agotamiento en esta empresa. Las correlaciones se
- *  calculan sobre medias semanales ya agregadas: nunca sobre personas. */
+ *  Jornada y sueño con su referencia y, con seis semanas de datos, si se
+ *  mueven junto con el agotamiento en esta empresa. Las correlaciones se
+ *  calculan sobre medias semanales ya agregadas: nunca sobre personas.
+ *
+ *  Eran seis factores. Los otros cuatro —fin de semana, sobretiempo,
+ *  guardias, apoyo del líder— no los contesta todo el equipo: uno ya no se
+ *  pregunta y tres van detrás del cuestionario largo, que solo hace parte
+ *  de la gente cada semana. Ver `FACTORES_DEL_EQUIPO`. */
 
 import { useCallback, useState } from 'react'
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
@@ -11,7 +16,7 @@ import { useFocusEffect } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
 import { miEmpresa, type Empresa } from '../../modules/panel/datos'
 import {
-  FACTORES, factoresEmpresa, fraseRelacion, pulsoEmpresa, relaciones,
+  FACTORES, FACTORES_DEL_EQUIPO, enSentidoEsperado, factoresEmpresa, fraseRelacion, pulsoEmpresa, relaciones,
   type FactoresSemana, type PulsoSemana, type Relacion,
 } from '../../modules/panel/empresario'
 import { Caja, Pastilla, Pie, SinReporte, TarjetaFactor } from '../../modules/panel/PiezasEmpresario'
@@ -45,9 +50,14 @@ export default function FactoresEmpresario() {
   if (!empresa) return <Panel rol="admin"><Pantalla ancho={ancho.panel}><Aviso>Tu cuenta no está asociada a ninguna empresa.</Aviso></Pantalla></Panel>
 
   const ultima = factores[factores.length - 1]
-  const { listas, semanas } = relaciones(pulso, factores)
-  const principal = listas.find((r) => !r.protector)
-  const apoyo = ultima?.apoyo_lider_media
+  const { listas: todas, semanas } = relaciones(pulso, factores)
+  const listas = todas.filter((r) => FACTORES_DEL_EQUIPO.includes(r.clave))
+  // El hallazgo es la relación más fuerte EN EL SENTIDO ESPERADO. Antes era
+  // «la más fuerte que no sea protectora», y eso colaba relaciones al revés:
+  // titulaba «Jornadas que no cierran» sobre «las jornadas largas muestran
+  // menos agotamiento» y recomendaba revisar la carga.
+  const principal = listas.find(enSentidoEsperado)
+  const delEquipo = FACTORES.filter((f) => FACTORES_DEL_EQUIPO.includes(f.clave))
 
   return (
     <Panel rol="admin">
@@ -60,7 +70,7 @@ export default function FactoresEmpresario() {
             </View>
             <Text style={[texto.titulo, { color: color.texto }]}>Factores de Trabajo</Text>
             <Text style={[texto.apoyo, { color: color.textoMedio, maxWidth: 560 }]}>
-              Métricas semanales del entorno operativo asociadas a la carga cognitiva y sostenibilidad del equipo.
+              Cuánto trabaja y cuánto duerme tu equipo cada semana, según su check-in diario, y si eso se mueve junto con el agotamiento.
             </Text>
           </View>
           {ultima && (
@@ -84,8 +94,8 @@ export default function FactoresEmpresario() {
         ) : (
           <>
             <View style={e.grid}>
-              {FACTORES.map((f) => (
-                <View key={f.clave} style={{ width: columnas === 1 ? '100%' : columnas === 2 ? '48.5%' : '32%', flexGrow: 1 }}>
+              {delEquipo.map((f) => (
+                <View key={f.clave} style={{ width: columnas === 1 ? '100%' : '48.5%', flexGrow: 1 }}>
                   <TarjetaFactor clave={f.clave} historial={factores} />
                 </View>
               ))}
@@ -140,20 +150,11 @@ export default function FactoresEmpresario() {
                 titulo={principal ? tituloHallazgo(principal.clave) : 'Sin hallazgo dominante'}
                 texto={principal
                   ? `${fraseRelacion(principal)} (ρ = ${principal.r.toFixed(2)}). Es el factor con mayor peso en el agotamiento de tu equipo.`
-                  : 'Cuando haya seis semanas reportables, aquí aparecerá el factor que más se mueve junto con el agotamiento.'}
+                  : semanas >= 6
+                    ? 'Ni la jornada ni el sueño se mueven todavía junto con el agotamiento como cabría esperar. Se seguirá evaluando cada semana.'
+                    : 'Cuando haya seis semanas reportables, aquí aparecerá el factor que más se mueve junto con el agotamiento.'}
                 pie={principal ? accionHallazgo(principal.clave) : undefined}
                 tonoPie={color.primarioProfundo}
-              />
-              <Lectura
-                rotulo="SOSTENIBILIDAD"
-                titulo="Reserva de Líderes"
-                texto={apoyo != null
-                  ? apoyo >= 3.5
-                    ? `Aunque el apoyo de los líderes sigue siendo alto (${apoyo.toFixed(1)}/5), sostenerlo con jornadas de ${ultima.horas_dia_media ?? '—'} h exige cuidar también a quien sostiene.`
-                    : `El apoyo percibido del líder está en ${apoyo.toFixed(1)}/5, bajo la referencia de 3.5. Es el recurso con mayor efecto protector en el modelo JD-R.`
-                  : 'Sin lectura de apoyo del líder esta semana.'}
-                pie={apoyo != null && apoyo >= 3.5 ? 'Riesgo de agotamiento en mandos medios' : 'Prioridad: formación de líderes de primera línea'}
-                tonoPie={color.tierra}
               />
               <Lectura
                 rotulo="PRIVACIDAD"
