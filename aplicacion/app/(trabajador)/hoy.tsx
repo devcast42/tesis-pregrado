@@ -124,12 +124,12 @@ const PRESENTACION: Record<string, { insignia: string; accion: string; descripci
     // Sustituida en tiempo de ejecución por `insigniaDe`: el cuestionario ya
     // no cae un día fijo, así que la insignia dice POR QUÉ apareció.
     insignia: 'De vez en cuando',
-    descripcion: 'Un espacio más profundo para cerrar la semana: dieciséis afirmaciones sobre tu relación con el trabajo.',
+    descripcion: 'Un espacio más profundo: dieciséis afirmaciones sobre tu relación con el trabajo.',
     accion: 'Responder ahora',
   },
   semanal: {
-    insignia: 'Cierre de la semana',
-    descripcion: 'Tres preguntas más y terminaste por esta semana.',
+    insignia: 'Después del cuestionario',
+    descripcion: 'Tres preguntas más sobre tu semana.',
     accion: 'Responder ahora',
   },
 }
@@ -274,18 +274,21 @@ export default function Hoy() {
   const [principal, ...secundarios] = pendientes
   const saludo = saludoPorHora(ahoraMismo)
 
-  // Estado de cada día de la semana en curso. El formulario del día ya
-  // enviado (el diario, o el OLBI el viernes) se refleja también aquí.
+  // Estado de cada día de la semana en curso. El check-in es de lunes a
+  // jueves: de viernes a domingo ningún día es «hoy pendiente». Antes el
+  // viernes salía como pendiente, y el jueves el cierre decía «hasta
+  // mañana» cuando el viernes no hay nada que responder.
   const hoy = indiceLunes(ahoraMismo)
-  const hoyHecho = agenda.some((i) => (i.clave === 'diario' || i.clave === 'olbi') && i.completado)
+  const hoyHecho = agenda.some((i) => i.clave === 'diario' && i.completado)
+  const diaDeCheckin = hoy <= 3
   const finDeSemana = hoy >= 5
   const dias: EstadoDia[] = Array.from({ length: 7 }, (_, i) => {
-    if (i === hoy && !finDeSemana) return hoyHecho ? 'hoy_respondido' : 'hoy_pendiente'
+    if (i === hoy && diaDeCheckin) return hoyHecho ? 'hoy_respondido' : 'hoy_pendiente'
     return diasRespondidos.has(i) ? 'respondido' : 'otro'
   })
-  const cierre = finDeSemana
-    ? 'No hay nada que responder el fin de semana. Nos vemos el lunes; te avisaremos con una notificación.'
-    : hoy === 4
+  const cierre = !diaDeCheckin
+    ? 'Hoy no hay check-in. Nos vemos el lunes; te avisaremos con una notificación.'
+    : hoy === 3
       ? 'Ya cerraste tu semana. No hay nada más hasta el lunes; te avisaremos con una notificación.'
       : 'Ya registraste todo lo de hoy. No hay nada más que hacer hasta mañana; te avisaremos con una notificación.'
 
@@ -297,7 +300,7 @@ export default function Hoy() {
         derecha={rachaActual && enSeguimiento ? (
           <PastillaRacha actual={rachaActual.actual} hoyCumplido={rachaActual.hoy_cumplido} onPress={() => Alert.alert(
             rachaActual.actual === 0 ? 'Tu racha' : `Racha de ${rachaActual.actual} ${rachaActual.actual === 1 ? 'día' : 'días'}`,
-            `Días hábiles seguidos con tu registro del día. El fin de semana no la rompe.${rachaActual.mejor > rachaActual.actual ? ` Tu mejor racha: ${rachaActual.mejor} días.` : ''}${!rachaActual.hoy_cumplido && rachaActual.actual > 0 ? ' Responde hoy para mantenerla.' : ''}`,
+            `Días de check-in seguidos, de lunes a jueves. El viernes y el fin de semana no la rompen.${rachaActual.mejor > rachaActual.actual ? ` Tu mejor racha: ${rachaActual.mejor} días.` : ''}${!rachaActual.hoy_cumplido && rachaActual.actual > 0 ? ' Responde hoy para mantenerla.' : ''}`,
           )} />
         ) : undefined}
       />

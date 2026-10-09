@@ -65,13 +65,18 @@ export function resultadoDesde(evaluacion: Evaluacion, fecha = new Date()): Resu
   }
 }
 
-/** El nivel general es el más alto de las dos dimensiones. */
+/** El nivel general. «Alto» solo si el servidor detectó, que exige las dos
+ *  dimensiones sobre su corte: antes bastaba una, y el mensaje prometía «te
+ *  ofreceremos una sesión con un psicólogo» a quien no se derivaba. Con una
+ *  sola dimensión alta queda en «moderado»; su tarjeta sí dice «alto». */
 export function nivelGeneral(r: ResultadoSemana): Nivel {
+  if (r.detectado) return 'alto'
   const orden: Nivel[] = ['bajo', 'moderado', 'alto']
-  return r.dimensiones.reduce<Nivel>(
+  const peor = r.dimensiones.reduce<Nivel>(
     (acc, d) => (orden.indexOf(d.nivel) > orden.indexOf(acc) ? d.nivel : acc),
     'bajo',
   )
+  return peor === 'alto' ? 'moderado' : peor
 }
 
 export const NOMBRE_DIMENSION: Record<Dimension, string> = {
@@ -94,15 +99,15 @@ export const ETIQUETA_NIVEL: Record<Nivel, string> = {
  *  el nivel bajo y moderado: no hay nada que diagnosticar. */
 export const MENSAJE_GENERAL: Record<Nivel, { titulo: string; cuerpo: string }> = {
   bajo: {
-    titulo: 'Tu semana cerró en verde',
+    titulo: 'Vas en verde',
     cuerpo: 'Tus respuestas muestran una relación con el trabajo que se sostiene bien. Lo que haces para descansar y desconectar está funcionando; conviene mantenerlo.',
   },
   moderado: {
-    titulo: 'Una semana para mirar con atención',
+    titulo: 'Un momento para mirar con atención',
     cuerpo: 'Tus respuestas están en una zona intermedia: no es un problema, pero es una señal temprana. Es el mejor momento para ajustar algo pequeño antes de que se acumule.',
   },
   alto: {
-    titulo: 'Esta semana pesó más de la cuenta',
+    titulo: 'Está pesando más de la cuenta',
     cuerpo: 'Tus respuestas muestran un nivel de desgaste alto. No estás solo con esto: te ofreceremos una sesión confidencial con un psicólogo, independiente de tu empresa, para conversarlo con calma.',
   },
 }
@@ -164,14 +169,11 @@ export function recomendacionesDe(r: ResultadoSemana): { dimension: Dimension; n
 export function consejoDelDia(valores: Record<string, unknown>): string | null {
   const horas = Number(valores.horas_trabajadas)
   const sueno = Number(valores.horas_sueno)
-  const finde = Number(valores.horas_fin_de_semana)
 
   if (!Number.isNaN(sueno) && sueno > 0 && sueno < 6)
     return 'Dormiste menos de seis horas. Si puedes, hoy acuéstate media hora antes: es el cambio con más efecto sobre cómo te sentirás mañana.'
   if (!Number.isNaN(horas) && horas >= 10)
     return 'Diez horas o más de trabajo. Un día así pasa; una semana así se paga. Mañana, elige una hora de cierre y respétala.'
-  if (!Number.isNaN(finde) && finde >= 4)
-    return 'Trabajaste varias horas el fin de semana. Esta semana intenta recuperar ese tiempo, aunque sea en dos tardes libres.'
   if (!Number.isNaN(sueno) && sueno >= 7 && !Number.isNaN(horas) && horas <= 8)
     return 'Un día equilibrado: buenas horas de sueño y una jornada razonable. Así se sostiene el resto.'
   return null
@@ -247,7 +249,7 @@ export function explicacionConfianza(p: Prediccion): string {
   const m = metricasAplicables(p)
   const partes: string[] = []
   if (p.origen === 'preentrenamiento') {
-    partes.push('Estimación preliminar: el modelo todavía no se ha entrenado con datos de tu empresa. Irá mejorando con las semanas.')
+    partes.push('Estimación preliminar: el modelo todavía no se ha entrenado con datos de tu empresa.')
   }
   if (m) {
     const aciertos = Math.round(m.precision * 10)
@@ -255,7 +257,7 @@ export function explicacionConfianza(p: Prediccion): string {
     partes.push(
       p.tarea === 'pronostico'
         ? `De cada 10 avisos que da se confirman unos ${aciertos} la semana siguiente, y detecta unos ${detecta} de cada 10 casos altos.`
-        : `Con ${p.n_dias} ${p.n_dias === 1 ? 'día respondido' : 'días respondidos'}, de cada 10 avisos que da se confirman unos ${aciertos} el viernes, y detecta unos ${detecta} de cada 10 casos altos.`,
+        : `Con ${p.n_dias} ${p.n_dias === 1 ? 'día respondido' : 'días respondidos'}, de cada 10 avisos que da se confirman unos ${aciertos} al contestar el cuestionario, y detecta unos ${detecta} de cada 10 casos altos.`,
     )
   }
   return partes.join(' ')

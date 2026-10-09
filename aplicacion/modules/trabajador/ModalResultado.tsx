@@ -427,9 +427,11 @@ function Explicacion({ p }: { p: Prediccion }) {
   const lineas: { titulo: string; cuerpo: string }[] = [
     {
       titulo: '¿Qué es este número?',
+      // Las dos ramas estaban cambiadas: el modelo en uso enseñaba la del
+      // «cuestionario de este viernes», que ya no existe.
       cuerpo: pronostico
-        ? 'La probabilidad de que el cuestionario completo te saliera alto si lo respondieras hoy. Se calcula con lo que llevas contestado esta semana, y es lo que decide cuándo se te pide.'
-        : 'La probabilidad, según el modelo, de que tu cuestionario de este viernes salga alto. Se actualiza con cada check-in.',
+        ? 'La probabilidad, según el modelo, de que tu próximo cuestionario salga alto.'
+        : 'La probabilidad de que el cuestionario completo te saliera alto si lo respondieras hoy. Se calcula con lo que llevas contestado esta semana, y es lo que decide cuándo se te pide.',
     },
   ]
   if (m) {
@@ -443,7 +445,9 @@ function Explicacion({ p }: { p: Prediccion }) {
   if (p.origen === 'preentrenamiento') {
     lineas.push({
       titulo: '¿Con qué aprendió?',
-      cuerpo: 'Por ahora, con datos de una investigación publicada. Cada semana que respondes lo entrena también con los tuyos.',
+      // No se reentrena solo con las respuestas: decir que sí era prometer
+      // algo que el producto no hace.
+      cuerpo: 'Con datos de una investigación publicada. Todavía no usa datos de tu empresa.',
     })
   }
   return (

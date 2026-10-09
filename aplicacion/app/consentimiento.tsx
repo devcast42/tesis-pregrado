@@ -26,7 +26,7 @@ import { Boton, Parrafo, Titulo } from '../modules/nucleo/ui'
 import { ancho, color, espacio, radio, texto } from '../modules/nucleo/diseno'
 
 const PUNTOS = [
-  'Responderás seis preguntas cada día, de lunes a jueves. Son unos 15 segundos. El viernes, un cuestionario algo más largo.',
+  'Responderás seis preguntas cada día, de lunes a jueves. Son unos 15 segundos. De vez en cuando, justo después, te pediremos un cuestionario algo más largo: cuando tus respuestas lo sugieran, por sorteo o si llevas un mes sin hacerlo.',
   'Tu empresa verá tu nombre, si vas respondiendo y en qué nivel estás: bajo, a vigilar o alto.',
   'Tu empresa NO verá lo que respondiste a cada pregunta, ni tus puntajes, ni nada de lo que hables con el psicólogo. Eso queda entre tú y él.',
   'Si aparecen señales de riesgo se te ofrecerá una sesión con un profesional de psicología. Aceptarla es voluntario, y tu empresa solo sabrá que estás en acompañamiento, nunca por qué.',

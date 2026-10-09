@@ -99,7 +99,7 @@ export default function Perfil() {
     setHora({ hora: h, minuto: m })
     setHoraTexto(dosDigitos(h)); setMinutoTexto(dosDigitos(m))
     if (!ok) {
-      Alert.alert('Sin permiso para avisarte', 'La hora quedó guardada, pero el teléfono no permite notificaciones a esta app. Actívalas en Ajustes del sistema → Aplicaciones → Estudio Burnout → Notificaciones.')
+      Alert.alert('Sin permiso para avisarte', 'La hora quedó guardada, pero el teléfono no permite notificaciones a esta app. Actívalas en Ajustes del sistema → Aplicaciones → Bienestar Tech → Notificaciones.')
     }
   }
 
@@ -227,7 +227,7 @@ export default function Perfil() {
             <Text style={[texto.seccion, { color: color.texto }]}>Recordatorio diario</Text>
             <Text style={[texto.apoyo, { color: color.textoMedio }]}>
               {recordatoriosDisponibles()
-                ? 'De lunes a viernes, a la hora que elijas. Sábado y domingo no hay nada que responder.'
+                ? 'De lunes a jueves, a la hora que elijas. De viernes a domingo no hay nada que responder.'
                 : 'Este dispositivo no permite programar recordatorios. Abre la app cada día al terminar tu jornada.'}
             </Text>
           </View>
@@ -331,7 +331,7 @@ export default function Perfil() {
             <Text style={[texto.etiqueta, { color: color.textoSuave }]}>SOLO DESARROLLO · FECHA SIMULADA</Text>
             <Text style={[texto.apoyo, { color: color.textoMedio }]}>
               Mueve el día de la app (no el de la base de datos) para probar el calendario:
-              lunes a jueves el check-in, viernes el cuestionario.
+              lunes a jueves el check-in; el cuestionario, cuando toque.
             </Text>
             <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>
               {fechaLarga(ahora())}{desfase !== 0 ? ` (${desfase > 0 ? '+' : ''}${desfase} d)` : ''}

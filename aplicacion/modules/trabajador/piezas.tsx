@@ -85,7 +85,7 @@ const INICIALES = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
  *  la animación es un premio, no un adorno permanente. */
 export function RitmoSemanal({ dias, racha = 0, celebrar = false, onPress }: {
   dias: EstadoDia[]
-  /** Días hábiles consecutivos, contando hoy si ya se respondió. */
+  /** Días de check-in consecutivos, contando hoy si ya se respondió. */
   racha?: number
   celebrar?: boolean
   /** Abre el detalle de todos los registros. */
@@ -94,8 +94,9 @@ export function RitmoSemanal({ dias, racha = 0, celebrar = false, onPress }: {
   const hoy = dias.findIndex((d) => d.startsWith('hoy'))
   const hoyHecho = dias[hoy] === 'hoy_respondido'
   // Días de esta semana que pertenecen a la racha: hacia atrás desde hoy
-  // (o desde ayer si hoy sigue pendiente). Solo lunes a viernes.
-  const ultimo = hoyHecho ? hoy : hoy - 1
+  // (o desde ayer si hoy sigue pendiente). De viernes a domingo no hay «hoy»
+  // y la racha acaba el jueves.
+  const ultimo = hoy < 0 ? 3 : hoyHecho ? hoy : hoy - 1
   const enRacha = new Set<number>()
   for (let i = ultimo, n = 0; i >= 0 && n < racha; i--, n++) enRacha.add(i)
   const vieneDeAntes = racha > enRacha.size && enRacha.has(0)

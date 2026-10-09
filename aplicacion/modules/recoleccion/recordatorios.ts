@@ -31,31 +31,29 @@ const CLAVE_MINUTO = 'recordatorio.minuto'
  *  base: prometer un tiempo distinto del real es la primera causa de que
  *  alguien deje de responder. */
 const DURACION_RESPALDO: Record<'diario' | 'olbi', string> = {
-  diario: '35 segundos',
+  diario: '15 segundos',
   olbi: '4 minutos',
 }
 
 function recordatorios(duraciones: Partial<Record<'diario' | 'olbi', string>> = {}) {
   const diario = duraciones.diario ?? DURACION_RESPALDO.diario
   const olbi = duraciones.olbi ?? DURACION_RESPALDO.olbi
-  return [
-    ...[2, 3, 4, 5].map((weekday) => ({
-      id: `checkin-${weekday}`,
-      weekday,
-      titulo: 'Check-in de hoy',
-      cuerpo: `Son ${diario}.`,
-    })),
-    {
-      id: 'checkin-6',
-      weekday: 6,
-      titulo: 'Cuestionario del viernes',
-      cuerpo: `${olbi[0].toUpperCase()}${olbi.slice(1)} para cerrar tu semana.`,
-    },
-  ]
+  void olbi
+  // Solo de lunes a jueves. El aviso del viernes («Cuestionario del
+  // viernes») llegaba a todos, y el cuestionario ya no es para todos ni cae
+  // en viernes: se ofrece tras el check-in el día que toca.
+  return [2, 3, 4, 5].map((weekday) => ({
+    id: `checkin-${weekday}`,
+    weekday,
+    titulo: 'Check-in de hoy',
+    cuerpo: `Son ${diario}.`,
+  }))
 }
 
-/** Solo para cancelar: los identificadores no dependen de la duración. */
-const RECORDATORIOS = recordatorios()
+/** Solo para cancelar: los identificadores no dependen de la duración.
+ *  `checkin-6` era el aviso del viernes; se sigue cancelando para que
+ *  desaparezca de los teléfonos que ya lo tenían programado. */
+const RECORDATORIOS = [...recordatorios(), { id: 'checkin-6' }]
 
 export const HORA_POR_DEFECTO = 19
 export const MINUTO_POR_DEFECTO = 0
@@ -205,10 +203,10 @@ export async function programarDiario(
 
   try {
     await asegurarCanal(n)
-    // Un recordatorio semanal por día laborable (ESP-002 rev. 2): de lunes a
-    // jueves el check-in, el viernes el cuestionario. Sábado y domingo no hay
-    // nada que responder, y avisar sin motivo es la forma más rápida de que
-    // silencien la app. `weekday` de expo-notifications: 1 = domingo … 7 = sábado.
+    // Un recordatorio semanal por día de check-in, de lunes a jueves. De
+    // viernes a domingo no hay nada que responder, y avisar sin motivo es la
+    // forma más rápida de que silencien la app. `weekday` de
+    // expo-notifications: 1 = domingo … 7 = sábado.
     await Promise.all(
       RECORDATORIOS.map((r) => n.cancelScheduledNotificationAsync(r.id).catch(() => {})),
     )

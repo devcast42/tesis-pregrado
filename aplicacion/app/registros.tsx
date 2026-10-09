@@ -1,9 +1,12 @@
 /** Mis registros — implementa ESP-002 RF-002-07 (racha) y RF-002-12.
  *
- *  Detalle de lo que «Ritmo semanal» resume: cada semana con
- *  sus cinco días hábiles, qué días hubo check-in, qué viernes hubo OLBI,
- *  la racha actual y la mejor. Solo hechos y fechas: aquí no hay puntajes
- *  ni interpretación (RN-004-01). */
+ *  Detalle de lo que «Ritmo semanal» resume: cada semana con sus cuatro
+ *  días de check-in (lunes a jueves), si esa semana contestó el
+ *  cuestionario, la racha actual y la mejor. Solo hechos y fechas: aquí no
+ *  hay puntajes ni interpretación (RN-004-01).
+ *
+ *  Antes eran cinco días y el viernes esperaba el cuestionario: una semana
+ *  sin él salía incompleta, y ahora el cuestionario no es para todos. */
 
 import { useCallback, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -16,9 +19,9 @@ import { Cargando } from '../modules/nucleo/ui'
 import { color, espacio, fuente, radio, texto } from '../modules/nucleo/diseno'
 import { IconoCheck, IconoLlama, IconoVolver } from '../modules/nucleo/iconos'
 
-const DIAS = ['L', 'M', 'M', 'J', 'V']
-type Celda = { estado: 'checkin' | 'olbi' | 'omitido' | 'hoy' | 'futuro' | 'previo'; hora?: string }
-type Semana = { n: number; lunes: Date; celdas: Celda[]; cumplidos: number; esperados: number; olbi: boolean; actual: boolean }
+const DIAS = ['L', 'M', 'M', 'J']
+type Celda = { estado: 'checkin' | 'omitido' | 'hoy' | 'futuro' | 'previo'; hora?: string }
+type Semana = { n: number; lunes: Date; celdas: Celda[]; cumplidos: number; esperados: number; olbi: Date | null; actual: boolean }
 
 export default function Registros() {
   const insets = useSafeAreaInsets()
@@ -38,14 +41,14 @@ export default function Registros() {
     const lunesHoy = inicioDeSemana(hoy)
     const nSemanas = Math.max(1, Math.round((lunesHoy.getTime() - lunes0.getTime()) / (7 * 86_400_000)) + 1)
 
-    const porDia = new Map<string, { diario?: string; olbi?: string }>()
+    const porDia = new Map<string, { diario?: string; olbi?: Date }>()
     for (const en of envios) {
       const d = new Date(en.enviado_en)
       const clave = claveDia(d)
       const hora = d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })
       const e = porDia.get(clave) ?? {}
       if (en.clave === 'diario' && !e.diario) e.diario = hora
-      if (en.clave === 'olbi') e.olbi = hora
+      if (en.clave === 'olbi') e.olbi = d
       porDia.set(clave, e)
     }
 
@@ -54,21 +57,21 @@ export default function Registros() {
     for (let s = 0; s < nSemanas; s++) {
       const lunes = new Date(lunes0); lunes.setDate(lunes0.getDate() + s * 7)
       const celdas: Celda[] = []
-      let cumplidos = 0, esperados = 0, olbi = false
-      for (let d = 0; d < 5; d++) {
+      let cumplidos = 0, esperados = 0
+      let olbi: Date | null = null
+      for (let d = 0; d < 7; d++) {
         const dia = new Date(lunes); dia.setDate(lunes.getDate() + d)
         const e = porDia.get(claveDia(dia))
+        if (e?.olbi) { olbi = e.olbi; olbis++ }
+        if (d >= 4) continue
         if (dia < inscripcion) { celdas.push({ estado: 'previo' }); continue }
         if (dia > hoy) { celdas.push({ estado: 'futuro' }); continue }
         esperados++
         const esHoy = claveDia(dia) === claveDia(hoy)
-        if (d === 4) {
-          if (e?.olbi) { cumplidos++; olbi = true; olbis++; celdas.push({ estado: 'olbi', hora: e.olbi }) }
-          else celdas.push({ estado: esHoy ? 'hoy' : 'omitido' })
-        } else if (e?.diario) { cumplidos++; dias++; celdas.push({ estado: 'checkin', hora: e.diario }) }
+        if (e?.diario) { cumplidos++; dias++; celdas.push({ estado: 'checkin', hora: e.diario }) }
         else celdas.push({ estado: esHoy ? 'hoy' : 'omitido' })
       }
-      if (esperados === 5 && cumplidos === 5) completas++
+      if (esperados === 4 && cumplidos === 4) completas++
       lista.push({ n: s + 1, lunes, celdas, cumplidos, esperados, olbi, actual: s === nSemanas - 1 })
     }
     setTotales({ dias, olbis, semanasCompletas: completas })
@@ -91,20 +94,19 @@ export default function Registros() {
           <View style={{ flex: 1 }}>
             <Text style={[texto.cifra, { color: color.texto }]}>{racha?.actual ?? 0} <Text style={[texto.apoyo, { color: color.textoMedio }]}>{(racha?.actual ?? 0) === 1 ? 'día seguido' : 'días seguidos'}</Text></Text>
             <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-              {racha?.hoy_cumplido ? 'Hoy ya cuenta.' : 'Responde hoy para mantenerla.'} Tu mejor racha: {racha?.mejor ?? 0} {(racha?.mejor ?? 0) === 1 ? 'día' : 'días'}. El fin de semana no la rompe.
+              {racha?.hoy_cumplido ? 'Hoy ya cuenta.' : 'Responde hoy para mantenerla.'} Tu mejor racha: {racha?.mejor ?? 0} {(racha?.mejor ?? 0) === 1 ? 'día' : 'días'}. El viernes y el fin de semana no la rompen.
             </Text>
           </View>
         </View>
         <View style={e.totales}>
           <Total valor={totales.dias} etiqueta="check-ins" />
-          <Total valor={totales.olbis} etiqueta={totales.olbis === 1 ? 'viernes cerrado' : 'viernes cerrados'} />
+          <Total valor={totales.olbis} etiqueta={totales.olbis === 1 ? 'cuestionario completo' : 'cuestionarios completos'} />
           <Total valor={totales.semanasCompletas} etiqueta={totales.semanasCompletas === 1 ? 'semana completa' : 'semanas completas'} />
         </View>
 
         {/* Semanas */}
         <View style={e.leyenda}>
           <Leyenda tinta={color.primario} texto="Check-in" />
-          <Leyenda tinta={color.primarioProfundo} texto="Viernes (OLBI)" />
           <Leyenda tinta={color.borde} texto="Sin registro" hueco />
         </View>
         {semanas.map((s) => (
@@ -115,21 +117,26 @@ export default function Registros() {
                 <Text style={[texto.apoyo, { color: color.textoMedio }]}>{rango(s.lunes)}</Text>
               </View>
               <View style={[e.pastilla, s.esperados > 0 && s.cumplidos === s.esperados && e.pastillaLlena]}>
-                <Text style={[texto.datoFuerte, { color: s.esperados > 0 && s.cumplidos === s.esperados ? '#FFFFFF' : color.textoMedio }]}>{s.cumplidos}/{s.esperados || 5}</Text>
+                <Text style={[texto.datoFuerte, { color: s.esperados > 0 && s.cumplidos === s.esperados ? '#FFFFFF' : color.textoMedio }]}>{s.cumplidos}/{s.esperados || 4}</Text>
               </View>
             </View>
             <View style={e.filaDias}>
               {s.celdas.map((c, i) => (
                 <View key={i} style={e.dia}>
-                  <Text style={[texto.dato, { color: i === 4 ? color.primarioProfundo : color.textoMedio }]}>{DIAS[i]}</Text>
-                  <View style={[e.circulo, c.estado === 'checkin' && e.circuloCheckin, c.estado === 'olbi' && e.circuloOlbi, c.estado === 'omitido' && e.circuloOmitido, c.estado === 'hoy' && e.circuloHoy, (c.estado === 'futuro' || c.estado === 'previo') && e.circuloFuturo]}>
-                    {(c.estado === 'checkin' || c.estado === 'olbi') && <IconoCheck tamano={9} color="#FFFFFF" />}
+                  <Text style={[texto.dato, { color: color.textoMedio }]}>{DIAS[i]}</Text>
+                  <View style={[e.circulo, c.estado === 'checkin' && e.circuloCheckin, c.estado === 'omitido' && e.circuloOmitido, c.estado === 'hoy' && e.circuloHoy, (c.estado === 'futuro' || c.estado === 'previo') && e.circuloFuturo]}>
+                    {c.estado === 'checkin' && <IconoCheck tamano={9} color="#FFFFFF" />}
                     {c.estado === 'hoy' && <View style={e.puntoHoy} />}
                   </View>
                   <Text style={[e.hora, { color: c.hora ? color.textoMedio : 'transparent' }]}>{c.hora ?? '00:00'}</Text>
                 </View>
               ))}
             </View>
+            {s.olbi && (
+              <Text style={[texto.apoyo, { color: color.primarioProfundo }]}>
+                {`Cuestionario completo · ${s.olbi.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'short' }).replace('.', '')}`}
+              </Text>
+            )}
           </View>
         ))}
         <Text style={[texto.apoyo, { color: color.textoSuave, textAlign: 'center', paddingTop: espacio.sm }]}>
@@ -142,9 +149,9 @@ export default function Registros() {
 
 function claveDia(d: Date) { return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` }
 function rango(lunes: Date) {
-  const viernes = new Date(lunes); viernes.setDate(lunes.getDate() + 4)
+  const jueves = new Date(lunes); jueves.setDate(lunes.getDate() + 3)
   const f = (d: Date) => d.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' }).replace('.', '')
-  return `${f(lunes)} – ${f(viernes)}`
+  return `${f(lunes)} – ${f(jueves)}`
 }
 function Total({ valor, etiqueta }: { valor: number; etiqueta: string }) {
   return <View style={e.total}><Text style={[texto.cifra, { color: color.texto, fontSize: 22 }]}>{valor}</Text><Text style={[texto.apoyo, { color: color.textoMedio, textAlign: 'center' }]}>{etiqueta}</Text></View>
@@ -173,7 +180,6 @@ const e = StyleSheet.create({
   dia: { alignItems: 'center', gap: 6, width: 52 },
   circulo: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: color.superficieSuave },
   circuloCheckin: { backgroundColor: color.primario },
-  circuloOlbi: { backgroundColor: color.primarioProfundo },
   circuloOmitido: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: color.borde },
   circuloHoy: { backgroundColor: color.primarioSuave, borderWidth: 1.5, borderColor: color.primario },
   circuloFuturo: { backgroundColor: color.superficieSuave, opacity: 0.6 },
