@@ -27,7 +27,7 @@ import { Caja, NotaAgregacion, Pastilla, PastillaNivel, Pie } from '../../module
 import { Aviso, Boton, Cargando, Entrada, Etiqueta, Pantalla } from '../../modules/nucleo/ui'
 import { ancho, color, espacio, radio, texto } from '../../modules/nucleo/diseno'
 import {
-  IconoAgregar, IconoBarras, IconoCandado, IconoCheckCirculo, IconoChevronAbajo, IconoCredencial, IconoEquipo, IconoEscudo,
+  IconoAgregar, IconoBarras, IconoCandado, IconoCheckCirculo, IconoChevronAbajo, IconoCredencial, IconoEquipo,
   IconoEscudoCheck, IconoLupa, IconoNota,
 } from '../../modules/nucleo/iconos'
 
@@ -140,13 +140,6 @@ export default function PersonasAdmin() {
               Quién está, cómo va y en qué nivel. Altas, bajas y contraseñas.
             </Text>
           </View>
-          <View style={e.aislamiento}>
-            <IconoEscudo tamano={20} color={color.primarioProfundo} />
-            <View style={{ flex: 1 }}>
-              <Text style={[texto.datoFuerte, { color: color.primarioProfundo }]}>Ves el nivel, no el detalle</Text>
-              <Text style={[texto.dato, { color: color.textoMedio }]}>Cómo está, sí. Qué respondió, no.</Text>
-            </View>
-          </View>
         </View>
 
         {!empresa ? (
@@ -163,8 +156,8 @@ export default function PersonasAdmin() {
               <Indicador rotulo="Siguen respondiendo" icono={<IconoEscudoCheck tamano={18} color={color.primarioProfundo} />}
                 cifra={String(resumen?.en_seguimiento ?? 0)} unidad={`de ${inscritos}`}
                 nota={pctSeguimiento === 100 ? undefined : `${inscritos - (resumen?.en_seguimiento ?? 0)} ya no responden`} />
-              <Indicador rotulo="Contestaron el último viernes" icono={<IconoBarras tamano={18} color={color.primarioProfundo} />}
-                cifra={tasa != null ? `${tasa}%` : '—'} unidad={tasa != null ? 'de las dadas de alta' : 'sin datos aún'}
+              <Indicador rotulo="Contestaron la última semana" icono={<IconoBarras tamano={18} color={color.primarioProfundo} />}
+                cifra={tasa != null ? `${tasa}%` : '—'} unidad={tasa != null ? 'del equipo' : 'sin datos'}
                 nota={tasa != null && tasa < 60 ? 'bajo el 60 %: poco fiable' : undefined} notaIcono="tendencia"
                 tono={tasa != null && tasa < 60 ? color.alerta : undefined} />
             </View>
@@ -353,28 +346,37 @@ export default function PersonasAdmin() {
 
 /** Cifra del encabezado. La línea de apoyo es opcional: cuando no añade
  *  nada al rótulo, se omite en vez de rellenar con una frase. */
+/** Una de las cuatro cifras de arriba.
+ *
+ *  Las cuatro tienen la misma altura y sus piezas caen a la misma altura
+ *  entre tarjetas: el rótulo reserva dos líneas aunque use una, la cifra no
+ *  se parte y la nota va pegada abajo. Sin eso, un rótulo largo bajaba su
+ *  cifra media línea y una unidad larga se iba a otra fila, y las cuatro
+ *  tarjetas quedaban en escalera. */
 function Indicador({ rotulo, icono, cifra, unidad, nota, notaIcono, tono }: {
   rotulo: string; icono: React.ReactNode; cifra: string; unidad: string; nota?: string; notaIcono?: 'check' | 'tendencia'; tono?: string
 }) {
   return (
-    <View style={{ flex: 1, minWidth: 190 }}>
-      <Caja estilo={{ padding: espacio.base, gap: 6 }}>
-        <View style={[e.fila, { justifyContent: 'space-between' }]}>
-          <Text style={[texto.etiqueta, { color: color.textoMedio, fontSize: 11, flex: 1 }]}>{rotulo.toUpperCase()}</Text>
+    <View style={e.indicador}>
+      <Caja estilo={e.indicadorCaja}>
+        <View style={e.indicadorCabeza}>
+          <Text style={[texto.etiqueta, { color: color.textoMedio, fontSize: 11, lineHeight: 16, flex: 1 }]} numberOfLines={2}>{rotulo.toUpperCase()}</Text>
           {icono}
         </View>
-        <View style={[e.fila, { alignItems: 'flex-end', gap: 6 }]}>
+        <View style={e.indicadorCifra}>
           <Text style={[texto.cifra, { color: tono ?? color.texto, fontSize: 30, lineHeight: 34 }]}>{cifra}</Text>
-          <Text style={[texto.apoyoFuerte, { color: tono ?? color.primarioProfundo, paddingBottom: 4 }]}>{unidad}</Text>
+          <Text style={[texto.apoyoFuerte, { color: tono ?? color.primarioProfundo, paddingBottom: 4 }]} numberOfLines={1}>{unidad}</Text>
         </View>
-        {nota != null && (
-          <View style={[e.fila, { gap: 6 }]}>
-            {notaIcono === 'check' ? <IconoCheckCirculo tamano={12} color={color.primarioProfundo} />
-              : notaIcono === 'tendencia' ? <IconoBarras tamano={12} color={color.primarioProfundo} />
-              : <View style={e.puntoNota} />}
-            <Text style={[texto.dato, { color: color.textoMedio, flex: 1 }]}>{nota}</Text>
-          </View>
-        )}
+        <View style={e.indicadorNota}>
+          {nota != null && (
+            <>
+              {notaIcono === 'check' ? <IconoCheckCirculo tamano={12} color={color.primarioProfundo} />
+                : notaIcono === 'tendencia' ? <IconoBarras tamano={12} color={tono ?? color.primarioProfundo} />
+                : <View style={e.puntoNota} />}
+              <Text style={[texto.dato, { color: tono ?? color.textoMedio, flex: 1 }]} numberOfLines={1}>{nota}</Text>
+            </>
+          )}
+        </View>
       </Caja>
     </View>
   )
@@ -383,8 +385,12 @@ function Indicador({ rotulo, icono, cifra, unidad, nota, notaIcono, tono }: {
 const e = StyleSheet.create({
   encabezado: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: espacio.base, flexWrap: 'wrap' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap' },
-  aislamiento: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, backgroundColor: '#F1EFEB', borderRadius: radio.md, padding: espacio.md, maxWidth: 300 },
-  indicadores: { flexDirection: 'row', gap: espacio.base, flexWrap: 'wrap' },
+  indicadores: { flexDirection: 'row', gap: espacio.base, flexWrap: 'wrap', alignItems: 'stretch' },
+  indicador: { flex: 1, minWidth: 190 },
+  indicadorCaja: { flex: 1, padding: espacio.base, gap: 6 },
+  indicadorCabeza: { flexDirection: 'row', alignItems: 'flex-start', gap: espacio.sm, minHeight: 32 },
+  indicadorCifra: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
+  indicadorNota: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 18, marginTop: 'auto' },
   puntoNota: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.primario },
   buscador: { flex: 1, minWidth: 220, flexDirection: 'row', alignItems: 'center', gap: espacio.sm, backgroundColor: '#F5F4F1', borderRadius: radio.md, paddingHorizontal: espacio.md, height: 44 },
   buscadorEntrada: { flex: 1, ...texto.apoyo, color: color.texto, paddingVertical: 8 },
