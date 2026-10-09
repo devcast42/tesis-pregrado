@@ -374,15 +374,6 @@ export default function PersonasAdmin() {
               )}
             </Caja>
 
-            {/* Un solo recordatorio de privacidad: antes había cuatro
-                diciendo lo mismo —esta caja, `NotaAgregacion`, `Pie` y la del
-                encabezado—, uno detrás de otro. */}
-            <View style={e.garantia}>
-              <View style={e.muestraIcono}><IconoEscudoCheck tamano={20} color={color.primarioProfundo} /></View>
-              <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1, minWidth: 240 }]}>
-                Ves el nivel de cada persona, no sus respuestas ni sus puntajes. De quien está en acompañamiento no verás el motivo ni lo que habla con su psicólogo.
-              </Text>
-            </View>
           </>
         )}
       </Pantalla>
@@ -444,5 +435,4 @@ const e = StyleSheet.create({
   chipCodigo: { backgroundColor: '#F1EFEB', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   chipMono: { borderWidth: 1, borderColor: color.borde, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: color.superficie },
   accion: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 6, backgroundColor: '#F5F4F1' },
-  garantia: { flexDirection: 'row', alignItems: 'center', gap: espacio.base, backgroundColor: '#E8F3EE', borderRadius: radio.lg, padding: espacio.lg, flexWrap: 'wrap' },
 })
