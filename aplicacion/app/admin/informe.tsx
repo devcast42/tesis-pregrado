@@ -211,13 +211,34 @@ export default function InformeMensual() {
             <View style={e.tres}>
               <CeldaDimension dimension="agotamiento" umbral={corteDe('agotamiento')} rotulo="AGOTAMIENTO" valor={agMes} nivel={nivelMes('agotamiento')} previo={agPrev} mesPrevio={nombreMes(mesAnterior(mes), false)} />
               <CeldaDimension dimension="desvinculacion" umbral={corteDe('desvinculacion')} rotulo="DESVINCULACIÓN" valor={dvMes} nivel={nivelMes('desvinculacion')} previo={dvPrev} mesPrevio={nombreMes(mesAnterior(mes), false)} />
-              <View style={e.celda}>
+              {/* Una gráfica por dimensión, cada una sobre sus propias zonas.
+                  Antes era una sola línea de agotamiento sin nombre, sin
+                  valores y sin zonas, en una escala de 1 a 4 de 80 px: dos
+                  décimas de diferencia no se veían y no había forma de saber
+                  si esa raya era buena o mala. Con las zonas pintadas, una
+                  línea plana en verde ya dice «todo en orden». */}
+              <View style={[e.celda, { gap: espacio.md }]}>
                 <Text style={[texto.etiqueta, { color: color.textoMedio, fontSize: 11 }]}>SEMANA A SEMANA</Text>
-                <GraficaLinea
-                  series={[{ etiqueta: 'Agotamiento', color: '#B0532F', puntos: pulsoMes.map((p) => ({ x: p.semana, y: Number(p.agotamiento_media) })) }]}
-                  yMin={1} yMax={4} alto={80} desnuda sinLeyenda todasLasEtiquetasX
-                  etiquetaX={(x, i) => `S${i + 1}`}
-                />
+                {(['agotamiento', 'desvinculacion'] as const).map((dim) => {
+                  const u = corteDe(dim)
+                  const v = pulsoMes.map((p) => Number(p[`${dim}_media`]))
+                  return (
+                    <View key={dim} style={{ gap: 2 }}>
+                      <Text style={[texto.datoFuerte, { color: color.texto }]}>{dim === 'agotamiento' ? 'Agotamiento' : 'Desvinculación'}</Text>
+                      <GraficaLinea
+                        series={[{ etiqueta: dim, color: dim === 'agotamiento' ? '#8C4A2B' : color.primarioProfundo,
+                          puntos: pulsoMes.map((p, i) => ({ x: p.semana, y: v[i] })) }]}
+                        bandas={u ? [
+                          { desde: 1, hasta: Number(u.a_vigilar), color: '#DCEFE6' },
+                          { desde: Number(u.a_vigilar), hasta: Number(u.alto), color: '#FBE4DC' },
+                          { desde: Number(u.alto), hasta: 4, color: '#F2C7B4' },
+                        ] : []}
+                        yMin={1} yMax={4} alto={120} desnuda sinLeyenda todasLasEtiquetasX
+                        etiquetaX={(_x, i) => `S${i + 1} · ${v[i].toFixed(1)}`}
+                      />
+                    </View>
+                  )
+                })}
               </View>
             </View>
 
