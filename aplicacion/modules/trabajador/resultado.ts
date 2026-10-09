@@ -170,11 +170,20 @@ export function consejoDelDia(valores: Record<string, unknown>): string | null {
   const horas = Number(valores.horas_trabajadas)
   const sueno = Number(valores.horas_sueno)
 
+  // Desde el check-in v4 las horas se eligen por rangos y llega el punto
+  // medio: sueño 5 / 6.5 / 7.5 / 8.5; jornada 7 / 8.5 / 9.5 / 11. Las reglas
+  // eran de cuando se escribían a mano, y con «8 a 9 h» o «9 a 10 h» no
+  // saltaba ninguna: el cierre se quedaba sin consejo. Ahora cubren los
+  // dieciséis casos.
   if (!Number.isNaN(sueno) && sueno > 0 && sueno < 6)
     return 'Dormiste menos de seis horas. Si puedes, hoy acuéstate media hora antes: es el cambio con más efecto sobre cómo te sentirás mañana.'
   if (!Number.isNaN(horas) && horas >= 10)
-    return 'Diez horas o más de trabajo. Un día así pasa; una semana así se paga. Mañana, elige una hora de cierre y respétala.'
-  if (!Number.isNaN(sueno) && sueno >= 7 && !Number.isNaN(horas) && horas <= 8)
+    return 'Diez horas o más de trabajo. Un día así pasa; una semana así se paga. En tu próxima jornada, elige una hora de cierre y respétala.'
+  if (!Number.isNaN(horas) && horas >= 9)
+    return 'Una jornada larga. En la próxima, intenta cerrar a tu hora aunque quede algo pendiente.'
+  if (!Number.isNaN(sueno) && sueno > 0 && sueno < 7)
+    return 'Dormiste algo menos de siete horas. Esta noche, media hora antes a la cama.'
+  if (!Number.isNaN(sueno) && sueno >= 7 && !Number.isNaN(horas) && horas <= 8.5)
     return 'Un día equilibrado: buenas horas de sueño y una jornada razonable. Así se sostiene el resto.'
   return null
 }

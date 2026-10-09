@@ -87,7 +87,10 @@ export function ModalResultado({ modo, resultado, consejo, prediccion, motivoOlb
               : <Cierre consejo={consejo} prediccion={prediccion} motivoOlbi={motivoOlbi} onResponderOlbi={onResponderOlbi} semana={semana} />}
             {/* Un solo botón relleno por pantalla. Con dos iguales, el que
                 importa deja de distinguirse. */}
-            {(mostrarResultado && !(resultado?.detectado && onPedirCita)) || (!mostrarResultado && !motivoOlbi)
+            {/* «Ahora no» solo si de verdad hay algo pendiente: `motivoOlbi`
+                también llega como «ya_respondido» o «no_toca», y con eso el
+                cierre ofrecía posponer un cuestionario que no existía. */}
+            {(mostrarResultado && !(resultado?.detectado && onPedirCita)) || (!mostrarResultado && !(motivoOlbi && AVISO_OLBI[motivoOlbi]))
               ? <Boton onPress={onCerrar}>Volver al inicio</Boton>
               : (
                 <Pressable onPress={onCerrar} style={e.volver} accessibilityRole="button">
