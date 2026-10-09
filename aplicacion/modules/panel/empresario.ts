@@ -148,6 +148,18 @@ export const FACTORES = [
 
 export type ClaveFactor = (typeof FACTORES)[number]['clave']
 
+/** Los únicos factores que contesta todo el equipo, todos los días: salen
+ *  del check-in diario (horas trabajadas y horas dormidas).
+ *
+ *  Los otros cuatro no sirven para hablar del equipo. Las horas de fin de
+ *  semana dejaron de preguntarse cuando el check-in pasó a seis toques. Y el
+ *  sobretiempo, las guardias y el apoyo del líder vienen de las tres
+ *  preguntas que van después del cuestionario largo, así que solo las
+ *  contesta quien lo hace esa semana: sobre todo gente en riesgo. Un «30 %
+ *  del equipo estuvo de guardia» era en realidad «el 30 % de quienes
+ *  contestaron». */
+export const FACTORES_DEL_EQUIPO: ClaveFactor[] = ['horas_dia_media', 'sueno_media']
+
 export function fueraDeReferencia(clave: ClaveFactor, valor: number | null): boolean {
   if (valor === null) return false
   const f = FACTORES.find((x) => x.clave === clave)!
@@ -222,9 +234,14 @@ export function recomendaciones(
   ultimaSemana: FactoresSemana | undefined,
   pulso: PulsoSemana[],
   participacion: ParticipacionSemana | undefined,
+  /** El informe mensual pide solo lo que contesta todo el equipo y habla
+   *  del mes, no de «esta semana». */
+  opciones: { soloDelEquipo?: boolean; periodo?: 'semana' | 'mes' } = {},
 ): Recomendacion[] {
   const r: Recomendacion[] = []
   const f = ultimaSemana
+  const mes = opciones.periodo === 'mes'
+  const usable = (clave: ClaveFactor) => !opciones.soloDelEquipo || FACTORES_DEL_EQUIPO.includes(clave)
   /** Mismo criterio que «lo que más pesa»: si un factor sale de la referencia
    *  del estudio, aquí está qué hacer con él.
    *
@@ -233,11 +250,11 @@ export function recomendaciones(
    *  son 20—, así que la pantalla marcaba un factor como problema y luego no
    *  ofrecía nada que hacer: en Nexa Software pesaban tres factores y la
    *  sección «qué hacer esta semana» no aparecía. */
-  const fuera = (clave: ClaveFactor) => f != null && fueraDeReferencia(clave, f[clave] as number | null)
+  const fuera = (clave: ClaveFactor) => usable(clave) && f != null && fueraDeReferencia(clave, f[clave] as number | null)
 
   if (fuera('horas_dia_media')) r.push({
     id: 'REC-01', titulo: 'Mirar el reparto de la carga',
-    texto: `La jornada media va en ${f!.horas_dia_media} h al día, por encima de las 8.5 de referencia. Vale la pena revisar qué entregas se pueden mover y poner un tope al sobretiempo.`,
+    texto: `La jornada media ${mes ? 'del mes fue de' : 'va en'} ${Number(f!.horas_dia_media).toFixed(1)} h al día, por encima de las 8.5 de referencia. Vale la pena revisar qué entregas se pueden mover y poner un tope al sobretiempo.`,
     referencia: 'Demerouti et al. (2001), modelo de demandas y recursos',
   })
   if (fuera('sobretiempo_media') || fuera('fin_de_semana_media')) {
@@ -259,7 +276,7 @@ export function recomendaciones(
   })
   if (fuera('sueno_media')) r.push({
     id: 'REC-04', titulo: 'Cuidar el descanso',
-    texto: `Se durmió ${f!.sueno_media} h de media, por debajo de las 7 de referencia. Suele arreglarse moviendo las horas de inicio y evitando guardias nocturnas seguidas.`,
+    texto: `Se durmió ${Number(f!.sueno_media).toFixed(1)} h de media${mes ? ' en el mes' : ''}, por debajo de las 7 de referencia. Suele arreglarse moviendo las horas de inicio y evitando guardias nocturnas seguidas.`,
     referencia: 'Åkerstedt (2006)',
   })
   if (fuera('apoyo_lider_media')) r.push({
@@ -276,7 +293,7 @@ export function recomendaciones(
   })
   if (participacion?.tasa_respuesta_pct != null && participacion.tasa_respuesta_pct < 60) r.push({
     id: 'REC-07', titulo: 'Contesta poca gente',
-    texto: `Solo respondió el ${participacion.tasa_respuesta_pct} % esta semana, así que la lectura es poco fiable. Recordar en la reunión de equipo que las respuestas son anónimas suele bastar.`,
+    texto: `Solo respondió el ${participacion.tasa_respuesta_pct} % ${mes ? 'de media cada semana del mes' : 'esta semana'}, así que la lectura es poco fiable. Recordar en la reunión de equipo que las respuestas son anónimas suele bastar.`,
     referencia: 'ESP-007, adherencia',
   })
   return r

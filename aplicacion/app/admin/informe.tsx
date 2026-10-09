@@ -18,7 +18,7 @@ import { useFocusEffect } from 'expo-router'
 import { Panel } from '../../modules/panel/Sidebar'
 import { miEmpresa, resumenDeEmpresa, type Empresa, type ResumenEmpresa } from '../../modules/panel/datos'
 import {
-  FACTORES, apoyoMensual, factoresEmpresa, fueraDeReferencia, participacionSemanal, pulsoEmpresa, recomendaciones,
+  FACTORES, FACTORES_DEL_EQUIPO, apoyoMensual, factoresEmpresa, fueraDeReferencia, participacionSemanal, pulsoEmpresa, recomendaciones,
   type FactoresSemana, type Nivel, type ParticipacionSemana, type PulsoSemana,
   umbrales, type Umbral,
 } from '../../modules/panel/empresario'
@@ -110,9 +110,27 @@ export default function InformeMensual() {
   }
   const respondientesMes = media(pulsoMes.map((p) => p.respondientes))
   const tasaMes = media(partMes.map((s) => s.tasa_respuesta_pct ?? 0))
-  const ultimoFactor = factoresMes[factoresMes.length - 1]
-  const fuera = ultimoFactor ? FACTORES.filter((f) => fueraDeReferencia(f.clave, ultimoFactor[f.clave])).slice(0, 3) : []
-  const recs = recomendaciones(ultimoFactor, pulsoMes, partMes[partMes.length - 1]).slice(0, 2)
+  // Jornada y sueño del mes entero, no de su última semana: un informe
+  // mensual que cita «esta semana» confunde a quien lo lee en gerencia. Y
+  // solo esos dos factores, que son los que contesta todo el equipo cada
+  // día (ver `FACTORES_DEL_EQUIPO`).
+  const factorMes = (clave: 'horas_dia_media' | 'sueno_media') => {
+    const vals = factoresMes.map((f) => f[clave]).filter((x): x is number => x != null).map(Number)
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
+  }
+  const delMes: FactoresSemana | undefined = factoresMes.length ? {
+    semana: factoresMes[factoresMes.length - 1].semana,
+    respondientes: factoresMes[factoresMes.length - 1].respondientes,
+    horas_dia_media: factorMes('horas_dia_media'),
+    sueno_media: factorMes('sueno_media'),
+    fin_de_semana_media: null, sobretiempo_media: null, guardia_pct: null, apoyo_lider_media: null,
+  } : undefined
+  const delEquipo = FACTORES.filter((f) => FACTORES_DEL_EQUIPO.includes(f.clave))
+  const recs = recomendaciones(
+    delMes, pulsoMes,
+    partMes.length ? { ...partMes[partMes.length - 1], tasa_respuesta_pct: Math.round(tasaMes ?? 0) } : undefined,
+    { soloDelEquipo: true, periodo: 'mes' },
+  ).slice(0, 2)
   const semanasIso = pulsoMes.map((p) => numeroSemanaIso(p.semana))
   const inscritos = resumen?.inscritos ?? 0
 
@@ -242,33 +260,51 @@ export default function InformeMensual() {
               </View>
             </View>
 
-            {/* Sección 2 */}
+            {/* Sección 2: cómo trabajó y descansó el equipo. Siempre las dos
+                cifras, dentro o fuera de lo previsto: «nada se salió» sin
+                enseñar nada no le dice a gerencia cómo fue el mes. */}
             <View style={e.fila}>
               <View style={e.puntoVerde} />
-              <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Qué se salió de lo previsto</Text>
+              <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Cómo trabajó y descansó el equipo</Text>
+              <Text style={[texto.dato, { color: color.textoSuave }]}>media del mes, del check-in diario</Text>
             </View>
-            {fuera.length === 0 ? (
-              <Text style={[texto.apoyo, { color: color.textoMedio }]}>Nada se salió de lo previsto este mes.</Text>
-            ) : (
+            {delMes ? (
               <View style={e.tres}>
-                {fuera.map((f) => {
-                  const v = Number(ultimoFactor![f.clave])
-                  const pct = f.clave === 'guardia_pct' ? v : Math.min(100, Math.round((v / (f.ref * 1.6)) * 100))
+                {delEquipo.map((f) => {
+                  const v = delMes[f.clave]
+                  const fuera = v != null && fueraDeReferencia(f.clave, v)
+                  // La barra va de 0 a 1.6 veces la referencia, con una marca
+                  // en la referencia: así se ve a qué distancia queda.
+                  const tope = f.ref * 1.6
+                  const pct = v == null ? 0 : Math.min(100, Math.round((v / tope) * 100))
+                  const marca = Math.round((f.ref / tope) * 100)
                   return (
                     <View key={f.clave} style={e.celda}>
-                      <Text style={[texto.etiqueta, { color: color.textoMedio, fontSize: 11 }]}>{f.nombre.toUpperCase()}</Text>
+                      <View style={[e.fila, { justifyContent: 'space-between' }]}>
+                        <Text style={[texto.etiqueta, { color: color.textoMedio, fontSize: 11, flex: 1 }]}>{f.nombre.toUpperCase()}</Text>
+                        {v != null && (
+                          <Pastilla fondo={fuera ? '#FBE4DC' : '#DCEFE6'} tinta={fuera ? '#C4664A' : '#2F6B52'}>
+                            {fuera ? 'Fuera de lo previsto' : 'Dentro de lo previsto'}
+                          </Pastilla>
+                        )}
+                      </View>
                       <Text style={[texto.seccion, { color: color.texto }]}>
-                        {v.toFixed(f.clave === 'guardia_pct' ? 0 : 1)}{f.clave === 'guardia_pct' ? ' %' : ' h'}{' '}
-                        <Text style={[texto.apoyo, { color: color.textoMedio }]}>{f.clave === 'guardia_pct' ? 'del equipo' : f.unidad.replace('h / ', '/ ')}</Text>
+                        {v == null ? '—' : `${v.toFixed(1)} h`}{' '}
+                        <Text style={[texto.apoyo, { color: color.textoMedio }]}>{f.clave === 'sueno_media' ? 'por noche' : 'al día'}</Text>
                       </Text>
+                      <View style={e.barrita}>
+                        <View style={[e.barritaLlena, { width: `${pct}%`, backgroundColor: fuera ? '#C4664A' : '#2F6B52' }]} />
+                        <View style={[e.barritaMarca, { left: `${marca}%` }]} />
+                      </View>
                       <Text style={[texto.dato, { color: color.textoMedio }]}>
-                        {`Lo previsto: ${f.peorSi === 'mayor' ? 'hasta' : 'al menos'} ${f.ref}${f.clave === 'guardia_pct' ? ' %' : ' h'}`}
+                        {`Lo previsto: ${f.peorSi === 'mayor' ? 'hasta' : 'al menos'} ${f.ref} h`}
                       </Text>
-                      <View style={e.barrita}><View style={[e.barritaLlena, { width: `${pct}%` }]} /></View>
                     </View>
                   )
                 })}
               </View>
+            ) : (
+              <Text style={[texto.apoyo, { color: color.textoMedio }]}>Sin check-ins suficientes este mes.</Text>
             )}
 
             {/* Sección 3: apoyo */}
@@ -290,12 +326,19 @@ export default function InformeMensual() {
             </View>
 
             {/* Sección 4 */}
+            <View style={e.fila}>
+              <View style={e.puntoVerde} />
+              <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Qué hacer en {mesSiguiente(mes).toLowerCase()}</Text>
+            </View>
+            {/* Si nada se salió, se dice. Antes la sección desaparecía sin
+                más y parecía que el informe había fallado. */}
+            {recs.length === 0 && (
+              <Text style={[texto.apoyo, { color: color.textoMedio }]}>
+                Nada que corregir: jornada y sueño dentro de lo previsto. Mantener lo que se está haciendo.
+              </Text>
+            )}
             {recs.length > 0 && (
               <>
-                <View style={e.fila}>
-                  <View style={e.puntoVerde} />
-                  <Text style={[texto.cuerpoFuerte, { color: color.texto, flex: 1 }]}>Qué hacer en {mesSiguiente(mes).toLowerCase()}</Text>
-                </View>
                 <View style={e.tres}>
                   {recs.map((r, i) => (
                     <View key={r.id} style={[e.celda, { backgroundColor: color.superficie, borderWidth: 1, borderColor: color.borde }]}>
@@ -358,6 +401,7 @@ function CeldaDimension({ dimension, umbral, rotulo, valor, nivel, previo, mesPr
 }
 
 const e = StyleSheet.create({
+  barritaMarca: { position: 'absolute', top: -3, bottom: -3, width: 2, marginLeft: -1, backgroundColor: color.texto, borderRadius: 1 },
   encabezado: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: espacio.base, flexWrap: 'wrap' },
   acciones: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap' },
@@ -373,8 +417,8 @@ const e = StyleSheet.create({
   puntoVerde: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.primarioProfundo },
   tres: { flexDirection: 'row', gap: espacio.md, flexWrap: 'wrap' },
   celda: { flex: 1, minWidth: 200, gap: 8, padding: espacio.base, borderRadius: radio.md, backgroundColor: '#F5F4F1' },
-  barrita: { height: 4, borderRadius: 2, backgroundColor: '#E4E1DC', overflow: 'hidden', marginTop: 4 },
-  barritaLlena: { height: 4, borderRadius: 2, backgroundColor: '#B0532F' },
+  barrita: { height: 6, borderRadius: 3, backgroundColor: '#E4E1DC', marginTop: 4, position: 'relative' },
+  barritaLlena: { height: 6, borderRadius: 3, backgroundColor: '#B0532F' },
   apoyo: { backgroundColor: '#F5F4F1', borderRadius: radio.md, padding: espacio.base },
   iconoApoyo: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#DDF3EA', alignItems: 'center', justifyContent: 'center' },
   cajaGarantia: { backgroundColor: color.superficie, borderRadius: radio.sm, padding: espacio.md },
