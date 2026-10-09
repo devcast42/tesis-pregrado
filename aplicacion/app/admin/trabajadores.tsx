@@ -336,9 +336,10 @@ export default function PersonasAdmin() {
                 </View>
               )}
             </Caja>
-
           </>
         )}
+
+        <Pie />
       </Pantalla>
     </Panel>
   )
