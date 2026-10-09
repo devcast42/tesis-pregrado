@@ -15,7 +15,7 @@ import { supabase } from '../nucleo/supabase'
 import { color, espacio, fuente, radio, texto } from '../nucleo/diseno'
 import { Logo } from '../nucleo/Logo'
 import {
-  IconoAjustes, IconoArchivo, IconoCuadricula, IconoEquipo, IconoEscudoCheck, IconoGrafica, IconoHoja, IconoPersona, IconoSalir,
+  IconoAjustes, IconoArchivo, IconoCuadricula, IconoEquipo, IconoGrafica, IconoHoja, IconoPersona, IconoSalir,
 } from '../nucleo/iconos'
 import type { Rol } from '../nucleo/rol'
 import { PanelInvestigador } from './SidebarInvestigador'
@@ -217,17 +217,6 @@ function PanelAdmin({ children }: { children: ReactNode }) {
         ))}
 
         <View style={e.pie}>
-          {rol === 'admin' && (
-            <View style={e.garantia}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={[texto.etiqueta, { color: color.primarioProfundo, flex: 1 }]}>QUÉ VES Y QUÉ NO</Text>
-                <IconoEscudoCheck tamano={13} color={color.primarioProfundo} />
-              </View>
-              <Text style={[texto.dato, { color: color.textoMedio }]}>
-                Ves quién es, cómo va y en qué nivel está. No ves sus respuestas, sus puntajes ni lo que habla con el psicólogo.
-              </Text>
-            </View>
-          )}
           <Identidad rol={rol} />
         </View>
       </View>
@@ -323,7 +312,6 @@ const e = StyleSheet.create({
   marcaBloque: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, paddingHorizontal: espacio.xs },
   marcaLogo: { width: 40, height: 40, borderRadius: 20, backgroundColor: color.primarioSuave, alignItems: 'center', justifyContent: 'center' },
   pastillaPortal: { alignSelf: 'flex-start', backgroundColor: color.superficieSuave, borderRadius: radio.sm, paddingHorizontal: 10, paddingVertical: 5, marginTop: -espacio.sm },
-  garantia: { backgroundColor: color.superficieSuave, borderRadius: radio.md, padding: espacio.md, gap: 4, marginBottom: espacio.md },
   identidadPie: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, paddingHorizontal: espacio.xs },
   avatarChico: { width: 30, height: 30, borderRadius: 15, backgroundColor: color.primarioProfundo, alignItems: 'center', justifyContent: 'center' },
   grupo: { gap: 2 },
