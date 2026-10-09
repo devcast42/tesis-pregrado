@@ -274,11 +274,16 @@ export function Evolucion({ puntajes, umbrales }: {
   const primera = semanas[0]
   const tendencia = ultima.agotamiento != null && primera.agotamiento != null
     ? ultima.agotamiento - primera.agotamiento : 0
+  // Son mediciones, no semanas: el OLBI ya no se contesta cada viernes, y
+  // seis mediciones pueden abarcar meses. Se dice desde cuándo.
+  const corta = (iso: string) => new Date(iso).toLocaleDateString('es-PE', { day: 'numeric', month: 'short' }).replace('.', '')
+  const n = semanas.length
+  const desde = n ? corta(semanas[0].fecha) : ''
 
   return (
     <View style={{ gap: espacio.sm }}>
       <View style={e.fila}>
-        <Text style={[texto.seccion, { color: color.texto, flex: 1 }]}>Evolución ({semanas.length} {semanas.length === 1 ? 'semana' : 'semanas'})</Text>
+        <Text style={[texto.seccion, { color: color.texto, flex: 1 }]}>Evolución ({n} {n === 1 ? 'medición' : 'mediciones'})</Text>
         <Leyenda tinta={color.tierra} nombre="Agot." />
         <Leyenda tinta={color.textoMedio} nombre="Desv." />
       </View>
@@ -298,16 +303,16 @@ export function Evolucion({ puntajes, umbrales }: {
         <View style={e.ejeX}>
           {semanas.map((s, i) => (
             <Text key={s.fecha} style={[texto.etiqueta, { color: i === semanas.length - 1 ? color.texto : color.textoSuave }]}>
-              S{numeroSemana(new Date(s.fecha))}
+              {corta(s.fecha)}
             </Text>
           ))}
         </View>
       </View>
       <Text style={[texto.apoyo, { color: color.textoMedio }]}>
         {semanas.length < 2 ? 'Una sola medición: todavía no hay tendencia.'
-          : tendencia > 0.3 ? `Alza sostenida en agotamiento durante las últimas ${semanas.length} semanas.`
-          : tendencia < -0.3 ? `Descenso en agotamiento durante las últimas ${semanas.length} semanas.`
-          : `Agotamiento estable durante las últimas ${semanas.length} semanas.`}
+          : tendencia > 0.3 ? `Alza en agotamiento en sus últimas ${n} mediciones, desde el ${desde}.`
+          : tendencia < -0.3 ? `Descenso en agotamiento en sus últimas ${n} mediciones, desde el ${desde}.`
+          : `Agotamiento estable en sus últimas ${n} mediciones, desde el ${desde}.`}
       </Text>
     </View>
   )
