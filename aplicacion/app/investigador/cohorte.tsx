@@ -69,6 +69,8 @@ export default function Cohorte() {
   const hayEnCurso = !!enCurso
   const n = (x: number | null | undefined) => (x == null ? null : Number(x))
   const f1 = (x: number | null | undefined) => (x == null ? '—' : Number(x).toFixed(1))
+  /** «8.0 h», o «—» a secas: antes salía «— h». */
+  const horas = (x: number | null | undefined) => (x == null ? '—' : `${Number(x).toFixed(1)} h`)
   const f2 = (x: number | null | undefined) => (x == null ? '—' : Number(x).toFixed(2))
   // pct_alto y guardia_pct ya vienen en 0–100.
   const pct = (x: number | null | undefined) => (x == null ? '—' : `${Math.round(Number(x))}%`)
@@ -184,6 +186,7 @@ export default function Cohorte() {
                   cabecera={['Semana', 'Inscritas', 'Hicieron check-in', 'En seguimiento', 'Detectadas', 'Retiradas', 'Terminadas']}
                   filas={filas.map((f, i) => ({
                     clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: f === enCurso ? `${rangoSemana(f.semana)} · en curso` : rangoSemana(f.semana),
+                    enCurso: f === enCurso,
                     celdas: [
                       { v: String(f.inscritos) }, { v: String(f.respondieron_checkin) }, { v: String(f.activos) },
                       { v: String(f.detectados), tinta: f.detectados ? TIERRA : undefined, fuerte: !!f.detectados },
@@ -199,7 +202,7 @@ export default function Cohorte() {
                   filas={filas.map((f, i) => {
                     const cruzaron = pasaron(f)
                     return {
-                      clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: f === enCurso ? `${rangoSemana(f.semana)} · en curso` : rangoSemana(f.semana), resaltar: cruzaron > 0,
+                      clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: f === enCurso ? `${rangoSemana(f.semana)} · en curso` : rangoSemana(f.semana), resaltar: cruzaron > 0 && f !== enCurso, enCurso: f === enCurso,
                       celdas: [
                         { v: `${f.respondieron_viernes} de ${f.inscritos}` },
                         { v: f2(f.olbi_agotamiento_media) },
@@ -213,16 +216,21 @@ export default function Cohorte() {
               )}
               {vista === 'declarado' && (
                 <Tabla
+                  grupos={[
+                    { titulo: 'Del check-in · todo el grupo', columnas: 3 },
+                    { titulo: 'Tras el OLBI · solo quien lo contestó', columnas: 3 },
+                  ]}
                   cabecera={['Semana', 'Horas al día', 'Horas de sueño', 'Trabajó el finde', 'Sobretiempo', 'De guardia', 'Apoyo del jefe']}
                   filas={filas.map((f, i) => ({
                     clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: f === enCurso ? `${rangoSemana(f.semana)} · en curso` : rangoSemana(f.semana),
+                    enCurso: f === enCurso,
                     celdas: [
-                      { v: `${f1(f.horas_dia_media)} h` }, { v: `${f1(f.sueno_media)} h` }, { v: `${f1(f.fin_de_semana_media)} h` },
-                      { v: `${f1(f.sobretiempo_media)} h` }, { v: pct(f.guardia_pct) },
-                      { v: `${f1(f.apoyo_lider_media)} de 5` },
+                      { v: horas(f.horas_dia_media) }, { v: horas(f.sueno_media) }, { v: horas(f.fin_de_semana_media) },
+                      { v: horas(f.sobretiempo_media) }, { v: pct(f.guardia_pct) },
+                      { v: f.apoyo_lider_media == null ? '—' : `${f1(f.apoyo_lider_media)} de 5` },
                     ],
                   }))}
-                  nota="Horas al día, de sueño y del fin de semana salen del check-in diario, que contesta todo el grupo. El sobretiempo, la guardia y el apoyo del jefe, de las tres preguntas que siguen al OLBI: solo de quienes lo contestaron. «Apoyo del jefe» va de 1 («nunca conté con él») a 5 («siempre»)."
+                  nota={`Las tres últimas columnas salen de las preguntas que siguen al OLBI, así que hablan del grupo al que se le pidió, no de todas. La semana en curso va en gris: tiene los días que van${enCurso ? ` (${enCurso.respondieron_checkin} ${enCurso.respondieron_checkin === 1 ? 'persona' : 'personas'} con check-in hasta hoy)` : ''}. «Apoyo del jefe» va de 1 («nunca conté con él») a 5 («siempre»).`}
                 />
               )}
               <View style={[e.fila, { justifyContent: 'flex-end', paddingTop: 4 }]}><Mono tono={color.textoSuave}>cohorte_semanal</Mono></View>
@@ -261,13 +269,27 @@ function Tarjeta({ rotulo, valor, unidad, apoyo, icono, tinta = color.texto, fon
 }
 
 type Celda = { v: string; tinta?: string; fuerte?: boolean }
-type FilaTabla = { clave: string; titulo: string; apoyo: string; resaltar?: boolean; celdas: Celda[] }
+type FilaTabla = { clave: string; titulo: string; apoyo: string; resaltar?: boolean; enCurso?: boolean; celdas: Celda[] }
 
 /** Tabla de la cohorte: la primera columna es la semana con su rango de
  *  fechas debajo; las demás, cifras alineadas a la derecha. */
-function Tabla({ cabecera, filas, nota }: { cabecera: string[]; filas: FilaTabla[]; nota: string }) {
+function Tabla({ cabecera, filas, nota, grupos }: {
+  cabecera: string[]; filas: FilaTabla[]; nota: string
+  /** Rótulo sobre varias columnas seguidas, para decir de dónde salen. */
+  grupos?: { titulo: string; columnas: number }[]
+}) {
   return (
     <>
+      {grupos && (
+        <View style={[e.fila, { gap: 6, paddingHorizontal: 8, flexWrap: 'nowrap' }]}>
+          <View style={{ flex: 1.6 }} />
+          {grupos.map((g) => (
+            <View key={g.titulo} style={[e.grupo, { flex: g.columnas }]}>
+              <Text style={[texto.dato, { color: color.textoMedio, fontSize: 11, textAlign: 'right' }]}>{g.titulo}</Text>
+            </View>
+          ))}
+        </View>
+      )}
       <View style={e.tablaCab}>
         {cabecera.map((h, i) => (
           <Text key={h} style={[texto.etiqueta, { color: color.textoMedio, fontSize: 9.5, flex: i === 0 ? 1.6 : 1, textAlign: i === 0 ? 'left' : 'right' }]} numberOfLines={2}>
@@ -278,11 +300,11 @@ function Tabla({ cabecera, filas, nota }: { cabecera: string[]; filas: FilaTabla
       {filas.map((f) => (
         <View key={f.clave} style={[e.tablaFila, f.resaltar && { backgroundColor: '#FBEDE6' }]}>
           <View style={{ flex: 1.6 }}>
-            <Text style={[texto.datoFuerte, { color: color.texto }]}>{f.titulo}</Text>
+            <Text style={[texto.datoFuerte, { color: f.enCurso ? color.textoSuave : color.texto }]}>{f.titulo}</Text>
             <Text style={[texto.dato, { color: color.textoSuave, fontSize: 11 }]}>{f.apoyo}</Text>
           </View>
           {f.celdas.map((c, i) => (
-            <Text key={i} style={[c.fuerte ? texto.datoFuerte : texto.dato, { color: c.tinta ?? color.texto, flex: 1, textAlign: 'right', fontFamily: MONO }]}>{c.v}</Text>
+            <Text key={i} style={[c.fuerte ? texto.datoFuerte : texto.dato, { color: f.enCurso ? color.textoSuave : c.tinta ?? color.texto, flex: 1, textAlign: 'right', fontFamily: MONO }]}>{c.v}</Text>
           ))}
         </View>
       ))}
@@ -333,6 +355,7 @@ const e = StyleSheet.create({
   cuadroIcono: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   vista: { flex: 1, minWidth: 180, gap: 2, padding: 10, borderRadius: radio.md, borderWidth: 1, borderColor: '#EEECE8', backgroundColor: color.superficie },
   vistaOn: { borderColor: color.primarioProfundo, backgroundColor: '#EAF4EF' },
+  grupo: { borderBottomWidth: 1, borderBottomColor: '#D9D5CF', paddingBottom: 3, marginBottom: 2 },
   tablaCab: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, paddingVertical: 8, paddingHorizontal: 8, backgroundColor: '#F5F4F1', borderRadius: 6 },
   tablaFila: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: '#EEECE8', borderRadius: radio.sm },
 })
