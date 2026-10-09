@@ -217,15 +217,18 @@ export default function Cohorte() {
               {vista === 'declarado' && (
                 <Tabla
                   grupos={[
-                    { titulo: 'Del check-in · todo el grupo', columnas: 3 },
+                    { titulo: 'Del check-in · todo el grupo', columnas: 2 },
                     { titulo: 'Tras el OLBI · solo quien lo contestó', columnas: 3 },
                   ]}
-                  cabecera={['Semana', 'Horas al día', 'Horas de sueño', 'Trabajó el finde', 'Sobretiempo', 'De guardia', 'Apoyo del jefe']}
+                  cabecera={['Semana', 'Horas al día', 'Horas de sueño', 'Sobretiempo', 'De guardia', 'Apoyo del jefe']}
                   filas={filas.map((f, i) => ({
                     clave: f.semana, titulo: `Semana ${i + 1}`, apoyo: f === enCurso ? `${rangoSemana(f.semana)} · en curso` : rangoSemana(f.semana),
                     enCurso: f === enCurso,
                     celdas: [
-                      { v: horas(f.horas_dia_media) }, { v: horas(f.sueno_media) }, { v: horas(f.fin_de_semana_media) },
+                      // Sin «Trabajó el finde»: el check-in v4 ya no lo pregunta
+                      // (abría el teclado un lunes de cada cuatro) y la columna
+                      // solo tenía las semanas de antes.
+                      { v: horas(f.horas_dia_media) }, { v: horas(f.sueno_media) },
                       { v: horas(f.sobretiempo_media) }, { v: pct(f.guardia_pct) },
                       { v: f.apoyo_lider_media == null ? '—' : `${f1(f.apoyo_lider_media)} de 5` },
                     ],
