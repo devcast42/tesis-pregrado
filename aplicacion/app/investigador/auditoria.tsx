@@ -189,7 +189,10 @@ export default function Auditoria() {
                   </Pressable>
                   <View style={{ flex: 2.2, gap: 3 }}>
                     <Text style={[texto.dato, { color: color.texto }]}>
-                      {a.motivo ?? (a.por === 'investigador' ? 'Consulta desde la ficha del trabajador.' : 'Coordinación clínica del caso derivado.')}
+                      {/* Sin motivo guardado se dice qué se hizo, no se inventa
+                          un porqué: antes salía «Coordinación clínica del caso
+                          derivado», que nadie había escrito. */}
+                      {a.motivo ?? (a.por === 'investigador' ? 'Lo vio desde la ficha del trabajador.' : 'Pulsó «Ver nombre y correo» en la ficha del caso.')}
                     </Text>
                     {a.por === 'investigador'
                       ? <Mono>Rol con acceso propio · no requiere derivación</Mono>
@@ -235,8 +238,8 @@ export default function Auditoria() {
         <Bitacora
           icono={<IconoNota tamano={16} color={color.textoMedio} />}
           titulo="Versiones del modelo"
-          apoyo="Qué versión estaba activa cuando se registró cada predicción."
-          insignia={versiones.filter((v) => v.activa).length ? `${versiones.filter((v) => v.activa).length} activas` : 'ninguna activa'}
+          apoyo="Cuál está en uso y desde cuándo. Cada predicción guarda la versión que la hizo."
+          insignia={versiones.find((v) => v.activa && v.tarea === 'nowcast')?.version ?? 'ninguna en uso'}
           abierta={abierta === 'versiones'}
           onPress={() => setAbierta(abierta === 'versiones' ? null : 'versiones')} />
         {abierta === 'versiones' && (
@@ -244,10 +247,13 @@ export default function Auditoria() {
             {versiones.map((v) => (
               <View key={v.version} style={e.tablaFila}>
                 <Mono tono={color.texto} tamano={12}>{v.version}</Mono>
-                <Text style={[texto.dato, { color: color.texto, flex: 1 }]}>{v.tarea} · {v.origen}</Text>
-                <Mono>τ {Number(v.umbral_decision).toFixed(2)}</Mono>
-                <Text style={[texto.dato, { color: color.textoMedio }]}>{v.entrenado_en ? new Date(v.entrenado_en).toLocaleDateString('es-PE') : '—'}</Text>
-                {v.activa ? <Pastilla tono={TONO.verde}>Activa</Pastilla> : <Pastilla tono={TONO.gris}>Registrada</Pastilla>}
+                <Text style={[texto.dato, { color: color.texto, flex: 1 }]}>
+                  {v.tarea === 'nowcast' ? 'Cuándo pedir el cuestionario' : 'Pronóstico de la semana siguiente · sin uso'}
+                </Text>
+                <Text style={[texto.dato, { color: color.textoMedio }]}>{v.entrenado_en ? `Entrenada el ${new Date(v.entrenado_en).toLocaleDateString('es-PE')}` : '—'}</Text>
+                {v.activa
+                  ? <Pastilla tono={TONO.verde}>{v.activada_en ? `En uso desde ${fechaHoraPET(v.activada_en).replace(' PET', '')}` : 'En uso'}</Pastilla>
+                  : <Pastilla tono={TONO.gris}>Guardada</Pastilla>}
               </View>
             ))}
             <BotonChico onPress={() => router.push(conFiltro('/investigador/versiones', filtro) as never)} tono="suave">Ver en Versiones</BotonChico>

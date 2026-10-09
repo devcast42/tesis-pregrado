@@ -212,6 +212,8 @@ export async function reasignarDerivacion(derivacionId: string, psicologoId: str
 export type VersionModelo = {
   version: string; tarea: 'nowcast' | 'pronostico'; origen: string; activa: boolean
   umbral_decision: number; visible_para: string[]; metricas: Record<string, any>
+  /** Cuándo se puso en uso; nulo si fue antes de que se registrara. */
+  activada_en?: string | null
   /** Ojo con el nombre: la columna es `entrenado_en`. El tipo decía
    *  `entrenada_en`, que no existe, así que la fecha salía siempre vacía en
    *  Versiones, Desempeño y Auditoría; el `as VersionModelo[]` del select lo
