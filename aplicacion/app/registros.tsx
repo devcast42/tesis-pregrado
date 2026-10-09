@@ -13,7 +13,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { obtenerTrabajador } from '../modules/acceso/datos'
-import { enviosDelEstudio, inicioDeSemana, racha as consultarRacha, type Racha } from '../modules/recoleccion/datos'
+import { enviosDelEstudio, indiceLunes, inicioDeSemana, racha as consultarRacha, type Racha } from '../modules/recoleccion/datos'
 import { ahora } from '../modules/nucleo/reloj'
 import { Cargando } from '../modules/nucleo/ui'
 import { color, espacio, fuente, radio, texto } from '../modules/nucleo/diseno'
@@ -94,7 +94,7 @@ export default function Registros() {
           <View style={{ flex: 1 }}>
             <Text style={[texto.cifra, { color: color.texto }]}>{racha?.actual ?? 0} <Text style={[texto.apoyo, { color: color.textoMedio }]}>{(racha?.actual ?? 0) === 1 ? 'día seguido' : 'días seguidos'}</Text></Text>
             <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-              {racha?.hoy_cumplido ? 'Hoy ya cuenta.' : 'Responde hoy para mantenerla.'} Tu mejor racha: {racha?.mejor ?? 0} {(racha?.mejor ?? 0) === 1 ? 'día' : 'días'}. El viernes y el fin de semana no la rompen.
+              {racha?.hoy_cumplido ? 'Hoy ya cuenta.' : indiceLunes(ahora()) <= 3 ? 'Responde hoy para mantenerla.' : 'Sigue el lunes.'} Tu mejor racha: {racha?.mejor ?? 0} {(racha?.mejor ?? 0) === 1 ? 'día' : 'días'}. El viernes y el fin de semana no la rompen.
             </Text>
           </View>
         </View>
@@ -117,7 +117,7 @@ export default function Registros() {
                 <Text style={[texto.apoyo, { color: color.textoMedio }]}>{rango(s.lunes)}</Text>
               </View>
               <View style={[e.pastilla, s.esperados > 0 && s.cumplidos === s.esperados && e.pastillaLlena]}>
-                <Text style={[texto.datoFuerte, { color: s.esperados > 0 && s.cumplidos === s.esperados ? '#FFFFFF' : color.textoMedio }]}>{s.cumplidos}/{s.esperados || 4}</Text>
+                <Text style={[texto.datoFuerte, { color: s.esperados > 0 && s.cumplidos === s.esperados ? '#FFFFFF' : color.textoMedio }]}>{s.esperados ? `${s.cumplidos}/${s.esperados}` : '—'}</Text>
               </View>
             </View>
             <View style={e.filaDias}>

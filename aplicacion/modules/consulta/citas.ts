@@ -18,6 +18,8 @@ export type Cita = {
   cancelada_por: 'trabajador' | 'psicologo' | null
   creada_en: string
   psicologo: string
+  /** Lo dio de alta su empresa (si no, es de Bienestar Tech). */
+  psicologo_de_empresa?: boolean
 }
 
 export async function misCitas(): Promise<Cita[]> {

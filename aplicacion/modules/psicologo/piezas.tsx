@@ -33,6 +33,7 @@ export const TONO_NIVEL: Record<Nivel, { fondo: string; tinta: string; barra: st
 
 export const ESTADO_CASO: Record<EstadoCaso, { etiqueta: string; fondo: string; tinta: string; accion: string }> = {
   sesion_pendiente: { etiqueta: 'Sesión pendiente', fondo: color.tierraSuave, tinta: color.tierra, accion: 'Atender caso' },
+  seguimiento: { etiqueta: 'Sesión hecha', fondo: color.exitoSuave, tinta: color.exito, accion: 'Ver ficha' },
   cita_por_confirmar: { etiqueta: 'Cita por confirmar', fondo: color.alertaSuave, tinta: color.alerta, accion: 'Revisar cita' },
   cita_confirmada: { etiqueta: 'Cita confirmada', fondo: color.exitoSuave, tinta: color.exito, accion: 'Ver ficha' },
   sala_lista: { etiqueta: 'Sala lista', fondo: color.primarioSuave, tinta: color.primarioProfundo, accion: 'Ver ficha' },
@@ -122,6 +123,8 @@ function detalleCaso(caso: Caso): string {
   switch (caso.estado_caso) {
     case 'sesion_pendiente':
       return `Sin contactar · derivado ${haceCuanto(caso.abierta_en)}`
+    case 'seguimiento':
+      return `Última sesión ${haceCuanto(caso.sesion_finalizada_en!)} · sin próxima cita`
     case 'cita_por_confirmar':
       return caso.cita_para ? `Pidió hora · ${fechaHoraCorta(caso.cita_para)}` : 'Pidió una hora'
     case 'cita_confirmada':

@@ -58,7 +58,10 @@ export default function FichaCaso() {
 
   const cargar = useCallback(async () => {
     const c = await obtenerCaso(id)
-    if (!c) return router.back()
+    // Un caso cerrado deja de verse (con él, su contacto). Se vuelve a la
+    // lista, no «atrás»: si se llegó desde la sala o la nota, atrás era esta
+    // misma ficha, ya caducada, y parecía que no había pasado nada.
+    if (!c) return router.replace('/psicologo/casos')
     setCaso(c)
     const [p, t, pr] = await Promise.all([
       perfilCaso(c.trabajador_id).catch(() => null),
@@ -270,7 +273,7 @@ export default function FichaCaso() {
           setOcupado(true); setError(null)
           try {
             await cerrarDerivacion(caso.derivacion_id, desenlace, nota || undefined)
-            router.back()
+            router.replace('/psicologo/casos')
           } catch {
             setError('No se pudo cerrar el caso.')
           } finally {
@@ -317,6 +320,11 @@ function SiguientePaso({ caso, ocupado, onConfirmar, onNoPuedo, onProponer, onSa
           <Boton variante="texto" onPress={onSala}>O abre la sala ahora</Boton>
         </>
       )
+      break
+    case 'seguimiento':
+      titulo = 'Otra sesión, o el alta'
+      cuerpo = `Su última sesión fue ${haceCuanto(caso.sesion_finalizada_en!)}. Propón otra hora si hace falta; si no, cierra el caso abajo.`
+      acciones = <Boton onPress={onProponer} cargando={ocupado}>Proponer otra sesión</Boton>
       break
     case 'cita_por_confirmar':
       titulo = 'Confirma la cita'

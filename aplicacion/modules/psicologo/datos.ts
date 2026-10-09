@@ -307,7 +307,15 @@ export async function obtenerDerivacion(derivacionId: string): Promise<Derivacio
 
 // ------------------------------------------------------- Vista móvil (rev. 2)
 
-export type EstadoCaso = 'sesion_pendiente' | 'cita_por_confirmar' | 'cita_confirmada' | 'sala_lista' | 'informe_por_aprobar' | 'cerrado'
+export type EstadoCaso = 'sesion_pendiente' | 'seguimiento' | 'cita_por_confirmar' | 'cita_confirmada' | 'sala_lista' | 'informe_por_aprobar' | 'cerrado'
+
+/** `casos_psicologo` dice «sesion_pendiente» tanto si nadie ha contactado a
+ *  la persona como si ya tuvo su sesión y no hay otra cita. Eran dos cosas
+ *  distintas en pantalla: tras la primera sesión el caso decía «Nadie ha
+ *  contactado todavía a esta persona». `seguimiento` es la segunda. */
+function conEstadoReal(c: Caso): Caso {
+  return c.estado_caso === 'sesion_pendiente' && c.sesion_finalizada_en ? { ...c, estado_caso: 'seguimiento' } : c
+}
 
 /** Una fila de `casos_psicologo` (ESP-006 RF-006-13). */
 export type Caso = {
@@ -360,7 +368,7 @@ export async function listarCasos(): Promise<Caso[]> {
     .select('*')
     .order('abierta_en', { ascending: false })
   if (error) throw error
-  return (data ?? []) as Caso[]
+  return ((data ?? []) as Caso[]).map(conEstadoReal)
 }
 
 export async function obtenerCaso(derivacionId: string): Promise<Caso | null> {
@@ -369,7 +377,7 @@ export async function obtenerCaso(derivacionId: string): Promise<Caso | null> {
     .select('*')
     .eq('derivacion_id', derivacionId)
     .maybeSingle()
-  return (data as Caso | null) ?? null
+  return data ? conEstadoReal(data as Caso) : null
 }
 
 /** RF-006-14 — rol, modalidad y antigüedad (excepción acotada a RN-006-07). */

@@ -45,6 +45,10 @@ admin desde «Psicólogos» el 9-oct-2026, para probar esa función):
 Mientras esté activa, los casos nuevos de Nexa van a ella y no a
 `test+psicologo`, que es general.
 
+Trabajador de prueba del flujo completo (Nexa, alta desde el panel del
+admin el 9-oct-2026): `prueba.flujo@ejemplo.test` · contraseña temporal
+`sauce-nube-trigo-909`.
+
 En la pestaña 3 el selector de empresa de arriba a la izquierda es tu amigo:
 déjalo en «Todas las empresas» para el panorama y filtra por una cuando
 quieras entrar al detalle.

@@ -81,7 +81,13 @@ export default function RevisionInforme() {
       // La nota del borrador no es una sección del informe: es el modelo avisando
       // qué tan completa venía la transcripción.
       setNota(typeof borrador.nota_del_borrador === 'string' ? borrador.nota_del_borrador : '')
-      const claves = (Object.keys(base).length > 0 ? Object.keys(base) : SECCIONES_MANUAL).filter((k) => k !== 'nota_del_borrador')
+      // Siempre en el mismo orden: la base guarda el contenido en jsonb, que
+      // reordena las claves, y la nota aprobada salía con «Observaciones»
+      // antes que «Lo que se conversó».
+      const orden = Object.keys(ETIQUETAS)
+      const claves = (Object.keys(base).length > 0 ? Object.keys(base) : SECCIONES_MANUAL)
+        .filter((k) => k !== 'nota_del_borrador')
+        .sort((a, b) => (orden.indexOf(a) + 1 || 99) - (orden.indexOf(b) + 1 || 99))
       const t: Record<string, string> = {}
       for (const clave of claves) t[clave] = aTexto(base[clave])
       setSecciones(t)
@@ -449,7 +455,8 @@ function Puntos({ texto: t, citas, editable = true }: { texto: string; citas: bo
 
 function cuandoGuardado(iso: string): string {
   const d = new Date(iso)
-  if (d.toDateString() === new Date().toDateString()) return `a las ${d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`
+  // En 24 h: «a. m.» ya acaba en punto y el texto salía «01:23 a. m..».
+  if (d.toDateString() === new Date().toDateString()) return `a las ${d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })}`
   return haceCuanto(iso)
 }
 

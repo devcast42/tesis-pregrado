@@ -50,7 +50,7 @@ export default function Casos() {
   const esperan = casos
     .filter((c) => (ESPERAN as readonly string[]).includes(c.estado_caso))
     .sort((a, b) => (ORDEN[a.estado_caso] ?? 9) - (ORDEN[b.estado_caso] ?? 9))
-  const enMarcha = casos.filter((c) => c.estado_caso === 'cita_confirmada')
+  const enMarcha = casos.filter((c) => c.estado_caso === 'cita_confirmada' || c.estado_caso === 'seguimiento')
   const cerrados = casos.filter((c) => c.estado_caso === 'cerrado')
   const abrir = (id: string) => router.push(`/psicologo/caso/${id}`)
 

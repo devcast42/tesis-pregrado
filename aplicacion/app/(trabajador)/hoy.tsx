@@ -300,7 +300,7 @@ export default function Hoy() {
         derecha={rachaActual && enSeguimiento ? (
           <PastillaRacha actual={rachaActual.actual} hoyCumplido={rachaActual.hoy_cumplido} onPress={() => Alert.alert(
             rachaActual.actual === 0 ? 'Tu racha' : `Racha de ${rachaActual.actual} ${rachaActual.actual === 1 ? 'día' : 'días'}`,
-            `Días de check-in seguidos, de lunes a jueves. El viernes y el fin de semana no la rompen.${rachaActual.mejor > rachaActual.actual ? ` Tu mejor racha: ${rachaActual.mejor} días.` : ''}${!rachaActual.hoy_cumplido && rachaActual.actual > 0 ? ' Responde hoy para mantenerla.' : ''}`,
+            `Días de check-in seguidos, de lunes a jueves. El viernes y el fin de semana no la rompen.${rachaActual.mejor > rachaActual.actual ? ` Tu mejor racha: ${rachaActual.mejor} días.` : ''}${!rachaActual.hoy_cumplido && rachaActual.actual > 0 && diaDeCheckin ? ' Responde hoy para mantenerla.' : ''}`,
           )} />
         ) : undefined}
       />

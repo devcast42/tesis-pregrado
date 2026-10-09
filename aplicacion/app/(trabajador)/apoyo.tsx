@@ -163,7 +163,7 @@ function TarjetaCita({ cita, onCancelar }: { cita: Cita; onCancelar: () => void 
           <View style={{ paddingTop: 5 }}><IconoCalendario tamano={16} color={color.primarioProfundo} /></View>
           <Text style={[texto.seccion, { color: color.texto, flex: 1 }]}>{fechaHora(cita.propuesta_para)}</Text>
         </View>
-        <Text style={[texto.apoyo, { color: color.textoMedio }]}>Con {cita.psicologo} · Psicólogo del programa</Text>
+        <Text style={[texto.apoyo, { color: color.textoMedio }]}>Con {cita.psicologo} · {cita.psicologo_de_empresa ? 'Profesional de tu empresa' : 'Profesional de Bienestar Tech'}</Text>
       </View>
       {cita.motivo && (
         <View style={e.motivo}>
