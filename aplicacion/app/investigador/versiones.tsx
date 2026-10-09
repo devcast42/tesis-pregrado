@@ -104,11 +104,7 @@ export default function Versiones() {
                     </Text>
                   </Pressable>
                   {abierta === activa.version && (
-                    <View style={e.detalle}>
-                      <Text style={{ fontFamily: MONO, fontSize: 11, color: color.texto }} selectable>
-                        {Object.keys(activa.metricas ?? {}).length ? JSON.stringify(activa.metricas, null, 2) : 'Sin métricas registradas.'}
-                      </Text>
-                    </View>
+                    <TodasLasMetricas m={activa.metricas ?? {}} />
                   )}
                 </View>
               )}
@@ -170,6 +166,56 @@ function Metricas({ m }: { m: Record<string, unknown> }) {
   )
 }
 
+/** El detalle del entrenamiento como tabla. Antes era el JSON tal cual en
+ *  una caja de alto fijo, y el texto se salía por encima del pie. */
+function TodasLasMetricas({ m }: { m: Record<string, unknown> }) {
+  const g = ((m.global as Record<string, unknown>) ?? m) as Record<string, unknown>
+  const dias = (m.por_dias_respondidos as Record<string, Record<string, number>>) ?? {}
+  const n = (v: unknown, pct = false) => (typeof v === 'number' ? (pct ? `${Math.round(v * 100)}%` : v.toFixed(3)) : '—')
+  const generales: [string, string, string][] = [
+    ['Ordena bien', n(g.roc_auc), 'ROC-AUC'],
+    ['Pilla a', n(g.recall, true), 'recall'],
+    ['Acierta en', n(g.precision, true), 'precisión'],
+    ['F1', n(g.f1), 'equilibrio de las dos anteriores'],
+    ['PR-AUC', n(g.pr_auc), 'útil cuando los positivos son pocos'],
+    ['Brier', n(g.brier), 'error de la probabilidad; menos es mejor'],
+    ['Positivos', n(g.positivos, true), 'semanas que cruzaron el umbral'],
+  ]
+  const filasDias = Object.keys(dias).sort()
+  if (!Object.keys(m).length) return <Text style={[texto.dato, { color: color.textoSuave }]}>Sin métricas registradas.</Text>
+  return (
+    <View style={e.detalle}>
+      <View style={{ gap: 4 }}>
+        {generales.filter(([, v]) => v !== '—').map(([r, v, nota]) => (
+          <View key={r} style={e.filaTabla}>
+            <Text style={[texto.dato, { color: color.texto, width: 110 }]}>{r}</Text>
+            <Text style={{ fontFamily: MONO, fontSize: 13, color: color.texto, width: 70 }}>{v}</Text>
+            <Text style={[texto.dato, { color: color.textoMedio, flex: 1, minWidth: 160 }]}>{nota}</Text>
+          </View>
+        ))}
+      </View>
+      {filasDias.length > 0 && (
+        <View style={{ gap: 4 }}>
+          <Rotulo>Según cuántos días de la semana lleva respondidos</Rotulo>
+          <View style={[e.filaTabla, e.cabezaTabla]}>
+            {['Días', 'Ordena bien', 'Pilla a', 'Acierta en'].map((c) => (
+              <Text key={c} style={[texto.dato, { color: color.textoMedio, flex: 1 }]}>{c}</Text>
+            ))}
+          </View>
+          {filasDias.map((d) => (
+            <View key={d} style={e.filaTabla}>
+              <Text style={{ fontFamily: MONO, fontSize: 13, color: color.texto, flex: 1 }}>{d}</Text>
+              <Text style={{ fontFamily: MONO, fontSize: 13, color: color.texto, flex: 1 }}>{n(dias[d].roc_auc)}</Text>
+              <Text style={{ fontFamily: MONO, fontSize: 13, color: color.texto, flex: 1 }}>{n(dias[d].recall, true)}</Text>
+              <Text style={{ fontFamily: MONO, fontSize: 13, color: color.texto, flex: 1 }}>{n(dias[d].precision, true)}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  )
+}
+
 function Cifra({ rotulo, valor, apoyo }: { rotulo: string; valor: string; apoyo: string }) {
   return (
     <View style={{ minWidth: 92, gap: 1 }}>
@@ -186,6 +232,8 @@ const e = StyleSheet.create({
   activa: { backgroundColor: '#F7F6F3', borderRadius: radio.md, borderWidth: 1, borderColor: '#E6E3DE', padding: espacio.base, gap: espacio.sm },
   sinActiva: { backgroundColor: '#FBEDE6', borderRadius: radio.md, padding: espacio.base, gap: 2 },
   fuente: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: color.superficie, borderRadius: 8, padding: 10, flexWrap: 'wrap' },
-  detalle: { backgroundColor: color.superficie, borderRadius: 8, borderWidth: 1, borderColor: '#E6E3DE', padding: 12, maxHeight: 280 },
+  detalle: { backgroundColor: color.superficie, borderRadius: 8, borderWidth: 1, borderColor: '#E6E3DE', padding: 12, gap: espacio.base },
+  filaTabla: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, flexWrap: 'wrap', paddingVertical: 2 },
+  cabezaTabla: { borderBottomWidth: 1, borderBottomColor: '#E6E3DE', paddingBottom: 4 },
   otra: { flexDirection: 'row', alignItems: 'center', gap: espacio.sm, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#F7F6F3', flexWrap: 'wrap' },
 })
