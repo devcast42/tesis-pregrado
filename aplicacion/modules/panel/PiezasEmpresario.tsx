@@ -74,7 +74,8 @@ export function TituloSeccion({ titulo, subtitulo, punto = color.tierra }: { tit
 
 // ---------------------------------------------------------- Participación
 
-/** «20 de 22 contestaron (90 %)», con barra y si eso basta para leer la cifra. */
+/** «20 de 22 hicieron el check-in (90 %)», con barra y si eso basta para
+ *  leer la cifra. Es el check-in porque es lo único que se pide a todos. */
 export function TarjetaRespondieron({ respondieron, de, pct }: { respondieron: number; de: number; pct: number | null }) {
   const ok = pct != null && pct >= 60
   return (
@@ -83,12 +84,12 @@ export function TarjetaRespondieron({ respondieron, de, pct }: { respondieron: n
         <View style={e.cuadroVerde}><IconoBarras tamano={20} color={color.primarioProfundo} /></View>
         <View style={{ gap: 6, minWidth: 160 }}>
           <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-            <Text style={[texto.seccion, { color: color.texto }]}>{respondieron}</Text> de {de} contestaron{pct != null ? ` (${pct}%)` : ''}
+            <Text style={[texto.seccion, { color: color.texto }]}>{respondieron}</Text> de {de} hicieron el check-in{pct != null ? ` (${pct}%)` : ''}
           </Text>
           <View style={e.barraPista}><View style={[e.barraLlena, { width: `${Math.min(100, pct ?? 0)}%` }]} /></View>
         </View>
         <Pastilla fondo={ok ? '#E8EFEA' : color.alertaSuave} tinta={ok ? color.primarioProfundo : color.alerta} punto={ok ? color.primario : color.alerta}>
-          {ok ? 'Contestó bastante gente' : 'Contestó poca gente'}
+          {ok ? 'Participó bastante gente' : 'Participó poca gente'}
         </Pastilla>
       </View>
     </Caja>
@@ -253,7 +254,7 @@ export function TarjetaDimension({ dimension, pulso, estudio, umbral }: {
 const PESA: Record<ClaveFactor, { icono: (c: string) => ReactNode; frase: (v: number) => string; ref: string }> = {
   horas_dia_media: {
     icono: (c) => <IconoReloj tamano={16} color={c} />,
-    frase: (v) => `Se trabajó ${(v - 8.5).toFixed(1)} h al día más de la referencia de 8.5 h. Sostenido varias semanas, es lo que primero se nota en el cansancio del viernes.`,
+    frase: (v) => `Se trabajó ${(v - 8.5).toFixed(1)} h al día más de la referencia de 8.5 h. Sostenido varias semanas, es lo que primero se nota en el cansancio.`,
     ref: 'hasta 8.5 h al día',
   },
   guardia_pct: {
@@ -288,7 +289,7 @@ const PESA: Record<ClaveFactor, { icono: (c: string) => ReactNode; frase: (v: nu
   },
   sobretiempo_media: {
     icono: (c) => <IconoCampana tamano={16} color={c} />,
-    frase: () => 'El sobretiempo pasó de lo previsto. Suele aparecer antes de que caigan el sueño y el ánimo del viernes, así que es una buena señal temprana.',
+    frase: () => 'El sobretiempo pasó de lo previsto. Suele aparecer antes de que caigan el sueño y el ánimo, así que es una buena señal temprana.',
     ref: 'hasta 4 h a la semana',
   },
 }
@@ -354,7 +355,7 @@ export function SinReporte({ inscritos, minimo }: { inscritos: number; minimo: n
         <View style={{ flex: 1, gap: espacio.xs }}>
           <Text style={[texto.cuerpoFuerte, { color: color.texto }]}>Todavía no hay cifras que enseñar</Text>
           <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-            El promedio de tu empresa aparece cuando al menos {minimo} personas contestan la misma semana.
+            El promedio de tu empresa aparece cuando al menos {minimo} personas tienen un cuestionario del último mes.
             Con menos, una cifra podría señalar a alguien concreto, y eso es justo lo que se evita.
             {faltan > 0 ? ` Con ${faltan} ${faltan === 1 ? 'persona más' : 'personas más'} dadas de alta y respondiendo habrá reporte.` : ' Con la participación de esta semana, la próxima ya podría haber reporte.'}
           </Text>

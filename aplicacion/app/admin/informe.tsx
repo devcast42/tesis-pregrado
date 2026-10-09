@@ -210,13 +210,13 @@ export default function InformeMensual() {
             {/* Intro */}
             <View style={e.intro}>
               <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1, minWidth: 240 }]}>
-                {`Contestaron ${Math.round(respondientesMes ?? 0)} de ${inscritos} personas por semana. Todo lo que sigue son promedios del equipo.`}
+                {`Cada semana entran ${Math.round(respondientesMes ?? 0)} de ${inscritos} personas, con su último cuestionario del mes. Todo lo que sigue son promedios del equipo.`}
               </Text>
               {tasaMes != null && (
                 <View style={e.cajaMuestra}>
                   <IconoEquipo tamano={18} color={color.primarioProfundo} />
                   <View>
-                    <Text style={[texto.apoyoFuerte, { color: color.texto }]}>{Math.round(tasaMes)}% contestó</Text>
+                    <Text style={[texto.apoyoFuerte, { color: color.texto }]}>{Math.round(tasaMes)}% hizo el check-in</Text>
                     {tasaMes < 60 && <Text style={[texto.dato, { color: color.alerta }]}>bajo el 60 %: poco fiable</Text>}
                   </View>
                 </View>

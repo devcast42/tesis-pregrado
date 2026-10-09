@@ -101,12 +101,12 @@ export default function InicioEmpresario() {
             <Text style={[texto.titulo, { color: color.texto }]}>{empresa.nombre}</Text>
             <Text style={[texto.apoyo, { color: color.textoMedio, maxWidth: 320 }]}>
               {ultima
-                ? `Lo que contestó la gente la semana del ${rangoSemana(ultima.semana)}, la última cerrada.`
+                ? `Cómo estaba el equipo la semana del ${rangoSemana(ultima.semana)}, la última cerrada.`
                 : 'Todavía no hay ninguna semana cerrada que enseñar.'}
             </Text>
           </View>
           {partUltima && (
-            <TarjetaRespondieron respondieron={partUltima.respondieron_viernes} de={partUltima.inscritos} pct={partUltima.tasa_respuesta_pct} />
+            <TarjetaRespondieron respondieron={partUltima.respondieron_checkin} de={partUltima.inscritos} pct={partUltima.tasa_respuesta_pct} />
           )}
         </View>
 
@@ -116,7 +116,7 @@ export default function InicioEmpresario() {
           <>
             <View style={e.fila}>
               <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1, minWidth: 240 }]}>
-                Promedio de lo que contesta tu equipo en el cuestionario de burnout, de 1 (nada) a 4 (mucho). No es un porcentaje.
+                Promedio del cuestionario de burnout, de 1 (nada) a 4 (mucho), con la última respuesta de cada persona en el último mes. No es un porcentaje.
               </Text>
               <Text style={[texto.dato, { color: color.textoSuave }]}>{actualizado}</Text>
             </View>

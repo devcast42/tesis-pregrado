@@ -100,7 +100,7 @@ export default function PulsoEmpresario() {
             <Text style={[texto.etiqueta, { color: color.textoMedio }]}>{empresa.nombre}</Text>
             <Text style={[texto.titulo, { color: color.texto }]}>Semana a semana</Text>
             <Text style={[texto.apoyo, { color: color.textoMedio, maxWidth: 480 }]}>
-              Promedio semanal de lo que contesta tu equipo, de 1 (nada) a 4 (mucho). No es un porcentaje: cuanto más bajo, mejor.
+              Cada semana, el promedio del último cuestionario de cada persona en el último mes, de 1 (nada) a 4 (mucho). No es un porcentaje: cuanto más bajo, mejor.
             </Text>
           </View>
           {ultima && (
@@ -109,7 +109,7 @@ export default function PulsoEmpresario() {
                 <Text style={[texto.etiqueta, { color: color.textoMedio, fontSize: 10 }]}>ÚLTIMA SEMANA CERRADA</Text>
                 <Text style={[texto.seccion, { color: color.texto, fontSize: 18 }]}>{rangoSemana(ultima.semana)}</Text>
                 <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-                  Contestaron {ultima.respondientes} personas{tasaUltima != null ? ` (${tasaUltima} % del equipo)` : ''}
+                  Con la medida de {ultima.respondientes} personas{tasaUltima != null ? ` · ${tasaUltima} % hizo el check-in` : ''}
                 </Text>
               </View>
             </Caja>
@@ -160,7 +160,7 @@ export default function PulsoEmpresario() {
               <IconoCandado tamano={14} color={color.textoMedio} />
               <Text style={[texto.apoyo, { color: color.textoMedio, flex: 1, minWidth: 240 }]}>
                 Las franjas «a vigilar» y «alto» vienen del instrumento clínico, no las fija la empresa.
-                {huecos.length > 0 ? ` Faltan ${huecos.length} ${huecos.length === 1 ? 'semana' : 'semanas'}: no llegaron a ${MINIMO} respuestas.` : ''}
+                {huecos.length > 0 ? ` Faltan ${huecos.length} ${huecos.length === 1 ? 'semana' : 'semanas'}: no llegaron a ${MINIMO} personas con un cuestionario reciente.` : ''}
               </Text>
             </View>
 
@@ -172,13 +172,15 @@ export default function PulsoEmpresario() {
                 </View>
                 <View style={e.tablaCabecera}>
                   <Text style={[e.th, { flex: 1.4 }]}>SEMANA</Text>
-                  <Text style={[e.th, { flex: 1.2 }]}>CONTESTARON</Text>
+                  <Text style={[e.th, { flex: 1.2 }]}>PERSONAS MEDIDAS</Text>
                   <Text style={[e.th, { flex: 1.2 }]}>AGOTAMIENTO</Text>
                   <Text style={[e.th, { flex: 1.2 }]}>DESVINCULACIÓN</Text>
                 </View>
                 {[...pulso].reverse().map((p, i) => {
+                  // Cuántas personas entran en la cifra (su último cuestionario
+                  // del mes), no cuántas contestaron esa semana.
                   const part = partPor.get(p.semana)
-                  const tasa = segmento ? null : part?.tasa_respuesta_pct ?? null
+                  const tasa = segmento || !part?.inscritos ? null : Math.round((100 * p.respondientes) / part.inscritos)
                   return (
                     <View key={p.semana} style={e.tablaFila}>
                       <View style={[e.fila, { flex: 1.4, gap: 6 }]}>

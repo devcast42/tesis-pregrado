@@ -156,7 +156,7 @@ export default function PersonasAdmin() {
               <Indicador rotulo="Siguen respondiendo" icono={<IconoEscudoCheck tamano={18} color={color.primarioProfundo} />}
                 cifra={String(resumen?.en_seguimiento ?? 0)} unidad={`de ${inscritos}`}
                 nota={pctSeguimiento === 100 ? undefined : `${inscritos - (resumen?.en_seguimiento ?? 0)} ya no responden`} />
-              <Indicador rotulo="Contestaron la última semana" icono={<IconoBarras tamano={18} color={color.primarioProfundo} />}
+              <Indicador rotulo="Hicieron el check-in la última semana" icono={<IconoBarras tamano={18} color={color.primarioProfundo} />}
                 cifra={tasa != null ? `${tasa}%` : '—'} unidad={tasa != null ? 'del equipo' : 'sin datos'}
                 nota={tasa != null && tasa < 60 ? 'bajo el 60 %: poco fiable' : undefined} notaIcono="tendencia"
                 tono={tasa != null && tasa < 60 ? color.alerta : undefined} />
@@ -242,7 +242,7 @@ export default function PersonasAdmin() {
                 </View>
               )}
               {enPagina.map((x) => {
-                const callada = x.en_seguimiento && x.dias_sin_responder != null && x.dias_sin_responder >= 4
+                const callada = x.en_seguimiento && x.dias_checkin_sin_responder != null && x.dias_checkin_sin_responder >= 4
                 return (
                   <View key={x.trabajador_id} style={e.tablaFila}>
                     <View style={[e.fila, { flex: 2.6, flexWrap: 'nowrap' }]}>

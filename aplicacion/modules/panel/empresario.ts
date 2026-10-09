@@ -51,7 +51,12 @@ export type ParticipacionSemana = {
    *  dividiendo por él salían semanas al 110 %. */
   inscritos: number
   en_seguimiento: number
+  /** Cuántos contestaron el OLBI esa semana. Ya no es la participación: el
+   *  OLBI se pide a unos pocos. */
   respondieron_viernes: number
+  /** Quién hizo al menos un check-in esa semana: lo que se pide a todos. */
+  respondieron_checkin: number
+  /** Porcentaje de check-in sobre los inscritos, redondeado a 5. */
   tasa_respuesta_pct: number | null
 }
 
@@ -319,7 +324,7 @@ export function recomendaciones(
   })
   if (participacion?.tasa_respuesta_pct != null && participacion.tasa_respuesta_pct < 60) r.push({
     id: 'REC-07', titulo: 'Contesta poca gente',
-    texto: `Solo respondió el ${participacion.tasa_respuesta_pct} % ${mes ? 'de media cada semana del mes' : 'esta semana'}, así que la lectura es poco fiable. Recordar en la reunión de equipo que las respuestas son anónimas suele bastar.`,
+    texto: `Solo hizo el check-in el ${participacion.tasa_respuesta_pct} % del equipo ${mes ? 'de media cada semana del mes' : 'esa semana'}, así que la lectura es poco fiable. Recordar en la reunión de equipo que las respuestas son anónimas suele bastar.`,
     referencia: 'ESP-007, adherencia',
   })
   return r

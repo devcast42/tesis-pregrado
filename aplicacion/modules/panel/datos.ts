@@ -54,6 +54,9 @@ export type FilaParticipacion = {
   consentimiento: boolean | null
   en_seguimiento: boolean
   dias_sin_responder: number | null
+  /** Días de check-in (lunes a jueves) sin responder: el viernes y el fin de
+   *  semana no cuentan, así que nadie sale «callado» un lunes. */
+  dias_checkin_sin_responder: number | null
   inscrito_en: string
   /** Producto: la empresa ve el nivel de cada persona, nunca su puntaje. El
    *  número invita a comparar trabajadores, y eso no es lo que se compra. */

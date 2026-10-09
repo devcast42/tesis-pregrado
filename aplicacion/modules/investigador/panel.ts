@@ -353,14 +353,17 @@ export async function actualizarUmbral(u: { dimension: string; a_vigilar: number
   if (error) throw error
 }
 
-/** Último OLBI medio por empresa (cohorte_semanal, semana más reciente con dato). */
+/** El pulso de cada empresa en su última semana cerrada: la misma cifra que
+ *  ve su administrador (`pulso_empresa`, el último OLBI de cada persona en
+ *  el último mes). Antes salía de la media del OLBI de esa semana en
+ *  `cohorte_semanal`, que ahora es la de quien el modelo señaló. */
 export type PulsoEmpresa = { organizacion_id: string; semana: string; activos: number; agotamiento: number | null; desvinculacion: number | null }
 export async function pulsoPorEmpresa(): Promise<PulsoEmpresa[]> {
-  const { data } = await supabase.from('cohorte_semanal').select('organizacion_id, semana, activos, olbi_agotamiento_media, olbi_desvinculacion_media')
-    .not('organizacion_id', 'is', null).not('olbi_agotamiento_media', 'is', null).order('semana', { ascending: false })
+  const { data } = await supabase.from('pulso_empresa').select('organizacion_id, semana, respondientes, agotamiento_media, desvinculacion_media')
+    .order('semana', { ascending: false })
   const out = new Map<string, PulsoEmpresa>()
   for (const r of (data ?? []) as any[]) {
-    if (!out.has(r.organizacion_id)) out.set(r.organizacion_id, { organizacion_id: r.organizacion_id, semana: r.semana, activos: r.activos, agotamiento: r.olbi_agotamiento_media == null ? null : Number(r.olbi_agotamiento_media), desvinculacion: r.olbi_desvinculacion_media == null ? null : Number(r.olbi_desvinculacion_media) })
+    if (!out.has(r.organizacion_id)) out.set(r.organizacion_id, { organizacion_id: r.organizacion_id, semana: r.semana, activos: r.respondientes, agotamiento: r.agotamiento_media == null ? null : Number(r.agotamiento_media), desvinculacion: r.desvinculacion_media == null ? null : Number(r.desvinculacion_media) })
   }
   return [...out.values()]
 }

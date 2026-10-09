@@ -184,7 +184,7 @@ export default function Empresas() {
               <View style={{ flex: 1, minWidth: 240, gap: 2 }}>
                 <Rotulo>Si guardas, las empresas quedarían así</Rotulo>
                 {pulso.length === 0 ? (
-                  <Text style={[texto.dato, { color: color.textoMedio }]}>Todavía no hay OLBI semanal por empresa.</Text>
+                  <Text style={[texto.dato, { color: color.textoMedio }]}>Todavía ninguna empresa tiene pulso: hacen falta 10 personas con un cuestionario del último mes.</Text>
                 ) : (
                   <View style={[e.fila, { gap: 6 }]}>
                     <Pastilla tono={TONO.verde}>{`${previaAg.bajo} en bajo`}</Pastilla>
