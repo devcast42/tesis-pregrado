@@ -217,7 +217,9 @@ function Lectura({ rotulo, titulo, texto: t, pie, tonoPie }: { rotulo: string; t
 function tituloHallazgo(clave: Relacion['clave']): string {
   return {
     horas_dia_media: 'Jornadas que no cierran',
-    sueno_media: 'Noches cortas',
+    sueno_media: 'Poco sueño',
+    jornada_larga_pct: 'Días que no terminan',
+    noche_corta_pct: 'Noches cortas',
     fin_de_semana_media: 'Fines de semana ocupados',
     sobretiempo_media: 'Sobretiempo acumulado',
     guardia_pct: 'Guardias sin descompresión',
@@ -229,6 +231,8 @@ function accionHallazgo(clave: Relacion['clave']): string {
   return {
     horas_dia_media: 'Revisión de carga recomendada',
     sueno_media: 'Revisión de horarios recomendada',
+    jornada_larga_pct: 'Tope a los días largos recomendado',
+    noche_corta_pct: 'Revisión de horarios recomendada',
     fin_de_semana_media: 'Política de desconexión recomendada',
     sobretiempo_media: 'Límite de sobretiempo recomendado',
     guardia_pct: 'Revisión de turnos recomendada',

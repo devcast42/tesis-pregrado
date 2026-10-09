@@ -114,7 +114,7 @@ export default function InformeMensual() {
   // mensual que cita «esta semana» confunde a quien lo lee en gerencia. Y
   // solo esos dos factores, que son los que contesta todo el equipo cada
   // día (ver `FACTORES_DEL_EQUIPO`).
-  const factorMes = (clave: 'horas_dia_media' | 'sueno_media') => {
+  const factorMes = (clave: 'horas_dia_media' | 'sueno_media' | 'jornada_larga_pct' | 'noche_corta_pct') => {
     const vals = factoresMes.map((f) => f[clave]).filter((x): x is number => x != null).map(Number)
     return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
   }
@@ -123,6 +123,9 @@ export default function InformeMensual() {
     respondientes: factoresMes[factoresMes.length - 1].respondientes,
     horas_dia_media: factorMes('horas_dia_media'),
     sueno_media: factorMes('sueno_media'),
+    // Los porcentajes del mes, redondeados a 5 como los de cada semana.
+    jornada_larga_pct: ((x) => x == null ? null : Math.round(x / 5) * 5)(factorMes('jornada_larga_pct')),
+    noche_corta_pct: ((x) => x == null ? null : Math.round(x / 5) * 5)(factorMes('noche_corta_pct')),
     fin_de_semana_media: null, sobretiempo_media: null, guardia_pct: null, apoyo_lider_media: null,
   } : undefined
   const delEquipo = FACTORES.filter((f) => FACTORES_DEL_EQUIPO.includes(f.clave))
@@ -275,7 +278,8 @@ export default function InformeMensual() {
                   const fuera = v != null && fueraDeReferencia(f.clave, v)
                   // La barra va de 0 a 1.6 veces la referencia, con una marca
                   // en la referencia: así se ve a qué distancia queda.
-                  const tope = f.ref * 1.6
+                  const enPct = f.unidad.startsWith('%')
+                  const tope = enPct ? 50 : f.ref * 1.6
                   const pct = v == null ? 0 : Math.min(100, Math.round((v / tope) * 100))
                   const marca = Math.round((f.ref / tope) * 100)
                   return (
@@ -289,15 +293,17 @@ export default function InformeMensual() {
                         )}
                       </View>
                       <Text style={[texto.seccion, { color: color.texto }]}>
-                        {v == null ? '—' : `${v.toFixed(1)} h`}{' '}
-                        <Text style={[texto.apoyo, { color: color.textoMedio }]}>{f.clave === 'sueno_media' ? 'por noche' : 'al día'}</Text>
+                        {v == null ? '—' : enPct ? `${v.toFixed(0)} %` : `${v.toFixed(1)} h`}{' '}
+                        <Text style={[texto.apoyo, { color: color.textoMedio }]}>
+                          {enPct ? (f.clave === 'noche_corta_pct' ? 'de las noches' : 'de los días') : f.clave === 'sueno_media' ? 'por noche' : 'al día'}
+                        </Text>
                       </Text>
                       <View style={e.barrita}>
                         <View style={[e.barritaLlena, { width: `${pct}%`, backgroundColor: fuera ? '#C4664A' : '#2F6B52' }]} />
                         <View style={[e.barritaMarca, { left: `${marca}%` }]} />
                       </View>
                       <Text style={[texto.dato, { color: color.textoMedio }]}>
-                        {`Lo previsto: ${f.peorSi === 'mayor' ? 'hasta' : 'al menos'} ${f.ref} h`}
+                        {`Lo previsto: ${f.peorSi === 'mayor' ? 'hasta' : 'al menos'} ${f.ref}${enPct ? ' %' : ' h'}`}
                       </Text>
                     </View>
                   )
@@ -334,7 +340,7 @@ export default function InformeMensual() {
                 más y parecía que el informe había fallado. */}
             {recs.length === 0 && (
               <Text style={[texto.apoyo, { color: color.textoMedio }]}>
-                Nada que corregir: jornada y sueño dentro de lo previsto. Mantener lo que se está haciendo.
+                Nada que corregir: jornadas y sueño dentro de lo previsto. Mantener lo que se está haciendo.
               </Text>
             )}
             {recs.length > 0 && (

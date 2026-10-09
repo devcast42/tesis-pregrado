@@ -276,6 +276,16 @@ const PESA: Record<ClaveFactor, { icono: (c: string) => ReactNode; frase: (v: nu
     frase: () => 'Se trabajó el fin de semana más de lo previsto. Cuando no hay un corte limpio, el lunes se empieza ya cansado.',
     ref: 'hasta 2 h por fin de semana',
   },
+  jornada_larga_pct: {
+    icono: (c) => <IconoReloj tamano={16} color={c} />,
+    frase: (v) => `Una de cada ${Math.max(2, Math.round(100 / Math.max(1, v)))} jornadas pasó de 10 h. La media puede verse bien y aun así haber días de los que no se recupera nadie al siguiente.`,
+    ref: 'hasta el 10 % de los días',
+  },
+  noche_corta_pct: {
+    icono: (c) => <IconoReloj tamano={16} color={c} />,
+    frase: (v) => `Una de cada ${Math.max(2, Math.round(100 / Math.max(1, v)))} noches fue de menos de 6 h. Es lo que más se asocia al agotamiento, más que el promedio de sueño.`,
+    ref: 'hasta el 10 % de las noches',
+  },
   sobretiempo_media: {
     icono: (c) => <IconoCampana tamano={16} color={c} />,
     frase: () => 'El sobretiempo pasó de lo previsto. Suele aparecer antes de que caigan el sueño y el ánimo del viernes, así que es una buena señal temprana.',
@@ -290,6 +300,8 @@ export function TarjetaPesa({ clave, valor }: { clave: ClaveFactor; valor: numbe
   const t = fuera ? SALMON : { fondo: '#EDEBE7', tinta: color.texto }
   const etiqueta = !fuera ? 'Dentro de lo previsto' : f.peorSi === 'mayor' ? 'Por encima de lo previsto' : 'Por debajo de lo previsto'
   const titulo = clave === 'guardia_pct' ? `${valor.toFixed(0)} % del equipo estuvo de guardia`
+    : clave === 'jornada_larga_pct' ? `${valor.toFixed(0)} % de las jornadas pasó de 10 h`
+    : clave === 'noche_corta_pct' ? `${valor.toFixed(0)} % de las noches, menos de 6 h`
     : clave === 'apoyo_lider_media' ? `El apoyo del jefe quedó en ${valor.toFixed(1)} de 5`
     : `${f.nombre}: ${valor.toFixed(1)} ${f.unidad.replace(' / ', '/')}`
   return (
@@ -399,7 +411,9 @@ export function TarjetaFactor({ clave, historial }: { clave: ClaveFactor; histor
   const serie = historial.slice(-6).filter((s) => s[clave] !== null)
   const vals = serie.map((s) => Number(s[clave]))
   const tinta = fuera ? '#8C4A2B' : color.primarioProfundo
-  const pct = clave === 'guardia_pct'
+  // Los factores en porcentaje (guardias, jornadas largas, noches cortas) se
+  // escriben sin decimales y con su propio paso de cambio.
+  const pct = f.unidad.startsWith('%')
 
   // Frase de tendencia sobre las últimas tres semanas.
   let frase = 'Tendencia estable'

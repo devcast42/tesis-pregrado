@@ -36,6 +36,10 @@ export type FactoresSemana = {
   sobretiempo_media: number | null
   guardia_pct: number | null
   apoyo_lider_media: number | null
+  /** % de días con más de 10 h trabajadas y % de noches con menos de 6 h:
+   *  los extremos que la media esconde. Salen de las mismas dos preguntas. */
+  jornada_larga_pct: number | null
+  noche_corta_pct: number | null
 }
 
 export type Segmento = { tipo_segmento: 'modalidad' | 'rol'; segmento: string }
@@ -139,7 +143,9 @@ export async function darDeBaja(trabajadorId: string) {
 /** Valor de referencia de cada factor y sentido en que «fuera» es peor. */
 export const FACTORES = [
   { clave: 'horas_dia_media', nombre: 'Jornada media', unidad: 'h / día', grupo: 'Carga diaria', ref: 8.5, peorSi: 'mayor' },
+  { clave: 'jornada_larga_pct', nombre: 'Jornadas de más de 10 h', unidad: '% de los días', grupo: 'Picos de carga', ref: 10, peorSi: 'mayor' },
   { clave: 'sueno_media', nombre: 'Sueño medio', unidad: 'h / noche', grupo: 'Recuperación', ref: 7.0, peorSi: 'menor' },
+  { clave: 'noche_corta_pct', nombre: 'Noches de menos de 6 h', unidad: '% de las noches', grupo: 'Noches cortas', ref: 10, peorSi: 'mayor' },
   { clave: 'fin_de_semana_media', nombre: 'Horas fin de semana', unidad: 'h / sem', grupo: 'Desconexión', ref: 2.0, peorSi: 'mayor' },
   { clave: 'sobretiempo_media', nombre: 'Sobretiempo semanal', unidad: 'h / sem', grupo: 'Intensidad', ref: 4.0, peorSi: 'mayor' },
   { clave: 'guardia_pct', nombre: 'Personas en guardia', unidad: '% del equipo', grupo: 'Disponibilidad', ref: 20, peorSi: 'mayor' },
@@ -158,7 +164,7 @@ export type ClaveFactor = (typeof FACTORES)[number]['clave']
  *  contesta quien lo hace esa semana: sobre todo gente en riesgo. Un «30 %
  *  del equipo estuvo de guardia» era en realidad «el 30 % de quienes
  *  contestaron». */
-export const FACTORES_DEL_EQUIPO: ClaveFactor[] = ['horas_dia_media', 'sueno_media']
+export const FACTORES_DEL_EQUIPO: ClaveFactor[] = ['horas_dia_media', 'jornada_larga_pct', 'sueno_media', 'noche_corta_pct']
 
 export function fueraDeReferencia(clave: ClaveFactor, valor: number | null): boolean {
   if (valor === null) return false
@@ -223,6 +229,8 @@ export function fraseRelacion(rel: Relacion): string {
   const F: Record<ClaveFactor, [string, string]> = {
     horas_dia_media: ['Las semanas con jornadas más largas son las de mayor agotamiento', 'Las semanas con jornadas más largas muestran menor agotamiento'],
     sueno_media: ['Las semanas con menos sueño son las de mayor agotamiento', 'Las semanas con más sueño muestran mayor agotamiento'],
+    jornada_larga_pct: ['Las semanas con más jornadas de más de 10 h son las de mayor agotamiento', 'Las semanas con más jornadas largas muestran menor agotamiento'],
+    noche_corta_pct: ['Las semanas con más noches cortas son las de mayor agotamiento', 'Las semanas con más noches cortas muestran menor agotamiento'],
     fin_de_semana_media: ['Las semanas con más trabajo de fin de semana son las de mayor agotamiento', 'Las semanas con más fin de semana muestran menor agotamiento'],
     sobretiempo_media: ['El sobretiempo se mueve junto con el agotamiento', 'El sobretiempo va en sentido contrario al agotamiento'],
     guardia_pct: ['Las semanas con más gente de guardia son las de mayor agotamiento', 'Las semanas con más guardias muestran menor agotamiento'],
@@ -259,11 +267,17 @@ export function recomendaciones(
    *  sección «qué hacer esta semana» no aparecía. */
   const fuera = (clave: ClaveFactor) => usable(clave) && f != null && fueraDeReferencia(clave, f[clave] as number | null)
 
-  if (fuera('horas_dia_media')) r.push({
-    id: 'REC-01', titulo: 'Mirar el reparto de la carga',
-    texto: `La jornada media ${mes ? 'del mes fue de' : 'va en'} ${Number(f!.horas_dia_media).toFixed(1)} h al día, por encima de las 8.5 de referencia. Vale la pena revisar qué entregas se pueden mover y poner un tope al sobretiempo.`,
-    referencia: 'Demerouti et al. (2001), modelo de demandas y recursos',
-  })
+  if (fuera('horas_dia_media') || fuera('jornada_larga_pct')) {
+    // Se nombra lo que de verdad se salió: la media, los picos o ambos.
+    const partes: string[] = []
+    if (fuera('horas_dia_media')) partes.push(`la jornada media ${mes ? 'del mes fue de' : 'va en'} ${Number(f!.horas_dia_media).toFixed(1)} h, por encima de las 8.5 de referencia`)
+    if (fuera('jornada_larga_pct')) partes.push(`el ${f!.jornada_larga_pct} % de las jornadas pasó de 10 h`)
+    r.push({
+      id: 'REC-01', titulo: 'Mirar el reparto de la carga',
+      texto: `${partes.join(' y ').replace(/^./, (c) => c.toUpperCase())}. Vale la pena revisar qué entregas se pueden mover y poner un tope a los días largos.`,
+      referencia: 'Demerouti et al. (2001), modelo de demandas y recursos',
+    })
+  }
   if (fuera('sobretiempo_media') || fuera('fin_de_semana_media')) {
     // Solo se nombra lo que de verdad se salió: citar también el factor que
     // está bien hace dudar de si el problema es ese.
@@ -281,11 +295,16 @@ export function recomendaciones(
     texto: `El ${f!.guardia_pct} % del equipo estuvo disponible fuera de horario, cuando la referencia es 20 %. Conviene rotar los turnos y compensar con horas libres a quien estuvo de guardia.`,
     referencia: 'Bakker & Demerouti (2007)',
   })
-  if (fuera('sueno_media')) r.push({
-    id: 'REC-04', titulo: 'Cuidar el descanso',
-    texto: `Se durmió ${Number(f!.sueno_media).toFixed(1)} h de media${mes ? ' en el mes' : ''}, por debajo de las 7 de referencia. Suele arreglarse moviendo las horas de inicio y evitando guardias nocturnas seguidas.`,
-    referencia: 'Åkerstedt (2006)',
-  })
+  if (fuera('sueno_media') || fuera('noche_corta_pct')) {
+    const partes: string[] = []
+    if (fuera('sueno_media')) partes.push(`se durmió ${Number(f!.sueno_media).toFixed(1)} h de media${mes ? ' en el mes' : ''}, por debajo de las 7 de referencia`)
+    if (fuera('noche_corta_pct')) partes.push(`el ${f!.noche_corta_pct} % de las noches fue de menos de 6 h`)
+    r.push({
+      id: 'REC-04', titulo: 'Cuidar el descanso',
+      texto: `${partes.join(' y ').replace(/^./, (c) => c.toUpperCase())}. Suele arreglarse moviendo las horas de inicio y evitando terminar tarde varios días seguidos.`,
+      referencia: 'Åkerstedt (2006)',
+    })
+  }
   if (fuera('apoyo_lider_media')) r.push({
     id: 'REC-05', titulo: 'Acompañar a quienes lideran',
     texto: `El apoyo que la gente siente de su jefe directo está en ${f!.apoyo_lider_media} de 5, bajo la referencia de 3.5. Es lo que más protege del agotamiento: formación para quienes lideran y espacios de uno a uno ayudan más que cualquier otra medida.`,
