@@ -1,7 +1,14 @@
 /** Versiones del modelo — implementa ESP-009 RF-009-11.
  *
- *  Una tarjeta por tarea, no una tabla: hay una versión de cada, y siete
- *  columnas para una fila no dicen nada que no quepa en cuatro líneas.
+ *  El producto usa un solo modelo: el que, tras cada check-in, estima con
+ *  los días de la semana que van si la persona está cruzando el umbral, y
+ *  si pasa del corte le pide el OLBI ese mismo día. Ya no hay «OLBI del
+ *  viernes» ni «check-ins de lunes a jueves», que es lo que decía antes.
+ *
+ *  El pronóstico de la semana siguiente sigue guardado, pero el producto no
+ *  lo usa: salía como «Ninguna versión activa» en rojo, como si faltara
+ *  algo. Ahora es una línea al pie, sin botón para activarlo, porque
+ *  activarlo añadiría un bloque al resultado del trabajador.
  *
  *  Activar una versión no toca las predicciones ya registradas: cada una
  *  lleva la suya (RN-009-05). */
@@ -19,10 +26,9 @@ import { IconoCheckCirculo, IconoGrafica, IconoHoja } from '../../modules/nucleo
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 
-/** Qué predice cada tarea, dicho sin jerga. */
+/** Qué hace el modelo en el producto, dicho sin jerga. */
 const TAREAS = [
-  { tarea: 'nowcast' as const, titulo: 'El viernes de esta semana', nota: 'Con los check-ins de lunes a jueves, estima si el OLBI del viernes cruzará el umbral.' },
-  { tarea: 'pronostico' as const, titulo: 'El viernes de la próxima', nota: 'Con la semana ya cerrada, proyecta el OLBI del viernes siguiente.' },
+  { tarea: 'nowcast' as const, titulo: 'Cuándo pedir el cuestionario', nota: 'Tras cada check-in estima, con los días de la semana que van, si la persona está cruzando el umbral de burnout. Si pasa del corte, le pide el OLBI ese mismo día.' },
 ]
 
 export default function Versiones() {
@@ -45,7 +51,7 @@ export default function Versiones() {
     <Panel rol="investigador">
       <ScrollView style={{ flex: 1 }} contentContainerStyle={e.contenido}>
         <Encabezado eyebrow="Modelo · ESP-009" titulo="Versiones del modelo"
-          subtitulo="Cuál está en uso para cada predicción, con qué se entrenó y qué tal le fue entonces."
+          subtitulo="El modelo que decide a quién pedirle el cuestionario, con qué se entrenó y qué tal le fue entonces."
           derecha={<BotonChico onPress={() => router.push(conFiltro('/investigador/desempeno', filtro) as never)} icono={<IconoGrafica tamano={13} color={color.texto} />}>Ver cómo va ahora</BotonChico>} />
 
         {TAREAS.map((t) => {
@@ -63,7 +69,7 @@ export default function Versiones() {
               {!activa ? (
                 <View style={e.sinActiva}>
                   <Text style={[texto.cuerpoFuerte, { color: '#8C4A2B' }]}>Ninguna versión activa</Text>
-                  <Text style={[texto.dato, { color: '#8C4A2B' }]}>Sin una versión activa no se registran predicciones nuevas para esta tarea.</Text>
+                  <Text style={[texto.dato, { color: '#8C4A2B' }]}>Sin una versión activa nadie recibe el cuestionario por el modelo; solo por sorteo, al mes sin medirse o tras un alta.</Text>
                 </View>
               ) : (
                 <View style={e.activa}>
@@ -77,8 +83,8 @@ export default function Versiones() {
                   </View>
 
                   <View style={[e.fila, { gap: espacio.lg, alignItems: 'flex-start' }]}>
-                    <Cifra rotulo="Avisa a partir de" valor={Number(activa.umbral_decision).toFixed(2)}
-                      apoyo="probabilidad mínima para levantar la mano" />
+                    <Cifra rotulo="Pide el OLBI desde" valor={Number(activa.umbral_decision).toFixed(2)}
+                      apoyo="de probabilidad" />
                     <Metricas m={(activa.metricas?.global as Record<string, unknown>) ?? activa.metricas ?? {}} />
                   </View>
 
@@ -123,6 +129,15 @@ export default function Versiones() {
             </Caja>
           )
         })}
+
+        {lista.some((v) => v.tarea === 'pronostico') && (
+          <View style={e.otra}>
+            <Text style={[texto.dato, { color: color.textoMedio, flex: 1, minWidth: 220 }]}>
+              {`También hay ${lista.filter((v) => v.tarea === 'pronostico').length === 1 ? 'una versión guardada' : 'versiones guardadas'} del pronóstico de la semana siguiente. El producto no lo usa.`}
+            </Text>
+            <Mono>{lista.filter((v) => v.tarea === 'pronostico').map((v) => v.version).join(', ')}</Mono>
+          </View>
+        )}
 
         <Text style={[texto.dato, { color: color.textoSuave }]}>
           Cambiar de versión no recalcula nada hacia atrás: cada predicción conserva la versión con la que se hizo (RN-009-05). Las cifras de aquí son las del entrenamiento; cómo va con datos reales está en Desempeño.
