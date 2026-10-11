@@ -67,6 +67,13 @@ let handlerPuesto = false
 function notificaciones(): ModuloNotificaciones | null {
   if (modulo !== undefined) return modulo
 
+  // En navegador (PWA) el módulo se importa sin errores pero no programa nada:
+  // tratarlo como disponible haría prometer un aviso que nunca llega.
+  if (Platform.OS === 'web') {
+    modulo = null
+    return null
+  }
+
   try {
     // require y no import: un import estático se evalúa al cargar el archivo,
     // que es exactamente lo que hay que evitar.
