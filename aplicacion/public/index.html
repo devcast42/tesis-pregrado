@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es-PE">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- viewport-fit=cover: la pantalla llega al borde y safe-area-inset mide la muesca. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Bienestar Tech</title>
+    <meta name="description" content="Check-in diario, cuestionarios y apoyo psicológico para trabajadores." />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- Safari en iPhone no lee todo del manifiesto: estas etiquetas son las que cuentan allí. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Bienestar" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="apple-touch-icon" href="/iconos/apple-touch-icon.png" />
+    <link rel="icon" href="/iconos/icon-192.png" />
+
+    <!-- Estilos base de react-native-web: el contenedor ocupa toda la pantalla y el scroll lo manejan los ScrollView. -->
+    <style id="expo-reset">
+      html, body { height: 100%; }
+      body { overflow: hidden; background-color: #FAF9F7; overscroll-behavior-y: none; }
+      #root { display: flex; height: 100%; flex: 1; }
+    </style>
+  </head>
+  <body>
+    <noscript>Necesitas activar JavaScript para usar esta aplicación.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

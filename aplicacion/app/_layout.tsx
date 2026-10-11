@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { AppState } from 'react-native'
-import { router, Stack } from 'expo-router'
+import { router, Stack, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import {
   Inter_400Regular,
@@ -12,8 +12,10 @@ import { Cargando } from '../modules/nucleo/ui'
 import { haySesion } from '../modules/acceso/datos'
 import { activo, disponible, registrarSegundoPlano, volvioTrasMucho } from '../modules/acceso/bloqueo'
 import { color, fuente } from '../modules/nucleo/diseno'
+import { ajustarPantalla, registrarServiceWorker, SOLO_TRABAJADOR } from '../modules/nucleo/pwa'
 
 export default function Layout() {
+  const segmentos = useSegments()
   // Un peso por archivo. Hasta que carguen, todo el sistema de tipografía
   // apuntaría a familias inexistentes y el texto saldría con la fuente del
   // sistema y otro ritmo vertical; por eso se espera.
@@ -22,6 +24,16 @@ export default function Layout() {
     Inter_500Medium,
     Inter_600SemiBold,
   })
+
+  // PWA: service worker (solo en producción) y, en el build de trabajadores,
+  // las rutas de los otros roles no se abren ni escribiendo la dirección.
+  useEffect(() => { registrarServiceWorker(); ajustarPantalla() }, [])
+  useEffect(() => {
+    const primero = segmentos[0] as string | undefined
+    if (SOLO_TRABAJADOR && (primero === 'psicologo' || primero === 'investigador' || primero === 'admin')) {
+      router.replace('/')
+    }
+  }, [segmentos])
 
   // RF-001-08 — al volver del segundo plano tras un rato, se vuelve a pedir
   // la huella encima de lo que hubiera (con `volver=1` regresa a esa pantalla).

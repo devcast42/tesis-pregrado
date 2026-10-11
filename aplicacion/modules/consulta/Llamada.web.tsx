@@ -40,6 +40,7 @@ export function Llamada({ url, token, onSalir, etiqueta, grabando }: PropsLlamad
   const [micActivo, setMicActivo] = useState(true)
   const [camActiva, setCamActiva] = useState(true)
   const [intercambiado, setIntercambiado] = useState(false)
+  const [audioBloqueado, setAudioBloqueado] = useState(false)
   const [transcurrido, setTranscurrido] = useState('00:00')
   const [inicio] = useState(() => Date.now())
 
@@ -85,6 +86,9 @@ export function Llamada({ url, token, onSalir, etiqueta, grabando }: PropsLlamad
       .on(RoomEvent.LocalTrackUnpublished, (pub: LocalTrackPublication) => {
         if (pub.kind === Track.Kind.Video) { pub.track?.detach(); pistaPropia.current = null; setVideoPropio(false) }
       })
+      // Safari (sobre todo en iPhone) no deja reproducir audio sin un toque de la
+      // persona: LiveKit avisa y `startAudio` se llama desde ese toque.
+      .on(RoomEvent.AudioPlaybackStatusChanged, () => vigente && setAudioBloqueado(!room.canPlaybackAudio))
       .on(RoomEvent.ParticipantConnected, actualizarRemotos)
       .on(RoomEvent.ParticipantDisconnected, actualizarRemotos)
       .on(RoomEvent.Disconnected, () => vigente && onSalir())
@@ -145,6 +149,18 @@ export function Llamada({ url, token, onSalir, etiqueta, grabando }: PropsLlamad
             </Text>
             {!grandeEsPropia && hayRemoto && !error && <Text style={estilos.esperaSub}>El audio sigue funcionando</Text>}
           </View>
+        )}
+
+        {audioBloqueado && (
+          <Pressable
+            onPress={() => { sala.current?.startAudio().then(() => setAudioBloqueado(false)).catch(() => {}) }}
+            style={estilos.activarAudio}
+            accessibilityRole="button"
+            accessibilityLabel="Activar el audio de la sesión"
+          >
+            <IconoMicrofono tamano={18} color="#FFFFFF" />
+            <Text style={estilos.activarAudioTexto}>Toca para activar el audio</Text>
+          </Pressable>
         )}
 
         {/* Cabecera */}
@@ -217,6 +233,8 @@ const estilos = StyleSheet.create({
   // Apagado = rojo lleno con el icono tachado.
   controlApagado: { backgroundColor: '#B91C1C' },
   finalizar: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 56, paddingHorizontal: 24, borderRadius: 28, backgroundColor: '#A8663D' },
+  activarAudio: { position: 'absolute', alignSelf: 'center', top: '42%', flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 22, paddingVertical: 14, borderRadius: 999, backgroundColor: '#0F766E', zIndex: 5 },
+  activarAudioTexto: { color: '#FFFFFF', fontFamily: fuente.fuerte, fontSize: 15 },
   finalizarTexto: { color: '#FFFFFF', fontFamily: fuente.fuerte, fontSize: 16 },
   pie: { position: 'absolute', bottom: 16, left: 0, right: 0, justifyContent: 'center' },
   pieTexto: { color: 'rgba(255,255,255,0.55)', fontFamily: fuente.media, fontSize: 11, letterSpacing: 1.2 },

@@ -24,7 +24,7 @@ import {
 } from '../../modules/recoleccion/datos'
 import { agendaDeHoy, type ItemAgenda } from '../../modules/recoleccion/agenda'
 import { citaVigente, fechaHora, misCitas, type Cita } from '../../modules/consulta/citas'
-import { sincronizarRecordatorios } from '../../modules/recoleccion/recordatorios'
+import { recordatoriosDisponibles, sincronizarRecordatorios } from '../../modules/recoleccion/recordatorios'
 import { sesionDisponible, type SesionDisponible } from '../../modules/consulta/datos'
 import {
   BloqueCierre, PastillaRacha, PieEtico, Pensamiento, RegistrosDelDia, RitmoSemanal,
@@ -33,6 +33,7 @@ import {
 import { BarraSuperior } from '../../modules/nucleo/armazon'
 import { fechaLarga, fraseDelDia, saludoPorHora } from '../../modules/trabajador/textos'
 import { Cargando } from '../../modules/nucleo/ui'
+import { InstalarPwa } from '../../modules/nucleo/InstalarPwa'
 import { ahora, cargarDesfase } from '../../modules/nucleo/reloj'
 import {
   consejoDelDia, ultimoResultado, guardarResultado, tomarConsejo, type Prediccion, type ResultadoSemana,
@@ -290,11 +291,13 @@ export default function Hoy() {
     if (i === hoy && diaDeCheckin) return hoyHecho ? 'hoy_respondido' : 'hoy_pendiente'
     return diasRespondidos.has(i) ? 'respondido' : 'otro'
   })
+  // Sin recordatorios (navegador / PWA) no se promete un aviso que no llegará.
+  const aviso = recordatoriosDisponibles() ? '; te avisaremos con una notificación' : ''
   const cierre = !diaDeCheckin
-    ? 'Hoy no hay check-in. Nos vemos el lunes; te avisaremos con una notificación.'
+    ? `Hoy no hay check-in. Nos vemos el lunes${aviso}.`
     : hoy === 4
-      ? 'Ya cerraste tu semana. No hay nada más hasta el lunes; te avisaremos con una notificación.'
-      : 'Ya registraste todo lo de hoy. No hay nada más que hacer hasta mañana; te avisaremos con una notificación.'
+      ? `Ya cerraste tu semana. No hay nada más hasta el lunes${aviso}.`
+      : `Ya registraste todo lo de hoy. No hay nada más que hacer hasta mañana${aviso}.`
 
   return (
     <View style={[e.pantalla, { paddingTop: insets.top }]}>
@@ -313,6 +316,8 @@ export default function Hoy() {
         contentContainerStyle={[e.contenido, { paddingBottom: espacio.xxl + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} />}
       >
+        <InstalarPwa />
+
         <Saludo
           fecha={fechaLarga(ahoraMismo)}
           codigo={trabajador.codigo_anonimo}
@@ -336,7 +341,7 @@ export default function Hoy() {
         {offsetDia === 0 && !enSeguimiento && todoListo && (
           <BloqueCierre
             mensaje={cita
-              ? 'Hiciste todo lo de hoy. Lo que viene es tu sesión con el psicólogo; te avisaremos si cambia algo.'
+              ? 'Hiciste todo lo de hoy. Lo que viene es tu sesión con el psicólogo' + (recordatoriosDisponibles() ? '; te avisaremos si cambia algo.' : '.')
               : 'Tu seguimiento de check-ins terminó por ahora. Seguimos acompañándote desde aquí: revisa tu resultado y, cuando esté disponible, tu sesión de apoyo.'}
             nota="Tus respuestas anteriores siguen protegidas y disociadas de tu empresa."
           />

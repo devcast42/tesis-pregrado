@@ -6,7 +6,8 @@ import { StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { Cargando } from '../modules/nucleo/ui'
 import { color, espacio, texto } from '../modules/nucleo/diseno'
-import { haySesion, obtenerTrabajador } from '../modules/acceso/datos'
+import { cerrarSesion, haySesion, obtenerTrabajador } from '../modules/acceso/datos'
+import { SOLO_TRABAJADOR } from '../modules/nucleo/pwa'
 import { necesitaDesbloqueo } from '../modules/acceso/bloqueo'
 import { obtenerRol, RUTA_INICIAL } from '../modules/nucleo/rol'
 import { puedeRecolectar } from '../modules/consentimiento/datos'
@@ -28,6 +29,12 @@ export default function Index() {
       if (!vigente) return
 
       if (rol === 'psicologo' || rol === 'investigador' || rol === 'admin') {
+        // La PWA se publica solo para trabajadores: los demás roles entran por
+        // la aplicación móvil o el panel web.
+        if (SOLO_TRABAJADOR) {
+          await cerrarSesion()
+          return setMensaje('Esta versión es solo para trabajadores. Ingresa desde la aplicación o el panel web de tu rol.')
+        }
         return router.replace(RUTA_INICIAL[rol])
       }
 

@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { iniciarSesion } from '../modules/acceso/datos'
 import { Aviso, Boton } from '../modules/nucleo/ui'
 import { Logo } from '../modules/nucleo/Logo'
+import { InstalarPwa } from '../modules/nucleo/InstalarPwa'
 import {
   IconoCandado, IconoCorreo, IconoEscudo, IconoFlecha, IconoOjo, IconoOjoTachado,
 } from '../modules/nucleo/iconos'
@@ -71,6 +72,8 @@ export default function Acceso() {
             Ingresa con las credenciales que te entregó tu empresa.
           </Text>
         </View>
+
+        <InstalarPwa />
 
         <View style={e.campos}>
           <View style={e.campo}>
