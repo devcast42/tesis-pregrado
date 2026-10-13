@@ -5,13 +5,13 @@
  *  un toque mal dado y a volver a escribir la contraseña. */
 
 import { useCallback, useState } from 'react'
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { cerrarSesion, correoActual } from '../../../modules/acceso/datos'
 import { listarCasos, psicologoActual } from '../../../modules/psicologo/datos'
 import { BarraSuperior } from '../../../modules/nucleo/armazon'
-import { Cargando } from '../../../modules/nucleo/ui'
+import { Cargando, confirmar } from '../../../modules/nucleo/ui'
 import { IconoCandado, IconoEscudo, IconoSalir } from '../../../modules/nucleo/iconos'
 import { color, espacio, radio, texto } from '../../../modules/nucleo/diseno'
 
@@ -34,11 +34,11 @@ export default function PerfilPsicologo() {
 
   useFocusEffect(useCallback(() => { cargar() }, [cargar]))
 
-  function confirmarSalida() {
-    Alert.alert('Cerrar sesión', 'Para volver a entrar necesitarás tu correo y contraseña.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Cerrar sesión', style: 'destructive', onPress: () => cerrarSesion().then(() => router.replace('/')) },
-    ])
+  async function confirmarSalida() {
+    const ok = await confirmar({ titulo: 'Cerrar sesión', mensaje: 'Para volver a entrar necesitarás tu correo y contraseña.', aceptar: 'Cerrar sesión', destructivo: true })
+    if (!ok) return
+    await cerrarSesion()
+    router.replace('/')
   }
 
   if (nombre === null) return <Cargando />

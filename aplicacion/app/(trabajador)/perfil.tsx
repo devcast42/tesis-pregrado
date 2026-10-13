@@ -20,7 +20,7 @@ import {
   type HoraRecordatorio,
 } from '../../modules/recoleccion/recordatorios'
 import { BarraSuperior } from '../../modules/nucleo/armazon'
-import { Cargando } from '../../modules/nucleo/ui'
+import { Cargando, confirmar } from '../../modules/nucleo/ui'
 import {
   IconoAuto, IconoBalanza, IconoCheck, IconoCodigo, IconoEditar, IconoEquipo, IconoEscudo, IconoGrafica,
   IconoHuella, IconoMaletin, IconoPersona, IconoSalir, IconoCasa,
@@ -113,34 +113,28 @@ export default function Perfil() {
     )
   }
 
-  function confirmarRetiro() {
+  async function confirmarRetiro() {
     if (!trabajador) return
-    Alert.alert(
-      'Darme de baja',
-      'Dejaremos de pedirte respuestas. Lo que ya respondiste se conserva bajo tu código anónimo, como acordamos al empezar. Puedes volver a activarte cuando quieras.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Darme de baja', style: 'destructive',
-          onPress: async () => {
-            setOcupado(true)
-            try {
-              // RN-001-03 — el retiro se registra, no se borra nada.
-              await registrarDecision(trabajador.id, false)
-              await cancelarTodos()
-              router.replace('/')
-            } finally { setOcupado(false) }
-          },
-        },
-      ],
-    )
+    const ok = await confirmar({
+      titulo: 'Darme de baja',
+      mensaje: 'Dejaremos de pedirte respuestas. Lo que ya respondiste se conserva bajo tu código anónimo, como acordamos al empezar. Puedes volver a activarte cuando quieras.',
+      aceptar: 'Darme de baja', destructivo: true,
+    })
+    if (!ok) return
+    setOcupado(true)
+    try {
+      // RN-001-03 — el retiro se registra, no se borra nada.
+      await registrarDecision(trabajador.id, false)
+      await cancelarTodos()
+      router.replace('/')
+    } finally { setOcupado(false) }
   }
 
-  function confirmarSalida() {
-    Alert.alert('Cerrar sesión', 'Para volver a entrar necesitarás tu correo y contraseña.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Cerrar sesión', style: 'destructive', onPress: async () => { await cerrarSesion(); router.replace('/acceso') } },
-    ])
+  async function confirmarSalida() {
+    const ok = await confirmar({ titulo: 'Cerrar sesión', mensaje: 'Para volver a entrar necesitarás tu correo y contraseña.', aceptar: 'Cerrar sesión', destructivo: true })
+    if (!ok) return
+    await cerrarSesion()
+    router.replace('/acceso')
   }
 
   if (!trabajador || datos === undefined) return <Cargando />

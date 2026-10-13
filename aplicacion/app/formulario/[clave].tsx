@@ -4,7 +4,6 @@
  *  proviene de la definición almacenada en base de datos. */
 
 import { useEffect, useState } from 'react'
-import { Alert } from 'react-native'
 import { router, useLocalSearchParams, useNavigation } from 'expo-router'
 import { obtenerTrabajador } from '../../modules/acceso/datos'
 import {
@@ -12,7 +11,7 @@ import {
 } from '../../modules/recoleccion/datos'
 import { Formulario as FormularioUI } from '../../modules/recoleccion/componentes/Formulario'
 import type { ClaveFormulario, Formulario, Valores } from '../../modules/nucleo/tipos'
-import { Cargando } from '../../modules/nucleo/ui'
+import { avisar, Cargando } from '../../modules/nucleo/ui'
 import {
   consejoDelDia, dejarConsejo, guardarResultado, resultadoDesde,
 } from '../../modules/trabajador/resultado'
@@ -48,7 +47,7 @@ export default function PantallaFormulario() {
     }
 
     preparar().catch(() => {
-      Alert.alert('No se pudo cargar', 'Revisa tu conexión e inténtalo de nuevo.')
+      avisar('No se pudo cargar', 'Revisa tu conexión e inténtalo de nuevo.')
       router.back()
     })
 
@@ -92,7 +91,7 @@ export default function PantallaFormulario() {
       else if (router.canGoBack()) router.back()
       else router.replace('/')
     } catch {
-      Alert.alert(
+      avisar(
         'No se pudo enviar',
         'Tus respuestas no se han perdido. Revisa tu conexión e inténtalo de nuevo.',
       )

@@ -313,6 +313,16 @@ export function confirmar({ titulo, mensaje, aceptar = 'Aceptar', destructivo = 
   })
 }
 
+/** Un aviso con un solo botón. `Alert.alert` en web no muestra nada (ni
+ *  siquiera sin botones): un error al enviar quedaba en silencio. */
+export function avisar(titulo: string, mensaje: string) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') window.alert(`${titulo}\n\n${mensaje}`)
+    return
+  }
+  Alert.alert(titulo, mensaje)
+}
+
 // ------------------------------------------------------------ Hoja inferior
 
 /** Una hoja que sube desde abajo, con su título y lo que se le ponga dentro.

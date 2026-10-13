@@ -13,7 +13,7 @@
  *  reproche (ESP-004 RN-004-03, ESP-007). */
 
 import { useCallback, useEffect, useState } from 'react'
-import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { obtenerTrabajador } from '../../modules/acceso/datos'
@@ -32,7 +32,7 @@ import {
 } from '../../modules/trabajador/piezas'
 import { BarraSuperior } from '../../modules/nucleo/armazon'
 import { fechaLarga, fraseDelDia, saludoPorHora } from '../../modules/trabajador/textos'
-import { Cargando } from '../../modules/nucleo/ui'
+import { avisar, Cargando } from '../../modules/nucleo/ui'
 import { InstalarPwa } from '../../modules/nucleo/InstalarPwa'
 import { APOYO_DISPONIBLE } from '../../modules/nucleo/pwa'
 import { ahora, cargarDesfase } from '../../modules/nucleo/reloj'
@@ -306,7 +306,7 @@ export default function Hoy() {
         titulo="Hoy"
         onPerfil={irAAjustes}
         derecha={rachaActual && enSeguimiento ? (
-          <PastillaRacha actual={rachaActual.actual} hoyCumplido={rachaActual.hoy_cumplido} onPress={() => Alert.alert(
+          <PastillaRacha actual={rachaActual.actual} hoyCumplido={rachaActual.hoy_cumplido} onPress={() => avisar(
             rachaActual.actual === 0 ? 'Tu racha' : `Racha de ${rachaActual.actual} ${rachaActual.actual === 1 ? 'día' : 'días'}`,
             `Días de check-in seguidos, de lunes a viernes. El fin de semana no la rompe.${rachaActual.mejor > rachaActual.actual ? ` Tu mejor racha: ${rachaActual.mejor} días.` : ''}${!rachaActual.hoy_cumplido && rachaActual.actual > 0 && diaDeCheckin ? ' Responde hoy para mantenerla.' : ''}`,
           )} />
