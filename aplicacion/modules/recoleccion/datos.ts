@@ -268,8 +268,10 @@ export async function racha(trabajadorId: string): Promise<Racha> {
 
 export type OlbiToca = {
   toca: boolean
-  motivo?: 'modelo' | 'sorteo' | 'sin_medir' | 'ya_respondido' | 'no_toca'
+  motivo?: 'modelo' | 'sorteo' | 'sin_medir' | 'tras_alta' | 'ya_respondido' | 'no_toca'
   probabilidad?: number
+  /** `sin_medir` de alguien que nunca lo respondió: es su punto de partida. */
+  primera?: boolean
 }
 
 /** Si hoy corresponde el cuestionario completo. Lo decide el servidor: puede

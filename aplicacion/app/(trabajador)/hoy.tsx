@@ -56,6 +56,7 @@ const POR_QUE: Record<string, string> = {
   modelo: 'Por cómo va tu semana',
   sorteo: 'Te tocó esta semana',
   sin_medir: 'Hace un mes que no lo respondes',
+  primera: 'Tu punto de partida',
   tras_alta: 'Para ver cómo sigues',
 }
 
@@ -240,7 +241,8 @@ export default function Hoy() {
     setHistorialDias(hist)
     setCita(citaVigente(citas))
     setDerivado(p.estado === 'detectado')
-    setMotivoOlbi(olbi.motivo ?? null)
+    // «primera» solo cambia el texto: para el servidor sigue siendo sin_medir.
+    setMotivoOlbi(olbi.primera ? 'primera' : olbi.motivo ?? null)
     setSemana(serieSemana)
     setAgenda(agendaDeHoy(envios, cal, undefined, olbi.toca))
     setDiasRespondidos(dias)

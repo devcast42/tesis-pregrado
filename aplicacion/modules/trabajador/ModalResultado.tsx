@@ -126,6 +126,10 @@ const AVISO_OLBI: Record<string, { titulo: string; texto: string }> = {
     titulo: 'Cuestionario completo',
     texto: 'Hace un mes que no lo respondes. Conviene medir aunque todo vaya bien.',
   },
+  primera: {
+    titulo: 'Cuestionario completo',
+    texto: 'Es tu primera medición: nos da tu punto de partida para comparar cómo va todo después.',
+  },
   tras_alta: {
     titulo: 'Cuestionario completo',
     texto: 'Han pasado dos semanas desde tu acompañamiento. Es para ver cómo sigues.',
