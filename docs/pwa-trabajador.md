@@ -44,8 +44,14 @@ cabeceras para Vercel (`vercel.json`) y Netlify o Cloudflare Pages
 (`_redirects`, `_headers`):
 
 ```bash
-npx vercel deploy dist-pwa --prod
+npm run pwa:export      # build + mueve las fuentes fuera de node_modules
+npm run pwa:publicar    # proyecto bienestar-tech → https://bienestar-tech.vercel.app
 ```
+
+Vercel no sube carpetas llamadas `node_modules`, y Expo deja ahí las fuentes
+Inter y los íconos de expo-router (`assets/node_modules/…`): salían en 404.
+`scripts/pwa-postexport.mjs` las mueve a `assets/vendor/`, corrige las rutas y
+renombra el JS con un hash nuevo.
 
 Cada despliegue nuevo se recoge solo: la navegación va primero a la red y los
 archivos con hash cambian de nombre.
