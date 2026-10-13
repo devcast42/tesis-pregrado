@@ -15,6 +15,12 @@ export const SOLO_TRABAJADOR = process.env.EXPO_PUBLIC_SOLO_TRABAJADOR === '1'
 
 const esWeb = Platform.OS === 'web' && typeof window !== 'undefined'
 
+/** El apoyo psicológico (citas, videollamada, informe) solo se ofrece en la
+ *  app de Android e iOS. En navegador el trabajador responde y ve su
+ *  resultado; si sale alto se le dice que necesita atención y dónde
+ *  encontrarla, pero no se abre un caso que nadie va a atender. */
+export const APOYO_DISPONIBLE = Platform.OS !== 'web'
+
 /** Abierta desde el ícono de la pantalla de inicio, no desde una pestaña. */
 export function estaInstalada(): boolean {
   if (!esWeb) return false

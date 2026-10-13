@@ -34,6 +34,7 @@ import { BarraSuperior } from '../../modules/nucleo/armazon'
 import { fechaLarga, fraseDelDia, saludoPorHora } from '../../modules/trabajador/textos'
 import { Cargando } from '../../modules/nucleo/ui'
 import { InstalarPwa } from '../../modules/nucleo/InstalarPwa'
+import { APOYO_DISPONIBLE } from '../../modules/nucleo/pwa'
 import { ahora, cargarDesfase } from '../../modules/nucleo/reloj'
 import {
   consejoDelDia, ultimoResultado, guardarResultado, tomarConsejo, type Prediccion, type ResultadoSemana,
@@ -452,7 +453,7 @@ export default function Hoy() {
 
       <ModalResultado modo={modal} resultado={resultado} consejo={consejo} prediccion={prediccion} motivoOlbi={motivoOlbi} semana={semana}
         onResponderOlbi={() => { setModal(null); router.push('/formulario/olbi') }}
-        onPedirCita={() => { setModal(null); router.push('/apoyo') }} onCerrar={() => {
+        onPedirCita={APOYO_DISPONIBLE ? () => { setModal(null); router.push('/apoyo') } : undefined} onCerrar={() => {
         setModal(null)
         if (celebrarPendiente) { setCelebrarPendiente(false); setCelebrar(true); setTimeout(() => setCelebrar(false), 2000) }
       }} />

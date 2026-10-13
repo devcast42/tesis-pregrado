@@ -18,7 +18,10 @@ Deno.serve(async (req) => {
   // El navegador manda un preflight antes de cada llamada cross-origin.
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
-  const { respuesta_id } = await req.json()
+  // `derivar: false` lo manda la app en navegador, donde no hay apoyo
+  // psicológico: la detección se registra igual —es el dato—, pero no se
+  // abre un caso que nadie va a atender ni se corta el check-in.
+  const { respuesta_id, derivar: conDerivacion = true } = await req.json()
   if (!respuesta_id) return json({ error: 'falta respuesta_id' }, 400)
 
   const db = createClient(
@@ -115,10 +118,15 @@ Deno.serve(async (req) => {
         respuesta_id,
         puntajes,
         umbrales: definicion.umbrales,
+        ...(conDerivacion ? {} : { sin_derivar: true }),
       },
     })
     .select('id')
     .single()
+
+  if (!conDerivacion) {
+    return json({ detectado: true, metodo: METODO, puntajes, umbrales: definicion.umbrales, derivacion_id: null, sin_derivar: true })
+  }
 
   await db.from('trabajadores').update({ estado: 'detectado' }).eq('id', respuesta.trabajador_id)
 

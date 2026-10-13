@@ -5,6 +5,7 @@ import type { ClaveFormulario, Formulario, Valores } from '../nucleo/tipos'
 import type { Calendarios } from './agenda'
 import type { Evaluacion, Prediccion } from '../trabajador/resultado'
 import { ahora } from '../nucleo/reloj'
+import { APOYO_DISPONIBLE } from '../nucleo/pwa'
 
 /** RF-002-02 — versión vigente del formulario, leída de base de datos.
  *  El versionado no es opcional (RN-002-02): sin él, respuestas de distintos
@@ -98,7 +99,9 @@ export async function enviarRespuesta(params: {
   let evaluacion: Evaluacion | null = null
   if (formulario.clave === 'olbi') {
     const { data } = await supabase.functions.invoke('evaluar-olbi', {
-      body: { respuesta_id: respuesta.id },
+      // Sin apoyo en este dispositivo: se registra la detección pero no se
+      // abre el caso ni se corta el check-in (ver `APOYO_DISPONIBLE`).
+      body: { respuesta_id: respuesta.id, derivar: APOYO_DISPONIBLE },
     })
     if (data && typeof data.detectado === 'boolean') evaluacion = data as Evaluacion
   }

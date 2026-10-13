@@ -28,6 +28,7 @@ import {
   confianzaDe, fraseRetrospectiva, metricasAplicables, nivelGeneral, recomendacionesDe,
   type Confianza as NivelConfianza, type Nivel, type Prediccion, type ResultadoSemana,
 } from './resultado'
+import { APOYO_DISPONIBLE } from '../nucleo/pwa'
 
 export type ModoModal = 'resultado' | 'cierre'
 
@@ -275,6 +276,10 @@ function Cierre({ consejo, prediccion, motivoOlbi, onResponderOlbi, semana }: {
 
 // ---------------------------------------------------------- Resultado viernes
 
+/** En navegador no hay sesión que ofrecer: el mensaje de «alto» no la promete. */
+const CUERPO_ALTO_SIN_APOYO =
+  'Tus respuestas muestran un nivel de desgaste alto. No estás solo con esto: hablarlo con un psicólogo ayuda, y es confidencial. Tu empresa no verá tus respuestas.'
+
 function Resultado({ r, onPedirCita }: { r: ResultadoSemana; onPedirCita?: () => void }) {
   const general = nivelGeneral(r)
   const mensaje = MENSAJE_GENERAL[general]
@@ -287,12 +292,27 @@ function Resultado({ r, onPedirCita }: { r: ResultadoSemana; onPedirCita?: () =>
         <Text style={[texto.dato, { color: TONO[general].tinta }]}>Nivel general · {ETIQUETA_NIVEL[general]}</Text>
       </View>
       <Text style={texto.titulo}>{mensaje.titulo}</Text>
-      <Text style={[texto.cuerpo, { color: color.textoMedio }]}>{mensaje.cuerpo}</Text>
+      <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
+        {general === 'alto' && !APOYO_DISPONIBLE ? CUERPO_ALTO_SIN_APOYO : mensaje.cuerpo}
+      </Text>
 
       {/* Antes decía «te ofreceremos una sesión» y ahí se quedaba: la
           persona salía de la pantalla sin nada que hacer y la cita dependía
           de que entrara sola a Apoyo. Ahora la pide desde aquí. */}
-      {r.detectado && (
+      {r.detectado && !APOYO_DISPONIBLE && (
+        <View style={e.apoyo}>
+          <View style={e.corazon}><IconoCorazon tamano={18} color={color.primarioProfundo} /></View>
+          <Text style={[texto.seccion, { color: color.texto }]}>Te conviene hablar con un psicólogo</Text>
+          <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
+            Las sesiones con un psicólogo solo están disponibles en la app de Bienestar Tech para Android e iOS.
+          </Text>
+          <Text style={[texto.dato, { color: color.textoSuave, textAlign: 'center' }]}>
+            Mañana sigues con tu check-in como siempre.
+          </Text>
+        </View>
+      )}
+
+      {r.detectado && APOYO_DISPONIBLE && (
         <View style={e.apoyo}>
           <View style={e.corazon}><IconoCorazon tamano={18} color={color.primarioProfundo} /></View>
           <Text style={[texto.seccion, { color: color.texto }]}>Tienes una sesión de apoyo</Text>

@@ -52,6 +52,15 @@ archivos con hash cambian de nombre.
 
 ## Diferencias con la app móvil
 
+- **Apoyo psicológico.** Solo en la app de Android e iOS (`APOYO_DISPONIBLE`
+  en `modules/nucleo/pwa.ts`). En navegador la pestaña Apoyo lo dice y no deja
+  pedir cita. Si el OLBI sale alto, el resultado muestra el nivel y que le
+  conviene hablar con un psicólogo, sin ofrecer sesión. `evaluar-olbi` recibe
+  `derivar: false`: registra la detección (con `sin_derivar` en el evento),
+  pero no abre derivación ni cambia el estado, así que al día siguiente la
+  persona sigue con su check-in. La bandeja del investigador no la marca como
+  «detección sin derivación».
+
 - **Recordatorios.** `expo-notifications` no programa avisos locales en web, y
   un iPhone no los admite en una PWA. La pantalla Perfil ya lo avisa («este
   dispositivo no permite programar recordatorios») y Hoy deja de prometer un

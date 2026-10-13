@@ -21,6 +21,7 @@ import {
   cancelarCita, citaVigente, diasOfrecidos, fechaHora, horasDisponibles, misCitas, solicitarCita, type Cita,
 } from '../../modules/consulta/citas'
 import { BarraSuperior } from '../../modules/nucleo/armazon'
+import { APOYO_DISPONIBLE } from '../../modules/nucleo/pwa'
 import { Boton, Cargando } from '../../modules/nucleo/ui'
 import {
   IconoApoyo, IconoArchivo, IconoCalendario, IconoCandado, IconoCheck, IconoChevronAbajo, IconoEntrar, IconoHistorial,
@@ -36,6 +37,36 @@ const ESTADO: Record<Cita['estado'], { texto: string; tono: string; fondo: strin
 }
 
 export default function Apoyo() {
+  return APOYO_DISPONIBLE ? <ApoyoConPsicologo /> : <ApoyoSoloEnApp />
+}
+
+/** Navegador (PWA): sin citas ni videollamada. Se dice dónde está el apoyo
+ *  en lugar de esconder la pestaña: la persona sabe que existe. */
+function ApoyoSoloEnApp() {
+  const insets = useSafeAreaInsets()
+  return (
+    <View style={[e.pantalla, { paddingTop: insets.top }]}>
+      <BarraSuperior titulo="Apoyo" onPerfil={() => router.push('/perfil')} />
+      <ScrollView contentContainerStyle={e.contenido}>
+        <View style={{ gap: espacio.xs }}>
+          <Text style={[texto.etiqueta, { color: color.primarioProfundo }]}>APOYO PROFESIONAL</Text>
+          <Text style={[texto.titulo, { color: color.texto }]}>Habla con un psicólogo</Text>
+          <Text style={[texto.cuerpo, { color: color.textoMedio }]}>
+            Las sesiones con un psicólogo solo están disponibles en la app de Bienestar Tech para Android e iOS.
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: espacio.sm, alignItems: 'center' }}>
+          <IconoCandado tamano={16} color={color.textoSuave} />
+          <Text style={[texto.dato, { color: color.textoSuave, flex: 1 }]}>
+            Aquí puedes seguir con tu check-in y tus cuestionarios.
+          </Text>
+        </View>
+      </ScrollView>
+    </View>
+  )
+}
+
+function ApoyoConPsicologo() {
   const [citas, setCitas] = useState<Cita[] | null>(null)
   const [sesion, setSesion] = useState<SesionDisponible | null>(null)
   const [resumenes, setResumenes] = useState<Resumen[]>([])
